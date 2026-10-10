@@ -13,6 +13,7 @@ import {
   organizedPath,
   organizeEntries,
   planOrganization,
+  unorganizedIds,
 } from './library-organizer';
 
 const roots: string[] = [];
@@ -155,5 +156,23 @@ describe('planOrganization', () => {
 
   it('moves what is in the organized folder and offers the rest with ask', () => {
     expect(planOrganization('ask', '/organized', added)).toEqual({ now: ['in'], offer: ['out'] });
+  });
+});
+
+describe('unorganizedIds', () => {
+  it('lists the entries not at their organized path yet', async () => {
+    const target = await tree([]);
+    const source = await tree(['a.cbz', 'b.cbz']);
+    const repo = repository();
+    for (const name of ['a.cbz', 'b.cbz']) repo.register(path.join(source, name), name, 1, 1, 1);
+    const a = repo.idOfPath(path.join(source, 'a.cbz'))!;
+    const b = repo.idOfPath(path.join(source, 'b.cbz'))!;
+    expect(unorganizedIds(repo, target).sort()).toEqual([a, b].sort());
+
+    const progress: [number, number][] = [];
+    await organizeEntries(repo, target, [a], (processed, total) => progress.push([processed, total]));
+
+    expect(progress).toEqual([[0, 1]]);
+    expect(unorganizedIds(repo, target)).toEqual([b]);
   });
 });

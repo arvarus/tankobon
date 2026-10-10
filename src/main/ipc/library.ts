@@ -11,6 +11,7 @@ import type {
   OrganizationOutcome,
   OrganizeResult,
   PickOrganizationFolderResult,
+  UnorganizedCountResult,
   ResyncResult,
   ScanProgress,
   ScanResult,
@@ -20,7 +21,7 @@ import type { LibraryRepository } from '../db/library-repository';
 import type { SettingsRepository } from '../db/settings-repository';
 import type { DecoderClient } from '../decoder/decoder-client';
 import type { ImageStatsScanner } from '../services/image-stats-scanner';
-import { organizeEntries, planOrganization } from '../services/library-organizer';
+import { organizeEntries, planOrganization, unorganizedIds } from '../services/library-organizer';
 import { openErrorMessage } from '../services/open-error';
 import { scanIntoLibrary } from '../services/library-scanner';
 import { resyncLibrary } from '../services/library-sync';
@@ -60,6 +61,8 @@ export const LIBRARY_CHANNELS = {
   imageScanProgress: 'library:image-scan-progress',
   pickOrganizationFolder: 'library:pick-organization-folder',
   organize: 'library:organize',
+  countUnorganized: 'library:count-unorganized',
+  organizeAll: 'library:organize-all',
 } as const;
 
 /** Sends the state of the background measure to every open window (one being closed is skipped). */
@@ -69,6 +72,36 @@ export function broadcastImageScanProgress(progress: ImageScanProgress): void {
       window.webContents.send(LIBRARY_CHANNELS.imageScanProgress, progress);
     }
   }
+}
+
+/**
+ * Lets one long run over the library files at a time (a resynchronization, or organizing the whole
+ * library): moving files while a walk registers them could register a file twice.
+ */
+export interface LibraryRunLock {
+  /** Takes the lock for `run`; false when another run holds it. */
+  tryStart(run: 'resync' | 'organize'): boolean;
+  /** Releases the lock. */
+  end(): void;
+  /** The translated refusal for a run that couldn't start. */
+  busyMessage(): string;
+}
+
+function createLibraryRunLock(): LibraryRunLock {
+  let holder: 'resync' | 'organize' | null = null;
+  return {
+    tryStart(run) {
+      if (holder) return false;
+      holder = run;
+      return true;
+    },
+    end() {
+      holder = null;
+    },
+    busyMessage() {
+      return holder === 'resync' ? t('errors:library.resyncRunning') : t('errors:library.organizeRunning');
+    },
+  };
 }
 
 /** The library organization (`AppSettings.libraryOrganization`) as the handlers use it; built once in `main.ts`. */
@@ -85,6 +118,15 @@ export interface LibraryOrganizer {
   afterAdd(added: { id: string; path: string }[]): Promise<OrganizationOutcome>;
   /** Moves the comics an earlier `afterAdd()` offered, as the user accepted. A token works once. */
   organize(token: string): Promise<OrganizeResult>;
+  /** How many library comics aren't in their place in the organized folder yet (an error when the organization is off or its folder unreachable). */
+  countUnorganized(): Promise<UnorganizedCountResult>;
+  /**
+   * Moves every library comic not in its place yet into the organized folder, one at a time,
+   * reporting each through `onProgress`. Holds the `lock`, like a resynchronization.
+   */
+  organizeAll(onProgress?: (progress: ScanProgress) => void): Promise<OrganizeResult>;
+  /** The lock shared with the resynchronizer. */
+  lock: LibraryRunLock;
 }
 
 /** How many offers `createLibraryOrganizer` remembers; an older token expires. */
@@ -109,14 +151,25 @@ export function createLibraryOrganizer(
   // Token → ids of the comics offered. The renderer only ever holds the token, never a path or a
   // list it could make up.
   const offers = new Map<string, string[]>();
+  const lock = createLibraryRunLock();
 
   const current = () => {
     const { libraryOrganization: mode, libraryOrganizationFolder: root } = settings.getAll();
     return { mode, root };
   };
 
-  const move = async (root: string, ids: string[]) => {
-    const summary = await organizeEntries(repo, root, ids);
+  /** The organized folder when the organization is on and its folder is there, else the error to return. */
+  const usableRoot = async (): Promise<{ root: string } | { status: 'error'; message: string }> => {
+    const { mode, root } = current();
+    if (mode === 'off' || root === '') return { status: 'error', message: t('errors:library.organizationOff') };
+    if (!(await isDirectory(root))) {
+      return { status: 'error', message: t('errors:library.organizationFolderUnreachable', { folder: root }) };
+    }
+    return { root };
+  };
+
+  const move = async (root: string, ids: string[], onProgress?: (processed: number, total: number, file: string) => void) => {
+    const summary = await organizeEntries(repo, root, ids, onProgress);
     if (summary.moved.length > 0) {
       notify({ scope: 'library' });
       // Covers are cached by path: the old ones are useless, the new ones come back on demand.
@@ -154,14 +207,35 @@ export function createLibraryOrganizer(
     async organize(token) {
       const ids = offers.get(token);
       if (!ids) return { status: 'error', message: t('errors:library.organizationExpired') };
-      const { mode, root } = current();
-      if (mode === 'off' || root === '') return { status: 'error', message: t('errors:library.organizationOff') };
-      if (!(await isDirectory(root))) {
-        return { status: 'error', message: t('errors:library.organizationFolderUnreachable', { folder: root }) };
-      }
+      const usable = await usableRoot();
+      if (!('root' in usable)) return usable;
       offers.delete(token);
-      return { status: 'ok', ...(await move(root, ids)) };
+      return { status: 'ok', ...(await move(usable.root, ids)) };
     },
+
+    async countUnorganized() {
+      const usable = await usableRoot();
+      if (!('root' in usable)) return usable;
+      return { status: 'ok', count: unorganizedIds(repo, usable.root).length, folder: usable.root };
+    },
+
+    async organizeAll(onProgress = () => undefined) {
+      const usable = await usableRoot();
+      if (!('root' in usable)) return usable;
+      if (!lock.tryStart('organize')) return { status: 'error', message: lock.busyMessage() };
+      try {
+        const ids = unorganizedIds(repo, usable.root);
+        const result = await move(usable.root, ids, (processed, total, currentFile) =>
+          onProgress({ phase: 'importing', processed, total, currentFile }),
+        );
+        return { status: 'ok', ...result };
+      } finally {
+        onProgress({ phase: 'done', processed: 0, total: 0, currentFile: '' });
+        lock.end();
+      }
+    },
+
+    lock,
   };
 }
 
@@ -184,12 +258,9 @@ export function createResynchronizer(
   imageScanner: ImageStatsScanner,
   organizer: LibraryOrganizer,
 ): Resynchronizer {
-  let running = false;
-
   return {
     async run(onProgress = () => undefined) {
-      if (running) return { status: 'error', message: t('errors:library.resyncRunning') };
-      running = true;
+      if (!organizer.lock.tryStart('resync')) return { status: 'error', message: organizer.lock.busyMessage() };
       try {
         const summary = await resyncLibrary(repo, organizer.watchedFolders(folders.list()), onProgress, (filePath) =>
           decoder.inspect(filePath),
@@ -218,7 +289,7 @@ export function createResynchronizer(
       } catch (error) {
         return { status: 'error', message: error instanceof Error ? error.message : String(error) };
       } finally {
-        running = false;
+        organizer.lock.end();
       }
     },
   };
@@ -332,6 +403,17 @@ export function registerLibraryIpc(
     LIBRARY_CHANNELS.organize,
     args((value) => expectNonEmptyString(value, 'token', 100)),
     (_event, token) => organizer.organize(token),
+  );
+
+  handle(LIBRARY_CHANNELS.countUnorganized, args(), () => organizer.countUnorganized());
+
+  // Progress goes over the scan channel, which the settings page already follows for a resynchronization.
+  handle(LIBRARY_CHANNELS.organizeAll, args(), (event) =>
+    organizer.organizeAll((progress) => {
+      if (!event.sender.isDestroyed()) {
+        event.sender.send(LIBRARY_CHANNELS.scanProgress, progress);
+      }
+    }),
   );
 
   handle(LIBRARY_CHANNELS.listFolders, args(), () => folders.list());

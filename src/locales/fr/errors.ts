@@ -32,6 +32,7 @@ const errors: Translation<typeof en> = {
     organizationOff: "L'organisation de la bibliothèque est désactivée, ou n'a pas de dossier.",
     organizationFolderUnreachable: 'Le dossier organisé est inaccessible : {{folder}}',
     organizationExpired: 'Ces BD ne peuvent plus être déplacées d’ici : ajoutez-les à nouveau ou resynchronisez.',
+    organizeRunning: 'Une resynchronisation ou une organisation de la bibliothèque est déjà en cours.',
   },
   import: {
     notJson: "Fichier illisible : ce n'est pas du JSON valide.",

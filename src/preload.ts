@@ -25,6 +25,7 @@ import type {
   OrganizeResult,
   PickOrganizationFolderResult,
   ResyncResult,
+  UnorganizedCountResult,
   ScanProgress,
   ScanResult,
 } from './shared/library';
@@ -74,13 +75,17 @@ export interface LibraryApi {
   pickOrganizationFolder(): Promise<PickOrganizationFolderResult>;
   /** Moves into the organized folder the comics an addition offered to move (`organization.pending.token` of its result), each into its own subfolder; a token works once. */
   organize(token: string): Promise<OrganizeResult>;
+  /** How many library comics aren't in their place in the organized folder yet; an error result when the organization is off or its folder unreachable. */
+  countUnorganized(): Promise<UnorganizedCountResult>;
+  /** Moves every library comic not in its place yet into the organized folder (its own subfolder each), whenever it was added. Reports through `onScanProgress`; an error result when the organization is off, its folder unreachable, or a resynchronization or another organization is running. */
+  organizeAll(): Promise<OrganizeResult>;
   /** The folders added with `addFolder`, which `resync` walks again, in the order they were added. */
   listFolders(): Promise<string[]>;
   /** Forgets one of those folders (a path returned by `listFolders`); its comics stay in the library. */
   removeFolder(folder: string): Promise<void>;
   /** Walks the remembered folders (and the organized folder, when the organization is on) again: new comics are added (then moved or offered by the organization, a comic dropped in the organized folder being moved into place), and comics whose file no longer exists are removed from the library (with their progress, rating, tags and reading-list places; the files on disk are never touched). A folder that can't be read is skipped and counted as `unreachable`. Stores the date as the `lastResyncAt` setting. Reports through `onScanProgress`; an error result when one is already running. */
   resync(): Promise<ResyncResult>;
-  /** Subscribes to the progress of `addFolder` and `resync`; returns the unsubscribe function. */
+  /** Subscribes to the progress of `addFolder`, `resync` and `organizeAll`; returns the unsubscribe function. */
   onScanProgress(listener: (progress: ScanProgress) => void): () => void;
   /** Where the background measure of the books' page sizes is now (it runs after an import, a resync or the first opening of a book); resolves with the state a window that loads late missed. */
   imageScanStatus(): Promise<ImageScanProgress>;
@@ -227,6 +232,8 @@ const api: TankobonApi = {
     addFolder: () => ipcRenderer.invoke('library:add-folder'),
     pickOrganizationFolder: () => ipcRenderer.invoke('library:pick-organization-folder'),
     organize: (token) => ipcRenderer.invoke('library:organize', token),
+    countUnorganized: () => ipcRenderer.invoke('library:count-unorganized'),
+    organizeAll: () => ipcRenderer.invoke('library:organize-all'),
     onScanProgress: (listener) => {
       const handler = (_event: Electron.IpcRendererEvent, progress: ScanProgress) => listener(progress);
       ipcRenderer.on('library:scan-progress', handler);

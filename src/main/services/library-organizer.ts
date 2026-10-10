@@ -110,10 +110,16 @@ export interface OrganizeSummary {
  * only costs that comic. When a comic leaves a subfolder of `root` (one dropped there by hand), that
  * subfolder is deleted if it is now empty; nothing outside `root` is ever deleted.
  */
-export async function organizeEntries(repo: LibraryRepository, root: string, ids: string[]): Promise<OrganizeSummary> {
+export async function organizeEntries(
+  repo: LibraryRepository,
+  root: string,
+  ids: string[],
+  onProgress: (processed: number, total: number, currentFile: string) => void = () => undefined,
+): Promise<OrganizeSummary> {
   const summary: OrganizeSummary = { moved: [], failed: 0 };
-  for (const id of ids) {
+  for (const [index, id] of ids.entries()) {
     const entry = repo.get(id);
+    if (entry) onProgress(index, ids.length, entry.path);
     if (!entry) continue;
     const to = organizedPath(root, entry.path, entry.id);
     if (to === entry.path) continue;
@@ -138,6 +144,14 @@ export async function organizeEntries(repo: LibraryRepository, root: string, ids
     if (isInside(root, previousFolder)) await rmdir(previousFolder).catch(() => undefined);
   }
   return summary;
+}
+
+/** Ids of the library entries whose file isn't at its {@link organizedPath} under `root` yet, in library order. */
+export function unorganizedIds(repo: LibraryRepository, root: string): string[] {
+  return repo
+    .list()
+    .filter((entry) => organizedPath(root, entry.path, entry.id) !== entry.path)
+    .map((entry) => entry.id);
 }
 
 /** The comics to move now and those to offer to move, as decided by {@link planOrganization}. */

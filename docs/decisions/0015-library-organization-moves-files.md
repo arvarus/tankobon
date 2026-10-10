@@ -18,7 +18,7 @@ Until now the app never touched the comic files: the library pointed at them whe
 ## Consequences
 
 - An entry keeps its id, progress, rating, tags, metadata and reading-list places when its file moves; only `path` changes. The cover thumbnail, cached by path, is deleted and regenerated on demand.
-- Turning the organization on doesn't move the comics already in the library: only additions are organized.
+- Turning the organization on doesn't move the comics already in the library by itself: only additions are organized, and "Organiser toute la bibliothèque…" moves the others on demand, after a confirmation. A resynchronization and that run never overlap (`LibraryRunLock`).
 - The original folders are left in place, even when emptied, except the subfolders of the organized folder itself.
 - A book open in the reader while it is moved keeps reading on Linux and macOS; on Windows the move fails (file in use) and is counted as failed.
 

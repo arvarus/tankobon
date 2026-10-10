@@ -190,8 +190,11 @@ export interface OrganizationOutcome {
   pending: { token: string; count: number; folder: string } | null;
 }
 
-/** Result of `library.organize()`; an error (no organized folder, folder unreachable, unknown token) has a translated `message`. */
+/** Result of `library.organize()` and `library.organizeAll()`; an error (no organized folder, folder unreachable, unknown token) has a translated `message`. */
 export type OrganizeResult = { status: 'ok'; moved: number; failed: number } | { status: 'error'; message: string };
+
+/** Result of `library.countUnorganized()`: how many library comics aren't in their place in the organized `folder` yet. */
+export type UnorganizedCountResult = { status: 'ok'; count: number; folder: string } | { status: 'error'; message: string };
 
 /** Result of `library.pickOrganizationFolder()`. */
 export type PickOrganizationFolderResult = { status: 'cancelled' } | { status: 'ok'; folder: string };
