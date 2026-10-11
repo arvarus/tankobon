@@ -2,6 +2,33 @@
 
 All notable changes to this project are documented here. This file is maintained by [release-please](https://github.com/googleapis/release-please) from the [Conventional Commits](https://www.conventionalcommits.org/) merged into `master`: don't edit released entries by hand. New versions are inserted above the previous ones.
 
+## [0.6.0](https://github.com/pprb/tankobon/compare/v0.5.0...v0.6.0) (2026-10-11)
+
+
+### Features
+
+* **app:** check for a newer release at startup ([#84](https://github.com/pprb/tankobon/issues/84)) ([fef6c07](https://github.com/pprb/tankobon/commit/fef6c07fcfbffded62ff0c30ffbba1f52e6371a2))
+* **app:** show a loader while the application starts ([#87](https://github.com/pprb/tankobon/issues/87)) ([f9ed33e](https://github.com/pprb/tankobon/commit/f9ed33ee051df3fb4f89cdc1a63b2480499437d9))
+* **library:** choose the organized folder's tree ([#94](https://github.com/pprb/tankobon/issues/94)) ([f7e6b06](https://github.com/pprb/tankobon/commit/f7e6b064a51049f742b3ea9a5e7ba58f0ea6cd1c))
+* **library:** group the library list by series ([#92](https://github.com/pprb/tankobon/issues/92)) ([636ee86](https://github.com/pprb/tankobon/commit/636ee865c25d751f9dca3e0922b4205d653fd0f9))
+* **library:** move added comics into an organized folder ([#89](https://github.com/pprb/tankobon/issues/89)) ([025a2e1](https://github.com/pprb/tankobon/commit/025a2e1d34c328b828f1fdca30758382711d7c4d))
+* **library:** rename organized files from a template of metadata fields ([#98](https://github.com/pprb/tankobon/issues/98)) ([37d7f35](https://github.com/pprb/tankobon/commit/37d7f352428cc94bc7ce5406a5e714b7a853b27b))
+* **library:** sort the library by date added, release date or title ([#95](https://github.com/pprb/tankobon/issues/95)) ([2fe058a](https://github.com/pprb/tankobon/commit/2fe058ae9a161a9c1c2764474c82454c0d407855))
+* **lists:** add a whole series or a selection of books to a reading list ([#93](https://github.com/pprb/tankobon/issues/93)) ([4d0f9b9](https://github.com/pprb/tankobon/commit/4d0f9b91583349754ca6d27be2b625bf5af7eec1))
+* **lists:** offer the library's display modes on a reading list's page ([#97](https://github.com/pprb/tankobon/issues/97)) ([82e1bf9](https://github.com/pprb/tankobon/commit/82e1bf91dacee364dc7c3fcbc44c6f2270af75c4))
+* **reader:** resize pages in continuous scroll mode ([#83](https://github.com/pprb/tankobon/issues/83)) ([695ba4d](https://github.com/pprb/tankobon/commit/695ba4d0dcd07ab6bd476229c74ed3046fc87e96))
+* **settings:** add the MIT license file and a license section to About ([#96](https://github.com/pprb/tankobon/issues/96)) ([ac5b48a](https://github.com/pprb/tankobon/commit/ac5b48adea36b91a5fdbd00311c49665d7da2507))
+
+
+### Bug Fixes
+
+* **library:** align the rating filter and view picker heights with the search field ([#91](https://github.com/pprb/tankobon/issues/91)) ([5531336](https://github.com/pprb/tankobon/commit/55313362d455518aa8e09ae82ba4a837c4253bd7))
+
+
+### Performance Improvements
+
+* **reader:** cache and prefetch rendered PDF pages ([#85](https://github.com/pprb/tankobon/issues/85)) ([3abea33](https://github.com/pprb/tankobon/commit/3abea33ebb9931426325283b44f5be1db25234f9))
+
 ## [0.5.0](https://github.com/pprb/tankobon/compare/v0.4.0...v0.5.0) (2026-10-06)
 
 
