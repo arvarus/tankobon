@@ -27,12 +27,14 @@ describe('SETTING_VALIDATORS', () => {
     expect(isValidSetting('language', 'klingon')).toBe(false);
     expect(isValidSetting('sidebarCollapsed', 'yes')).toBe(false);
     expect(isValidSetting('libraryView', 'grid')).toBe(false);
+    expect(isValidSetting('librarySort', 'random')).toBe(false);
     expect(isValidSetting('comicVineApiKey', null)).toBe(false);
   });
 
   it('accepts in-range values', () => {
     expect(isValidSetting('readingMode', 'continuous')).toBe(true);
     expect(isValidSetting('libraryView', 'compact')).toBe(true);
+    expect(isValidSetting('librarySort', 'releaseAsc')).toBe(true);
     expect(isValidSetting('pageSpacing', 0)).toBe(true);
     expect(isValidSetting('readerBackground', '#F4ECD8')).toBe(true);
     expect(isValidSetting('language', 'fr')).toBe(true);

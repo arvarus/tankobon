@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { ChevronDown, ChevronRight, FolderOpen, FolderTree, GripVertical, Layers, LayoutList, ListPlus, Rows2, Rows3, Pencil, ScanSearch, Search, Star, Trash2, X } from 'lucide-react';
+import { ArrowUpDown, ChevronDown, ChevronRight, FolderOpen, FolderTree, GripVertical, Layers, LayoutList, ListPlus, Rows2, Rows3, Pencil, ScanSearch, Search, Star, Trash2, X } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +26,7 @@ import {
 } from '@/lib/library-filter';
 import { formatPageSize } from '@/lib/image-scan';
 import { groupBySeries, ungroupedRows, type SeriesHeaderRow } from '@/lib/library-groups';
+import { sortEntries } from '@/lib/library-sort';
 import { creditRoleLabel } from '@/lib/metadata-review';
 import { encodeDraggedEntry, LIBRARY_ENTRY_DRAG_TYPE, tagLabel, TO_READ_TAG } from '@/lib/reading-list';
 import { currentLanguage } from '@/shared/i18n';
@@ -34,7 +35,7 @@ import { languageCountry } from '@/lib/language-flag';
 import { cn, formatFileSize, formatLanguage } from '@/lib/utils';
 import { comicFormat } from '@/shared/comic';
 import { CREDIT_ROLES, READ_TAG, type LibraryEntry, type ScanProgress } from '@/shared/library';
-import { type AppSettings } from '@/shared/settings';
+import { LIBRARY_SORTS, type AppSettings, type LibrarySort } from '@/shared/settings';
 import { formatPersonName } from '@/shared/title-parsing';
 
 export const Route = createFileRoute('/')({
@@ -63,6 +64,7 @@ function LibraryPage() {
   const { settings, update } = useSettings();
   const view = settings.libraryView;
   const grouped = settings.libraryGroupBySeries;
+  const sort = settings.librarySort;
   const entries = library ?? NO_ENTRIES;
   const [filters, setFilters] = useState<LibraryFilters>(EMPTY_FILTERS);
   const [scan, setScan] = useState<ScanProgress | null>(null);
@@ -77,8 +79,8 @@ function LibraryPage() {
   // Folded series last for the page's life only; a new key (a series renamed) starts unfolded.
   const [collapsedSeries, setCollapsedSeries] = useState<ReadonlySet<string>>(() => new Set());
   const rows = useMemo(
-    () => (grouped ? groupBySeries(visible, collapsedSeries) : ungroupedRows(visible)),
-    [grouped, visible, collapsedSeries],
+    () => (grouped ? groupBySeries(visible, collapsedSeries) : ungroupedRows(sortEntries(visible, sort))),
+    [grouped, visible, collapsedSeries, sort],
   );
   const toggleSeries = (key: string) =>
     setCollapsedSeries((current) => {
@@ -148,10 +150,10 @@ function LibraryPage() {
 
   // Only the rows near the viewport exist: a library of tens of thousands of books stays light.
   const scrollRef = useRef<HTMLDivElement>(null);
-  // A new search starts from the top, not from wherever the previous results were scrolled to.
+  // A new search or order starts from the top, not from wherever the previous results were scrolled to.
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
-  }, [deferredFilters, grouped]);
+  }, [deferredFilters, grouped, sort]);
   // The virtualizer's functions aren't memoized, which the React Compiler lint can't know is fine here.
   // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
@@ -195,6 +197,8 @@ function LibraryPage() {
           onViewChange={(next) => update('libraryView', next)}
           grouped={grouped}
           onGroupedChange={(next) => update('libraryGroupBySeries', next)}
+          sort={sort}
+          onSortChange={(next) => update('librarySort', next)}
         />
       )}
 
@@ -552,6 +556,8 @@ function LibraryToolbar({
   onViewChange,
   grouped,
   onGroupedChange,
+  sort,
+  onSortChange,
 }: {
   filters: LibraryFilters;
   onChange: (filters: LibraryFilters) => void;
@@ -562,6 +568,8 @@ function LibraryToolbar({
   onViewChange: (view: LibraryView) => void;
   grouped: boolean;
   onGroupedChange: (grouped: boolean) => void;
+  sort: LibrarySort;
+  onSortChange: (sort: LibrarySort) => void;
 }) {
   const { t } = useTranslation('library');
   const active = hasActiveFilters(filters);
@@ -591,6 +599,8 @@ function LibraryToolbar({
           rating={filters.rating}
           onChange={(rating) => onChange({ ...filters, rating })}
         />
+
+        <SortPicker sort={sort} onChange={onSortChange} disabled={grouped} />
 
         <ViewModePicker view={view} onChange={onViewChange} />
 
@@ -641,6 +651,43 @@ function LibraryToolbar({
         <p className="text-xs text-muted-foreground">{t('shownOf', { shown, total })}</p>
       )}
     </div>
+  );
+}
+
+/**
+ * Picks the order of the books. Disabled while grouped by series, whose order is fixed (series
+ * alphabetically, books by volume).
+ */
+function SortPicker({
+  sort,
+  onChange,
+  disabled,
+}: {
+  sort: LibrarySort;
+  onChange: (sort: LibrarySort) => void;
+  disabled: boolean;
+}) {
+  const { t } = useTranslation('library');
+  return (
+    <label
+      className={cn('flex h-9 items-center gap-1.5 rounded-md border px-2', disabled && 'opacity-50')}
+      title={disabled ? t('sortDisabledGrouped') : t('sortLabel')}
+    >
+      <ArrowUpDown className="size-4 text-muted-foreground" />
+      <span className="sr-only">{t('sortLabel')}</span>
+      <select
+        value={sort}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value as LibrarySort)}
+        className="bg-background text-sm outline-none"
+      >
+        {LIBRARY_SORTS.map((value) => (
+          <option key={value} value={value}>
+            {t(`sorts.${value}`)}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
