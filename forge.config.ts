@@ -51,7 +51,7 @@ const config: ForgeConfig = {
     // Packager adds the extension of the platform: assets/icon.ico (Windows), assets/icon.icns (macOS).
     icon: 'assets/icon',
     // The PNG is also read at run time, for the window icon on Linux (see src/main.ts).
-    extraResource: ['assets/icon.png'],
+    extraResource: ['assets/icon.png', 'LICENSE'],
     // Packager names the Linux binary after `productName` ("Tankōbon"), but the deb and rpm makers
     // look for one named after `name`: without this, `make` fails on Linux with "could not find
     // the Electron app binary". Windows and macOS keep their product-named executables.

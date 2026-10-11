@@ -94,6 +94,8 @@ The button at the top of the sidebar collapses it to a column of icons, to give 
 
 Paramètres › À propos shows the app's version, along with the versions of Electron, Chromium, Node.js and V8 and the operating system. "Copier les informations" copies them as text, to paste into a bug report. Buttons open the documentation, the source code on GitHub, the published versions (installers and changelog) and the issue tracker in the default browser.
 
+**License**: Tankōbon is free software under the MIT license. The "Licence" section of Paramètres › À propos says so, recalls that the app is provided "as is", without warranty (the authors aren't liable for lost data or damaged files, so keep backups and export the library regularly), and "Lire la licence" opens the full text on GitHub.
+
 **Updates**: at every start, the app asks GitHub for the latest published release and, if it is newer than the running version, shows a notice offering to open the releases page to download it (a failed check, when offline for instance, stays silent). "Rechercher une nouvelle version au démarrage" in Paramètres › À propos turns this off (on by default); "Rechercher maintenant" runs the check on demand and reports the result. Only the request to GitHub is made; nothing is downloaded or installed by the app itself.
 
 ## Your data

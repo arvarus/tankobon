@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { BookText, Bug, Check, Code, Copy, Download, RefreshCw, Tag, type LucideIcon } from 'lucide-react';
+import { BookText, Bug, Check, Code, Copy, Download, RefreshCw, Scale, Tag, type LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -12,8 +12,8 @@ export const Route = createFileRoute('/settings/about')({
   component: AboutSettingsPage,
 });
 
-/** Each link's label is the `settings:about.<link>` translation. */
-const LINKS: { link: AppLink; icon: LucideIcon }[] = [
+/** Each link's label is the `settings:about.<link>` translation. The license has its own section. */
+const LINKS: { link: Exclude<AppLink, 'license'>; icon: LucideIcon }[] = [
   { link: 'documentation', icon: BookText },
   { link: 'repository', icon: Code },
   { link: 'releases', icon: Tag },
@@ -122,6 +122,17 @@ function AboutSettingsPage() {
           ))}
         </div>
         <p className="text-sm text-muted-foreground">{t('linksHint')}</p>
+      </SettingsSection>
+
+      <SettingsSection title={t('license')}>
+        <p className="text-sm">{t('licenseName')}</p>
+        <p className="text-sm text-muted-foreground">{t('disclaimer')}</p>
+        <div>
+          <Button variant="outline" size="sm" onClick={() => void window.tankobon.app.openLink('license')}>
+            <Scale />
+            {t('licenseLink')}
+          </Button>
+        </div>
       </SettingsSection>
     </>
   );
