@@ -125,6 +125,11 @@ export default {
     repository: 'Source code (GitHub)',
     releases: 'Releases',
     issues: 'Report a problem',
+    license: 'License',
+    licenseName: 'Tankōbon is free software, distributed under the MIT license.',
+    disclaimer:
+      'It is provided "as is", without warranty of any kind. The authors cannot be held liable for any damage arising from its use, such as data loss or damaged files: keep backups of your comics and export your library regularly.',
+    licenseLink: 'Read the license',
     updates: 'Updates',
     checkOnStartup: 'Check for a new version at startup',
     updatesHint: 'Asks GitHub for the latest release when the app starts, and offers to download it. Nothing else is sent.',
