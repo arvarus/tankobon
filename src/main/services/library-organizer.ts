@@ -1,13 +1,15 @@
 /**
  * Library organization: moves the comics of the library into a folder whose layout the app manages,
- * one subfolder per comic.
+ * either one subfolder per comic or the tree of levels the user chose (`AppSettings.libraryStructure`).
  * @module
  */
 import { constants } from 'node:fs';
 import { copyFile, mkdir, rename, rmdir, stat, unlink } from 'node:fs/promises';
 import path from 'node:path';
 
-import type { LibraryOrganization } from '../../shared/settings';
+import { t } from '../../shared/i18n';
+import type { LibraryEntry } from '../../shared/library';
+import type { LibraryLevel, LibraryOrganization } from '../../shared/settings';
 import type { LibraryRepository } from '../db/library-repository';
 import { isInside } from './library-sync';
 
@@ -29,6 +31,13 @@ function truncateToBytes(text: string, maxBytes: number): string {
   return result;
 }
 
+/** The file name of `filePath` without its extension, less the ` (<id>)` a name collision may have added. */
+function originalStem(filePath: string, id: string): string {
+  const stem = path.basename(filePath, path.extname(filePath));
+  const suffix = ` (${id})`;
+  return stem.endsWith(suffix) && stem.length > suffix.length ? stem.slice(0, -suffix.length) : stem;
+}
+
 /**
  * Name of the subfolder that holds a comic in the organized folder: the original file name without
  * its extension, then the library id in parentheses (`Astérix T01 (3f2a…)`), so two files of the same
@@ -36,16 +45,118 @@ function truncateToBytes(text: string, maxBytes: number): string {
  * cut name loses its trailing spaces and dots (Windows refuses a name ending with them).
  */
 export function organizedFolderName(filePath: string, id: string): string {
-  const name = path.basename(filePath, path.extname(filePath));
+  const name = originalStem(filePath, id);
   const suffix = ` (${id})`;
   const room = MAX_NAME_BYTES - Buffer.byteLength(suffix);
   const kept = Buffer.byteLength(name) > room ? truncateToBytes(name, room).replace(/[\s.]+$/, '') : name;
   return kept === '' ? `(${id})` : `${kept}${suffix}`;
 }
 
-/** Where the organization puts a comic: `<root>/<organizedFolderName>/<original file name>`. */
-export function organizedPath(root: string, filePath: string, id: string): string {
-  return path.join(root, organizedFolderName(filePath, id), path.basename(filePath));
+/** Names Windows reserves for devices, with or without an extension. */
+const RESERVED_NAME = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i;
+
+/**
+ * `text` made into a folder name every OS accepts: the characters Windows refuses (`<>:"/\|?*` and
+ * control characters) become `_`, leading and trailing spaces and trailing dots go, a reserved device
+ * name (`CON`, `LPT1`…) gets a `_`, and the result is cut to {@link MAX_NAME_BYTES}. Nothing left gives
+ * the translated "Unknown".
+ */
+export function safeFolderName(text: string): string {
+  // eslint-disable-next-line no-control-regex
+  let name = text.replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_').trim();
+  name = truncateToBytes(name, MAX_NAME_BYTES).replace(/[\s.]+$/, '');
+  if (name === '') return t('library:organizationUnknown');
+  return RESERVED_NAME.test(name) ? `${name}_` : name;
+}
+
+/**
+ * The folder name of a `letter` level: the first character of the next level's name, accents
+ * dropped and upper-cased for a letter (`É` → `E`), as is for a digit, `#` for anything else.
+ */
+export function letterFolderName(next: string): string {
+  const first = [...next.normalize('NFD')][0] ?? '';
+  if (/\p{L}/u.test(first)) return first.toUpperCase();
+  if (/\p{Nd}/u.test(first)) return first;
+  return '#';
+}
+
+/** What the organization reads of a library entry to place its file. */
+export type OrganizedEntry = Pick<LibraryEntry, 'id' | 'path' | 'title' | 'series' | 'releaseDate' | 'credits'>;
+
+/**
+ * The author a comic is filed under: its first writer, else the first person credited, as
+ * "Last name First name"; null when nobody is credited.
+ */
+function authorName(entry: OrganizedEntry): string | null {
+  const credit = entry.credits.find((c) => c.role === 'writer') ?? entry.credits[0];
+  if (!credit) return null;
+  return `${credit.lastName} ${credit.firstName}`.trim() || null;
+}
+
+/** The raw name of a level other than `letter` for `entry`, or null when the entry doesn't say. */
+function levelValue(level: Exclude<LibraryLevel, 'letter'>, entry: OrganizedEntry): string | null {
+  switch (level) {
+    case 'year':
+      return /^\d{4}/.exec(entry.releaseDate ?? '')?.[0] ?? null;
+    case 'author':
+      return authorName(entry);
+    case 'series':
+      // A one-shot is its own series.
+      return entry.series?.trim() || entry.title;
+    case 'album':
+      return entry.title;
+  }
+}
+
+/**
+ * The folders `structure` puts `entry` in, from the organized folder down: one per level, a missing
+ * value (no year, nobody credited) giving the translated "Unknown" folder and a `letter` level the
+ * first character of the next level's folder.
+ */
+export function structureFolders(structure: readonly LibraryLevel[], entry: OrganizedEntry): string[] {
+  const folders: string[] = [];
+  for (let index = structure.length - 1; index >= 0; index -= 1) {
+    const level = structure[index];
+    folders.unshift(
+      level === 'letter' ? letterFolderName(folders[0] ?? '') : safeFolderName(levelValue(level, entry) ?? ''),
+    );
+  }
+  return folders;
+}
+
+/** Where the organization files comics: the organized folder and its tree (`AppSettings.libraryStructure`). */
+export interface OrganizationTarget {
+  root: string;
+  structure: readonly LibraryLevel[];
+}
+
+/**
+ * Where the organization puts a comic, best first. Without a structure, a single place:
+ * `<root>/<organizedFolderName>/<original file name>`. With one, the file goes in the last level's
+ * folder under its original name, or, when another file has that name there,
+ * `<name> (<library id>).<extension>`. A comic at any of these places is in place.
+ */
+export function organizedPaths(target: OrganizationTarget, entry: OrganizedEntry): string[] {
+  const extension = path.extname(entry.path);
+  const stem = originalStem(entry.path, entry.id);
+  if (target.structure.length === 0) {
+    return [path.join(target.root, organizedFolderName(entry.path, entry.id), `${stem}${extension}`)];
+  }
+  const folder = path.join(target.root, ...structureFolders(target.structure, entry));
+  const suffix = ` (${entry.id})`;
+  const room = MAX_NAME_BYTES - Buffer.byteLength(suffix + extension);
+  const short = Buffer.byteLength(stem) > room ? truncateToBytes(stem, room).replace(/[\s.]+$/, '') : stem;
+  return [path.join(folder, `${stem}${extension}`), path.join(folder, `${short}${suffix}${extension}`)];
+}
+
+/** Where the organization puts a comic when nothing else is there: the first of {@link organizedPaths}. */
+export function organizedPath(target: OrganizationTarget, entry: OrganizedEntry): string {
+  return organizedPaths(target, entry)[0];
+}
+
+/** Whether `entry`'s file is at one of its {@link organizedPaths}. */
+function isInPlace(target: OrganizationTarget, entry: OrganizedEntry): boolean {
+  return organizedPaths(target, entry).includes(entry.path);
 }
 
 async function exists(filePath: string): Promise<boolean> {
@@ -68,7 +179,8 @@ export async function moveFile(from: string, to: string): Promise<void> {
     throw Object.assign(new Error(`${to} already exists`), { code: 'EEXIST' });
   }
   const folder = path.dirname(to);
-  await mkdir(folder, { recursive: true });
+  // The first folder `mkdir` had to create, if any: the top of what a failure removes.
+  const created = await mkdir(folder, { recursive: true });
   try {
     try {
       await rename(from, to);
@@ -83,8 +195,8 @@ export async function moveFile(from: string, to: string): Promise<void> {
       }
     }
   } catch (error) {
-    // The folder made for the move goes too, when it is still empty.
-    await rmdir(folder).catch(() => undefined);
+    // The folders made for the move go too, when they are still empty.
+    if (created !== undefined) await removeEmptyFolders(path.dirname(created), folder);
     throw error;
   }
 }
@@ -105,14 +217,45 @@ export interface OrganizeSummary {
 }
 
 /**
- * Moves each entry's file to its {@link organizedPath} under `root` and points the entry at it, one
- * after the other. An entry already in place, or no longer in the library, is skipped. A failure
- * only costs that comic. When a comic leaves a subfolder of `root` (one dropped there by hand), that
- * subfolder is deleted if it is now empty; nothing outside `root` is ever deleted.
+ * Deletes `folder` and then its parents while they are empty, stopping at `root` (kept) and never
+ * leaving it.
+ */
+async function removeEmptyFolders(root: string, folder: string): Promise<void> {
+  let current = folder;
+  while (isInside(root, current)) {
+    try {
+      await rmdir(current);
+    } catch {
+      return;
+    }
+    current = path.dirname(current);
+  }
+}
+
+/** Moves `from` to the first of `candidates` free in the library and on disk; the path used, or null. */
+async function moveToFirstFree(repo: LibraryRepository, from: string, candidates: string[]): Promise<string | null> {
+  for (const candidate of candidates) {
+    if (repo.hasPath(candidate)) continue;
+    try {
+      await moveFile(from, candidate);
+      return candidate;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') return null;
+    }
+  }
+  return null;
+}
+
+/**
+ * Moves each entry's file to its {@link organizedPaths} under the target and points the entry at it,
+ * one after the other. An entry already in place, or no longer in the library, is skipped. A failure
+ * only costs that comic. When a comic leaves a subfolder of the organized folder (one dropped there by
+ * hand, or the place of an older structure), that subfolder and its parents are deleted if they are
+ * now empty; nothing outside the organized folder is ever deleted.
  */
 export async function organizeEntries(
   repo: LibraryRepository,
-  root: string,
+  target: OrganizationTarget,
   ids: string[],
   onProgress: (processed: number, total: number, currentFile: string) => void = () => undefined,
 ): Promise<OrganizeSummary> {
@@ -120,16 +263,9 @@ export async function organizeEntries(
   for (const [index, id] of ids.entries()) {
     const entry = repo.get(id);
     if (entry) onProgress(index, ids.length, entry.path);
-    if (!entry) continue;
-    const to = organizedPath(root, entry.path, entry.id);
-    if (to === entry.path) continue;
-    if (repo.hasPath(to)) {
-      summary.failed += 1;
-      continue;
-    }
-    try {
-      await moveFile(entry.path, to);
-    } catch {
+    if (!entry || isInPlace(target, entry)) continue;
+    const to = await moveToFirstFree(repo, entry.path, organizedPaths(target, entry));
+    if (to === null) {
       summary.failed += 1;
       continue;
     }
@@ -140,17 +276,16 @@ export async function organizeEntries(
       continue;
     }
     summary.moved.push({ id, from: entry.path, to });
-    const previousFolder = path.dirname(entry.path);
-    if (isInside(root, previousFolder)) await rmdir(previousFolder).catch(() => undefined);
+    await removeEmptyFolders(target.root, path.dirname(entry.path));
   }
   return summary;
 }
 
-/** Ids of the library entries whose file isn't at its {@link organizedPath} under `root` yet, in library order. */
-export function unorganizedIds(repo: LibraryRepository, root: string): string[] {
+/** Ids of the library entries whose file isn't at one of its {@link organizedPaths} yet, in library order. */
+export function unorganizedIds(repo: LibraryRepository, target: OrganizationTarget): string[] {
   return repo
     .list()
-    .filter((entry) => organizedPath(root, entry.path, entry.id) !== entry.path)
+    .filter((entry) => !isInPlace(target, entry))
     .map((entry) => entry.id);
 }
 

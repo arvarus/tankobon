@@ -9,9 +9,15 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useOrganizationOffer } from '@/hooks/use-organization-offer';
 import { useSettings } from '@/hooks/use-settings';
+import { levelChoices, setLevel, structureExample } from '@/lib/library-structure';
 import { cn } from '@/lib/utils';
 import type { ScanProgress } from '@/shared/library';
-import type { LibraryOrganization } from '@/shared/settings';
+import {
+  MAX_LIBRARY_LEVELS,
+  isLibraryStructure,
+  type LibraryLevel,
+  type LibraryOrganization,
+} from '@/shared/settings';
 
 export const Route = createFileRoute('/settings/library')({
   component: LibrarySettingsPage,
@@ -188,6 +194,7 @@ function LibrarySettingsPage() {
             {t('organizationChoose')}
           </Button>
         </div>
+        <StructureEditor disabled={resyncing} />
         <p className="text-sm text-muted-foreground">{t('organizeAllHint')}</p>
         <div>
           <Button
@@ -210,5 +217,66 @@ function LibrarySettingsPage() {
       </SettingsSection>
       {confirmDialog}
     </>
+  );
+}
+
+/**
+ * The organized folder's tree: up to three levels, each a `<select>`. A tree the setting can't hold
+ * yet (a letter grouping without a second level) stays a local draft until it is completed.
+ */
+function StructureEditor({ disabled }: { disabled: boolean }) {
+  const { t } = useTranslation('settings', { keyPrefix: 'library' });
+  const { settings, update } = useSettings();
+  const [draft, setDraft] = useState<LibraryLevel[]>(settings.libraryStructure);
+  // Follows a change of the setting, whoever makes it (this page, another window, a data import);
+  // React's "adjust state while rendering" pattern, so the selects never show a stale tree.
+  const [stored, setStored] = useState(settings.libraryStructure);
+  if (stored !== settings.libraryStructure) {
+    setStored(settings.libraryStructure);
+    setDraft(settings.libraryStructure);
+  }
+
+  const change = (index: number, value: string) => {
+    const next = setLevel(draft, index, value === '' ? null : (value as LibraryLevel));
+    setDraft(next);
+    if (isLibraryStructure(next)) update('libraryStructure', next);
+  };
+
+  const example = structureExample(draft);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-sm">{t('structure')}</span>
+      <div className="flex flex-wrap items-center gap-2">
+        {Array.from({ length: MAX_LIBRARY_LEVELS }, (_, index) => {
+          const choices = levelChoices(draft, index);
+          return (
+            <select
+              key={index}
+              aria-label={t('structureLevel', { level: index + 1 })}
+              className={SETTINGS_SELECT_CLASS}
+              value={draft[index] ?? ''}
+              disabled={disabled || choices.length === 0}
+              onChange={(event) => change(index, event.target.value)}
+            >
+              <option value="">{index === 0 ? t('structurePerComic') : t('structureNone')}</option>
+              {choices.map((level) => (
+                <option key={level} value={level}>
+                  {t(`levels.${level}`)}
+                </option>
+              ))}
+            </select>
+          );
+        })}
+      </div>
+      {!isLibraryStructure(draft) ? (
+        <p className="text-sm text-destructive">{t('structureLetterNeedsNext')}</p>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          {example ? t('structureExample', { path: example }) : t('structurePerComicHint')}
+        </p>
+      )}
+      <p className="text-sm text-muted-foreground">{t('structureHint')}</p>
+    </div>
   );
 }

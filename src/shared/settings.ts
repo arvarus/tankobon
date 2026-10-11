@@ -7,6 +7,32 @@ import { isSupportedLanguage, type LanguageSetting } from './i18n';
 /** Modes of the library organization (see {@link AppSettings.libraryOrganization}). */
 export type LibraryOrganization = 'off' | 'ask' | 'always';
 
+/**
+ * A level of the organized folder's tree (see {@link AppSettings.libraryStructure}): one folder per
+ * first letter of the next level, per release year, per author, per series or per album (the title).
+ */
+export type LibraryLevel = 'letter' | 'year' | 'author' | 'series' | 'album';
+
+/** Every {@link LibraryLevel}, in the order the settings page offers them. */
+export const LIBRARY_LEVELS: readonly LibraryLevel[] = ['letter', 'year', 'author', 'series', 'album'];
+
+/** Most levels a {@link AppSettings.libraryStructure} may have. */
+export const MAX_LIBRARY_LEVELS = 3;
+
+/**
+ * Whether `value` is a usable tree for the organized folder: at most {@link MAX_LIBRARY_LEVELS}
+ * distinct levels, `letter` and `year` only as the first one, and `letter` followed by another level
+ * (it is named after that level's first character). The empty list is the default layout, one
+ * subfolder per comic.
+ */
+export function isLibraryStructure(value: unknown): value is LibraryLevel[] {
+  if (!Array.isArray(value) || value.length > MAX_LIBRARY_LEVELS) return false;
+  if (!value.every((level) => (LIBRARY_LEVELS as readonly unknown[]).includes(level))) return false;
+  if (new Set(value).size !== value.length) return false;
+  if (value.slice(1).some((level) => level === 'letter' || level === 'year')) return false;
+  return value[0] !== 'letter' || value.length >= 2;
+}
+
 /** Every order of the library list (`AppSettings.librarySort`), in the order the toolbar offers them. */
 export const LIBRARY_SORTS = [
   'lastOpened',
@@ -70,8 +96,8 @@ export interface AppSettings {
   lastResyncAt: string;
   /**
    * Library organization: `off` leaves the files where they are; otherwise the comics added (a file,
-   * a folder, a resynchronization) can be moved into `libraryOrganizationFolder`, each in its own
-   * subfolder: `ask` offers it after each addition, `always` does it without asking. A comic found
+   * a folder, a resynchronization) can be moved into `libraryOrganizationFolder`, laid out as
+   * `libraryStructure` says: `ask` offers it after each addition, `always` does it without asking. A comic found
    * directly in that folder is always moved, unless `off`.
    */
   libraryOrganization: LibraryOrganization;
@@ -80,6 +106,13 @@ export interface AppSettings {
    * the main process, through a folder dialog (`library:pick-organization-folder`): `settings:set` refuses it.
    */
   libraryOrganizationFolder: string;
+  /**
+   * Tree of the organized folder, from its first level down (see {@link isLibraryStructure}): for
+   * example `['letter', 'series']` puts `Tintin T01.cbz` in `T/Tintin/`. Empty (the default), each comic
+   * gets its own subfolder named after the file and its library id. Changing it moves nothing by
+   * itself: "Organiser toute la bibliothèque…" moves the comics to their new place.
+   */
+  libraryStructure: LibraryLevel[];
   /** Folder last added with "Ajouter un dossier…" (empty before the first one): where the next folder dialog opens. */
   lastScanFolder: string;
 }
@@ -110,6 +143,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   lastScanFolder: '',
   libraryOrganization: 'off',
   libraryOrganizationFolder: '',
+  libraryStructure: [],
 };
 
 /** A reader background preset; its label is the `settings:appearance.backgrounds.<name>` translation. */
@@ -167,6 +201,7 @@ export const SETTING_VALIDATORS: SettingValidators = {
   lastScanFolder: isString,
   libraryOrganization: (value): value is LibraryOrganization => value === 'off' || value === 'ask' || value === 'always',
   libraryOrganizationFolder: isString,
+  libraryStructure: isLibraryStructure,
 };
 
 /**

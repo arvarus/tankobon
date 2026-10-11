@@ -4,6 +4,7 @@ import {
   DEFAULT_SETTINGS,
   MAX_PAGE_SPACING,
   SETTING_VALIDATORS,
+  isLibraryStructure,
   isSettingKey,
   isValidSetting,
   pickApiKeys,
@@ -43,6 +44,30 @@ describe('SETTING_VALIDATORS', () => {
 
   it('has one validator per setting', () => {
     expect(Object.keys(SETTING_VALIDATORS).sort()).toEqual(Object.keys(DEFAULT_SETTINGS).sort());
+  });
+});
+
+describe('isLibraryStructure', () => {
+  it('accepts up to three distinct levels', () => {
+    expect(isLibraryStructure([])).toBe(true);
+    expect(isLibraryStructure(['series'])).toBe(true);
+    expect(isLibraryStructure(['letter', 'author', 'series'])).toBe(true);
+    expect(isLibraryStructure(['year', 'series', 'album'])).toBe(true);
+  });
+
+  it('refuses too many levels, duplicates and unknown levels', () => {
+    expect(isLibraryStructure(['author', 'series', 'album', 'year'])).toBe(false);
+    expect(isLibraryStructure(['series', 'series'])).toBe(false);
+    expect(isLibraryStructure(['publisher'])).toBe(false);
+    expect(isLibraryStructure('series')).toBe(false);
+  });
+
+  it('keeps letter and year first, and letter followed by another level', () => {
+    expect(isLibraryStructure(['series', 'letter'])).toBe(false);
+    expect(isLibraryStructure(['author', 'year'])).toBe(false);
+    expect(isLibraryStructure(['letter', 'year'])).toBe(false);
+    expect(isLibraryStructure(['letter'])).toBe(false);
+    expect(isLibraryStructure(['year'])).toBe(true);
   });
 });
 

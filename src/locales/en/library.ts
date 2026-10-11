@@ -17,9 +17,11 @@ export default {
   organizeMoved_other: '{{count}} moved to the organized folder',
   organizeFailed_one: '{{count}} could not be moved',
   organizeFailed_other: '{{count}} could not be moved',
+  // Folder of the organized library for a comic with no year or author (see AppSettings.libraryStructure).
+  organizationUnknown: 'Unknown',
   organizeConfirmTitle: 'Organize these comics?',
-  organizeConfirm_one: 'Move the comic just added to {{folder}}, in its own subfolder? The file leaves its current location.',
-  organizeConfirm_other: 'Move the {{count}} comics just added to {{folder}}, each in its own subfolder? The files leave their current location.',
+  organizeConfirm_one: 'Move the comic just added to {{folder}}? The file leaves its current location.',
+  organizeConfirm_other: 'Move the {{count}} comics just added to {{folder}}? The files leave their current location.',
   organizeConfirmAction: 'Move',
   scanning: 'Looking for comics…',
   scanProgress: 'Scan progress',
