@@ -33,6 +33,20 @@ export function isLibraryStructure(value: unknown): value is LibraryLevel[] {
   return value[0] !== 'letter' || value.length >= 2;
 }
 
+/** Every order of the library list (`AppSettings.librarySort`), in the order the toolbar offers them. */
+export const LIBRARY_SORTS = [
+  'lastOpened',
+  'addedDesc',
+  'addedAsc',
+  'releaseDesc',
+  'releaseAsc',
+  'titleAsc',
+  'titleDesc',
+] as const;
+
+/** How the library list is ordered when it isn't grouped by series. */
+export type LibrarySort = (typeof LIBRARY_SORTS)[number];
+
 /** User preferences, persisted key by key in the `settings` table (see `SettingsRepository`). */
 export interface AppSettings {
   /** Interface language: one forced by the user, or `system` to follow the OS (English when it isn't supported). */
@@ -49,6 +63,13 @@ export interface AppSettings {
    * `medium` (cover, title, series and volume, progress) or `compact` (title, volume and series only).
    */
   libraryView: 'full' | 'medium' | 'compact';
+  /** Whether the library list is grouped by series, each series behind a heading that can be folded. */
+  libraryGroupBySeries: boolean;
+  /**
+   * Order of the library list when it isn't grouped by series: `lastOpened` (most recently opened
+   * first), by date added, by release date (books without one last) or by title, each both ways.
+   */
+  librarySort: LibrarySort;
   /** Whether the sidebar is collapsed to an icon-only rail. */
   sidebarCollapsed: boolean;
   /** Mouse/trackpad wheel direction in the reader: scrolling down advances or retreats a page. */
@@ -105,6 +126,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   readingDirection: 'ltr',
   addOpenedBooksToLibrary: true,
   libraryView: 'full',
+  libraryGroupBySeries: false,
+  librarySort: 'lastOpened',
   sidebarCollapsed: false,
   scrollDirection: 'standard',
   readingMode: 'single',
@@ -159,6 +182,9 @@ export const SETTING_VALIDATORS: SettingValidators = {
   addOpenedBooksToLibrary: isBoolean,
   libraryView: (value): value is AppSettings['libraryView'] =>
     value === 'full' || value === 'medium' || value === 'compact',
+  libraryGroupBySeries: isBoolean,
+  librarySort: (value): value is AppSettings['librarySort'] =>
+    isString(value) && (LIBRARY_SORTS as readonly string[]).includes(value),
   sidebarCollapsed: isBoolean,
   scrollDirection: (value): value is AppSettings['scrollDirection'] => value === 'standard' || value === 'inverted',
   readingMode: (value): value is AppSettings['readingMode'] => value === 'single' || value === 'continuous',

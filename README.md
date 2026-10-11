@@ -36,4 +36,4 @@ Contributing: see [CONTRIBUTING.md](CONTRIBUTING.md). Changes are listed in [CHA
 
 ## License
 
-MIT
+[MIT](LICENSE). Tankōbon is provided "as is", without warranty of any kind: keep backups of your comics and export your library regularly.

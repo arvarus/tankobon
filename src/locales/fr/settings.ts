@@ -142,6 +142,11 @@ const settings: Translation<typeof en> = {
     repository: 'Code source (GitHub)',
     releases: 'Versions publiées',
     issues: 'Signaler un problème',
+    license: 'Licence',
+    licenseName: 'Tankōbon est un logiciel libre, distribué sous licence MIT.',
+    disclaimer:
+      "Il est fourni « tel quel », sans aucune garantie. Les auteurs ne peuvent être tenus responsables d'aucun dommage lié à son utilisation, comme une perte de données ou des fichiers endommagés : gardez des sauvegardes de vos BD et exportez régulièrement votre bibliothèque.",
+    licenseLink: 'Lire la licence',
     updates: 'Mises à jour',
     checkOnStartup: 'Rechercher une nouvelle version au démarrage',
     updatesHint: "Interroge GitHub au démarrage pour connaître la dernière version publiée et propose de la télécharger. Rien d'autre n'est envoyé.",

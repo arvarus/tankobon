@@ -37,6 +37,8 @@ export const APP_LINKS = {
   releases: 'https://github.com/pprb/tankobon/releases',
   /** Bug reports and feature requests. */
   issues: 'https://github.com/pprb/tankobon/issues',
+  /** Full text of the MIT license the app is distributed under. */
+  license: 'https://github.com/pprb/tankobon/blob/master/LICENSE',
 } as const;
 
 /** Key of one of the {@link APP_LINKS}. */

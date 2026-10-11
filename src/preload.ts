@@ -30,7 +30,7 @@ import type {
   ScanResult,
 } from './shared/library';
 import type { MetadataPageResult, MetadataQuery, MetadataSearchResult } from './shared/metadata';
-import type { ReadingList, ReadingListOrderResult, ReadingListResult } from './shared/reading-list';
+import type { ReadingList, ReadingListAddResult, ReadingListOrderResult, ReadingListResult } from './shared/reading-list';
 import type { ApiKeys, AppSettings, PublicSettings } from './shared/settings';
 import type { ReadingStats } from './shared/stats';
 
@@ -117,6 +117,8 @@ export interface ReadingListApi {
   remove(id: string): Promise<void>;
   /** Appends a library entry to a reading list; refused when the list already holds 50 books. */
   addEntry(id: string, libraryId: string): Promise<ReadingListResult>;
+  /** Appends several library entries to a reading list, in the order given: books already in it are skipped, and once it holds 50 books the rest are left out (the result counts each case). */
+  addEntries(id: string, libraryIds: string[]): Promise<ReadingListAddResult>;
   /** Takes a library entry out of a reading list. */
   removeEntry(id: string, libraryId: string): Promise<ReadingListResult>;
   /** Stores a new order for a reading list; `entryIds` must hold exactly the list's current entries. */
@@ -265,6 +267,7 @@ const api: TankobonApi = {
     rename: (id, name) => ipcRenderer.invoke('reading-lists:rename', id, name),
     remove: (id) => ipcRenderer.invoke('reading-lists:remove', id),
     addEntry: (id, libraryId) => ipcRenderer.invoke('reading-lists:add-entry', id, libraryId),
+    addEntries: (id, libraryIds) => ipcRenderer.invoke('reading-lists:add-entries', id, libraryIds),
     removeEntry: (id, libraryId) => ipcRenderer.invoke('reading-lists:remove-entry', id, libraryId),
     reorder: (id, entryIds) => ipcRenderer.invoke('reading-lists:reorder', id, entryIds),
     reorderLists: (listIds) => ipcRenderer.invoke('reading-lists:reorder-lists', listIds),

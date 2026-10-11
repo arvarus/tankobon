@@ -6,6 +6,7 @@ describe('isAppLink', () => {
   it('accepts the known link keys only', () => {
     expect(isAppLink('repository')).toBe(true);
     expect(isAppLink('documentation')).toBe(true);
+    expect(isAppLink('license')).toBe(true);
     expect(isAppLink('https://example.com')).toBe(false);
     expect(isAppLink('toString')).toBe(false);
     expect(isAppLink(undefined)).toBe(false);

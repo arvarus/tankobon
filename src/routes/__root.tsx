@@ -23,7 +23,9 @@ import { useImageScan } from '@/hooks/use-image-scan';
 import { useReadingLists } from '@/hooks/use-reading-lists';
 import { useSettings } from '@/hooks/use-settings';
 import {
-  decodeDraggedEntry,
+  bulkAddFeedback,
+  bulkAddRequest,
+  decodeDraggedEntries,
   dropFeedback,
   type DropFeedback,
   LIBRARY_ENTRY_DRAG_TYPE,
@@ -226,9 +228,17 @@ function ReadingListsNav({ collapsed }: { collapsed: boolean }) {
 
   const dropBook = async (list: ReadingList, data: string) => {
     setBookOver(null);
-    const entry = decodeDraggedEntry(data);
-    if (!entry) return;
-    setFeedback(dropFeedback(list, entry, await window.tankobon.readingLists.addEntry(list.id, entry.id)));
+    const entries = decodeDraggedEntries(data);
+    if (!entries) return;
+    if (entries.length === 1) {
+      const [entry] = entries;
+      setFeedback(dropFeedback(list, entry, await window.tankobon.readingLists.addEntry(list.id, entry.id)));
+      return;
+    }
+    // Several books: the library page's selection, added like from the "add to a list" dialog.
+    const request = bulkAddRequest(list, entries.map((entry) => entry.id));
+    const result = request.ids.length > 0 ? await window.tankobon.readingLists.addEntries(list.id, request.ids) : null;
+    setFeedback(bulkAddFeedback(list, request, result));
   };
 
   const drop = async (to: number) => {
