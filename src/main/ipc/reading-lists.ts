@@ -10,6 +10,7 @@ export const READING_LIST_CHANNELS = {
   rename: 'reading-lists:rename',
   remove: 'reading-lists:remove',
   addEntry: 'reading-lists:add-entry',
+  addEntries: 'reading-lists:add-entries',
   removeEntry: 'reading-lists:remove-entry',
   reorder: 'reading-lists:reorder',
   reorderLists: 'reading-lists:reorder-lists',
@@ -35,6 +36,10 @@ export function registerReadingListIpc(repo: ReadingListRepository, notify: Noti
 
   handle(READING_LIST_CHANNELS.addEntry, args(idArg, idArg), (_event, id, libraryId) =>
     written(repo.addEntry(id, libraryId)),
+  );
+
+  handle(READING_LIST_CHANNELS.addEntries, args(idArg, idsArg), (_event, id, libraryIds) =>
+    written(repo.addEntries(id, libraryIds)),
   );
 
   handle(READING_LIST_CHANNELS.removeEntry, args(idArg, idArg), (_event, id, libraryId) =>
