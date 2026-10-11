@@ -4,10 +4,12 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useConfirm } from '@/components/confirm-dialog';
+import { BookDetails, BookRating, BookTags, ViewModePicker } from '@/components/book-row';
 import { ReadingListProgress } from '@/components/reading-list-progress';
 import { Button } from '@/components/ui/button';
 import { useLibrary } from '@/hooks/use-library';
 import { useReadingLists } from '@/hooks/use-reading-lists';
+import { useSettings } from '@/hooks/use-settings';
 import { isFinished, listEntries, listProgress, moveUnfinished, nextToRead, tagLabel } from '@/lib/reading-list';
 import { cn } from '@/lib/utils';
 import { READ_TAG, type LibraryEntry } from '@/shared/library';
@@ -27,6 +29,8 @@ function ReadingListPage() {
   const navigate = useNavigate();
   const lists = useReadingLists();
   const library = useLibrary();
+  const { settings, update } = useSettings();
+  const view = settings.readingListView;
   const [error, setError] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [dragged, setDragged] = useState<number | null>(null);
@@ -134,9 +138,12 @@ function ReadingListPage() {
       <div className="max-w-xl">
         <ReadingListProgress progress={listProgress(entries)} />
       </div>
-      <p className="text-xs text-muted-foreground">
-        {t('count', { count: entries.length, max: MAX_READING_LIST_SIZE, readTag: tagLabel(READ_TAG) })}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">
+          {t('count', { count: entries.length, max: MAX_READING_LIST_SIZE, readTag: tagLabel(READ_TAG) })}
+        </p>
+        {entries.length > 0 && <ViewModePicker view={view} onChange={(next) => update('readingListView', next)} />}
+      </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       {entries.length === 0 ? (
@@ -151,12 +158,6 @@ function ReadingListPage() {
             return (
               <li
                 key={entry.id}
-                draggable={!done}
-                onDragStart={(event) => {
-                  event.dataTransfer.effectAllowed = 'move';
-                  setDragged(index);
-                }}
-                onDragEnd={() => setDragged(null)}
                 onDragOver={(event) => {
                   // Only unfinished books are drop targets: finished ones keep their place.
                   if (dragged !== null && !done) event.preventDefault();
@@ -167,64 +168,87 @@ function ReadingListPage() {
                   setDragged(null);
                 }}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2',
+                  'flex flex-col gap-2 px-3',
+                  view === 'compact' ? 'py-2' : 'py-3',
                   done && 'opacity-50',
                   isNext && 'bg-primary/5',
                   dragged === index && 'opacity-30',
                 )}
               >
-                <span className="w-6 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{index + 1}</span>
-                {done ? (
-                  <Check className="size-4 shrink-0 text-muted-foreground" aria-label={tagLabel(READ_TAG)} />
-                ) : (
-                  <GripVertical className="size-4 shrink-0 cursor-grab text-muted-foreground" aria-hidden />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className={cn('truncate font-medium', done && 'line-through')} title={entry.path}>
-                    {entry.title}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {done ? tagLabel(READ_TAG) : t('common:pageOf', { page: entry.currentPage + 1, total: entry.pageCount })}
-                    {isNext && ` · ${t('upNextShort')}`}
-                  </p>
+                <div className="flex items-center gap-3">
+                  <span className="w-6 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{index + 1}</span>
+                  {done ? (
+                    <Check className="size-4 shrink-0 text-muted-foreground" aria-label={tagLabel(READ_TAG)} />
+                  ) : (
+                    // Only the grip drags the book (the rest of the row opens it and holds the rating and
+                    // tag field); the whole row is the drag image.
+                    <div
+                      draggable
+                      onDragStart={(event) => {
+                        event.dataTransfer.effectAllowed = 'move';
+                        const row = event.currentTarget.closest('li');
+                        if (row) event.dataTransfer.setDragImage(row, 0, 0);
+                        setDragged(index);
+                      }}
+                      onDragEnd={() => setDragged(null)}
+                      className="-mx-1 shrink-0 cursor-grab rounded-sm px-1 py-2 text-muted-foreground hover:bg-accent hover:text-foreground active:cursor-grabbing"
+                      title={t('dragHint')}
+                      aria-label={t('dragHandle', { title: entry.title })}
+                    >
+                      <GripVertical className="size-4" />
+                    </div>
+                  )}
+                  <BookDetails
+                    entry={entry}
+                    view={view}
+                    onOpen={() => void read(entry)}
+                    progress={done ? tagLabel(READ_TAG) : undefined}
+                    note={isNext ? t('upNextShort') : undefined}
+                    finished={done}
+                  />
+                  {view !== 'compact' && <BookRating entry={entry} />}
+                  {done ? (
+                    // The arrows' room, so that the stars and buttons of a read book line up with the others.
+                    <span className="w-19 shrink-0" aria-hidden />
+                  ) : (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        disabled={up === null}
+                        onClick={() => up !== null && void move(index, up)}
+                        aria-label={t('moveUp')}
+                        title={t('moveUp')}
+                      >
+                        <ArrowUp />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        disabled={down === null}
+                        onClick={() => down !== null && void move(index, down)}
+                        aria-label={t('moveDown')}
+                        title={t('moveDown')}
+                      >
+                        <ArrowDown />
+                      </Button>
+                    </>
+                  )}
+                  <Button variant={isNext ? 'default' : 'secondary'} size="sm" onClick={() => void read(entry)}>
+                    {isNext && <BookOpen />}
+                    {isNext ? t('read') : t('common:open')}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={async () => apply(await window.tankobon.readingLists.removeEntry(list.id, entry.id))}
+                    title={t('removeFromList')}
+                    aria-label={t('removeFromList')}
+                  >
+                    <X />
+                  </Button>
                 </div>
-                {!done && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      disabled={up === null}
-                      onClick={() => up !== null && void move(index, up)}
-                      aria-label={t('moveUp')}
-                      title={t('moveUp')}
-                    >
-                      <ArrowUp />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      disabled={down === null}
-                      onClick={() => down !== null && void move(index, down)}
-                      aria-label={t('moveDown')}
-                      title={t('moveDown')}
-                    >
-                      <ArrowDown />
-                    </Button>
-                  </>
-                )}
-                <Button variant={isNext ? 'default' : 'secondary'} size="sm" onClick={() => void read(entry)}>
-                  {isNext && <BookOpen />}
-                  {isNext ? t('read') : t('common:open')}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={async () => apply(await window.tankobon.readingLists.removeEntry(list.id, entry.id))}
-                  title={t('removeFromList')}
-                  aria-label={t('removeFromList')}
-                >
-                  <X />
-                </Button>
+                {view === 'full' && <BookTags entry={entry} />}
               </li>
             );
           })}

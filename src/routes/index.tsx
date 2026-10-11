@@ -1,12 +1,11 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { ArrowUpDown, ChevronDown, ChevronRight, FolderOpen, FolderTree, GripVertical, Layers, LayoutList, ListPlus, Rows2, Rows3, Pencil, ScanSearch, Search, Star, Trash2, X } from 'lucide-react';
+import { ArrowUpDown, ChevronDown, ChevronRight, FolderOpen, FolderTree, GripVertical, Layers, ListPlus, Pencil, ScanSearch, Search, Star, Trash2, X } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { TFunction } from 'i18next';
 
 import { AddToListDialog } from '@/components/add-to-list-dialog';
-import { BookCover } from '@/components/book-cover';
+import { BookDetails, BookRating, BookTags, ViewModePicker } from '@/components/book-row';
 import { BookEditDialog } from '@/components/book-edit-dialog';
 import { useConfirm } from '@/components/confirm-dialog';
 import { MetadataDialog } from '@/components/metadata-dialog';
@@ -24,34 +23,22 @@ import {
   type LibraryFilters,
   type RatingFilter,
 } from '@/lib/library-filter';
-import { formatPageSize } from '@/lib/image-scan';
 import { groupBySeries, ungroupedRows, type SeriesHeaderRow } from '@/lib/library-groups';
 import { sortEntries } from '@/lib/library-sort';
-import { creditRoleLabel } from '@/lib/metadata-review';
 import { draggedEntries, selectedEntries, toggleSelection } from '@/lib/library-selection';
-import { encodeDraggedEntries, LIBRARY_ENTRY_DRAG_TYPE, tagLabel, TO_READ_TAG } from '@/lib/reading-list';
-import { currentLanguage } from '@/shared/i18n';
-import { LanguageFlag } from '@/components/language-flag';
-import { languageCountry } from '@/lib/language-flag';
-import { cn, formatFileSize, formatLanguage } from '@/lib/utils';
-import { comicFormat } from '@/shared/comic';
-import { CREDIT_ROLES, READ_TAG, type LibraryEntry, type ScanProgress } from '@/shared/library';
-import { LIBRARY_SORTS, type AppSettings, type LibrarySort } from '@/shared/settings';
-import { formatPersonName } from '@/shared/title-parsing';
+import { encodeDraggedEntries, LIBRARY_ENTRY_DRAG_TYPE, QUICK_TAGS, tagLabel } from '@/lib/reading-list';
+import { cn } from '@/lib/utils';
+import type { LibraryEntry, ScanProgress } from '@/shared/library';
+import { LIBRARY_SORTS, type BookRowView, type LibrarySort } from '@/shared/settings';
 
 export const Route = createFileRoute('/')({
   component: LibraryPage,
 });
 
-/** Always offered as one-click toggles; any other tag is free-form. */
-const QUICK_TAGS = [READ_TAG, TO_READ_TAG];
-
 const NO_ENTRIES: LibraryEntry[] = [];
 
-type LibraryView = AppSettings['libraryView'];
-
 /** Height guessed for a row before it is measured, per display mode. */
-const ESTIMATED_ROW_HEIGHT: Record<LibraryView, number> = { full: 128, medium: 104, compact: 49 };
+const ESTIMATED_ROW_HEIGHT: Record<BookRowView, number> = { full: 128, medium: 104, compact: 49 };
 
 /** Height guessed for a series heading of the grouped view. */
 const ESTIMATED_HEADER_HEIGHT = 41;
@@ -163,15 +150,7 @@ function LibraryPage() {
     await window.tankobon.library.remove(entry.id);
   };
 
-  const setRating = (id: string, rating: number) =>
-    void appData.patchEntry(id, { rating }, () => window.tankobon.library.updateRating(id, rating));
-
   const replaceEntry = (updated: LibraryEntry) => appData.upsertEntry(updated);
-
-  const toggleTag = (entry: LibraryEntry, tag: string) => {
-    const tags = entry.tags.includes(tag) ? entry.tags.filter((t) => t !== tag) : [...entry.tags, tag];
-    void appData.patchEntry(entry.id, { tags }, () => window.tankobon.library.updateTags(entry.id, tags));
-  };
 
   // Only the rows near the viewport exist: a library of tens of thousands of books stays light.
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -260,7 +239,6 @@ function LibraryPage() {
                 );
               }
               const entry = row.entry;
-              const pageSize = formatPageSize(entry, currentLanguage());
               return (
             <li
               key={entry.id}
@@ -302,61 +280,12 @@ function LibraryPage() {
                   aria-label={t('selectNamed', { title: entry.title })}
                   className="size-4 shrink-0 cursor-pointer"
                 />
-                <div
-                  role="link"
-                  tabIndex={-1}
-                  onClick={() => navigate({ to: '/reader', search: { book: entry.id } })}
-                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-3"
-                >
-                  {view !== 'compact' && (
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        void navigate({ to: '/reader', search: { book: entry.id } });
-                      }}
-                      title={t('common:open')}
-                      aria-label={t('openNamed', { title: entry.title })}
-                      className="shrink-0 rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                    >
-                      <BookCover entryId={entry.id} title={entry.title} className="h-20 w-14" />
-                    </button>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    {view === 'compact' ? (
-                      <p className="truncate" title={entry.path}>
-                        <span className="font-medium">{entry.title}</span>
-                        <span className="text-xs text-muted-foreground">{seriesLine(entry, t) && ` — ${seriesLine(entry, t)}`}</span>
-                      </p>
-                    ) : (
-                      <>
-                        <p className="truncate font-medium" title={entry.path}>
-                          {entry.title}
-                        </p>
-                        {view === 'full' ? (
-                          <EntryMetadata entry={entry} />
-                        ) : (
-                          <p className="truncate text-xs">{seriesLine(entry, t)}</p>
-                        )}
-                        <p className="text-xs text-muted-foreground">
-                          {(view === 'full'
-                            ? [
-                                t('common:pageOf', { page: entry.currentPage + 1, total: entry.pageCount }),
-                                comicFormat(entry.path),
-                                t('fileCount', { count: entry.fileCount }),
-                                formatFileSize(entry.fileSize),
-                                pageSize && t('pageSize', { size: pageSize }),
-                              ]
-                            : [t('common:pageOf', { page: entry.currentPage + 1, total: entry.pageCount })]
-                          ).filter(Boolean).join(' · ')}
-                        </p>
-                      </>
-                    )}
-                  </div>
-                </div>
-                {view !== 'compact' && (
-                  <StarRating rating={entry.rating} onChange={(rating) => setRating(entry.id, rating)} />
-                )}
+                <BookDetails
+                  entry={entry}
+                  view={view}
+                  onOpen={() => void navigate({ to: '/reader', search: { book: entry.id } })}
+                />
+                {view !== 'compact' && <BookRating entry={entry} />}
                 <Button
                   variant="ghost"
                   size="icon-sm"
@@ -401,7 +330,7 @@ function LibraryPage() {
                   <Trash2 />
                 </Button>
               </div>
-              {view === 'full' && <TagEditor entry={entry} onToggle={(tag) => toggleTag(entry, tag)} />}
+              {view === 'full' && <BookTags entry={entry} />}
             </li>
               );
             })}
@@ -476,116 +405,6 @@ function setCountDragImage(dataTransfer: DataTransfer, label: string): void {
   setTimeout(() => badge.remove());
 }
 
-/** "Series · Vol. 3": what the medium and compact views show under or next to the title. */
-function seriesLine(entry: LibraryEntry, t: TFunction<['library', 'common']>): string {
-  return [entry.series, entry.volume && t('volumeShort', { volume: entry.volume })].filter(Boolean).join(' · ');
-}
-
-/** Series, volume, date, language and credits found by a metadata lookup; nothing when there are none. */
-function EntryMetadata({ entry }: { entry: LibraryEntry }) {
-  const { t } = useTranslation(['library', 'common']);
-  const series = [entry.series, entry.volume && t('volumeShort', { volume: entry.volume })].filter(Boolean).join(' · ');
-  const languageName = formatLanguage(entry.language);
-  const language = languageCountry(entry.language) ? (
-    <span key="language" title={languageName ?? undefined}>
-      <LanguageFlag code={entry.language} className="align-[-1px]" />
-    </span>
-  ) : (
-    languageName
-  );
-  const details = [series, entry.releaseDate?.slice(0, 4), language].filter(Boolean);
-  const credits = CREDIT_ROLES.flatMap((role) => {
-    const names = entry.credits.filter((credit) => credit.role === role).map(formatPersonName);
-    return names.length > 0 ? [t('common:labelValue', { label: creditRoleLabel(role), value: names.join(', ') })] : [];
-  });
-  if (details.length === 0 && credits.length === 0) return null;
-
-  return (
-    <p className="truncate text-xs" title={credits.join('\n') || undefined}>
-      {details.flatMap((detail, index) => (index === 0 ? [detail] : [' · ', detail]))}
-      {details.length > 0 && credits.length > 0 && ' — '}
-      <span className="text-muted-foreground">{credits.join(' · ')}</span>
-    </p>
-  );
-}
-
-function StarRating({ rating, onChange }: { rating: number; onChange: (rating: number) => void }) {
-  const { t } = useTranslation('library');
-  return (
-    <div className="flex shrink-0 items-center gap-0.5" title={rating > 0 ? t('rating', { rating }) : t('notRated')}>
-      {[1, 2, 3, 4, 5].map((value) => (
-        <button
-          key={value}
-          type="button"
-          // Clicking the star that already sets the current rating clears it.
-          onClick={() => onChange(value === rating ? 0 : value)}
-          aria-label={t('rate', { count: value })}
-          className="text-muted-foreground hover:text-yellow-500"
-        >
-          <Star className={cn('size-4', value <= rating && 'fill-yellow-400 text-yellow-500')} />
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function TagEditor({ entry, onToggle }: { entry: LibraryEntry; onToggle: (tag: string) => void }) {
-  const { t } = useTranslation('library');
-  const [newTag, setNewTag] = useState('');
-  const customTags = entry.tags.filter((tag) => !QUICK_TAGS.includes(tag));
-
-  const addCustomTag = () => {
-    const tag = newTag.trim();
-    if (tag && !entry.tags.includes(tag)) {
-      onToggle(tag);
-    }
-    setNewTag('');
-  };
-
-  return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      {QUICK_TAGS.map((tag) => (
-        <button
-          key={tag}
-          type="button"
-          onClick={() => onToggle(tag)}
-          className={cn(
-            'rounded-full border px-2 py-0.5 text-xs',
-            entry.tags.includes(tag)
-              ? 'border-primary bg-primary/10 text-primary'
-              : 'text-muted-foreground hover:bg-accent',
-          )}
-        >
-          {tagLabel(tag)}
-        </button>
-      ))}
-      {customTags.map((tag) => (
-        <span
-          key={tag}
-          className="flex items-center gap-1 rounded-full border border-primary bg-primary/10 px-2 py-0.5 text-xs text-primary"
-        >
-          {tag}
-          <button type="button" onClick={() => onToggle(tag)} aria-label={t('removeTag', { tag })}>
-            <X className="size-3" />
-          </button>
-        </span>
-      ))}
-      <input
-        value={newTag}
-        onChange={(event) => setNewTag(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') {
-            event.preventDefault();
-            addCustomTag();
-          }
-        }}
-        placeholder={t('newTag')}
-        className="w-24 rounded-full border border-dashed bg-transparent px-2 py-0.5 text-xs outline-none focus:border-solid focus:border-primary"
-      />
-    </div>
-  );
-}
-
 function ScanProgressBar({ progress, onClose }: { progress: ScanProgress; onClose: () => void }) {
   // The walk reports no total yet, so the bar stays empty until the first file is opened.
   const scanning = progress.phase === 'scanning';
@@ -628,8 +447,8 @@ function LibraryToolbar({
   tags: string[];
   shown: number;
   total: number;
-  view: LibraryView;
-  onViewChange: (view: LibraryView) => void;
+  view: BookRowView;
+  onViewChange: (view: BookRowView) => void;
   grouped: boolean;
   onGroupedChange: (grouped: boolean) => void;
   sort: LibrarySort;
@@ -810,33 +629,6 @@ function SelectionBar({
           </Button>
         </>
       )}
-    </div>
-  );
-}
-
-/** Switches the library's display mode: one icon button per mode. */
-function ViewModePicker({ view, onChange }: { view: LibraryView; onChange: (view: LibraryView) => void }) {
-  const { t } = useTranslation('library');
-  const modes = [
-    { value: 'full', Icon: LayoutList, label: t('viewFull') },
-    { value: 'medium', Icon: Rows2, label: t('viewMedium') },
-    { value: 'compact', Icon: Rows3, label: t('viewCompact') },
-  ] as const;
-  return (
-    <div role="group" aria-label={t('viewMode')} className="flex h-9 items-center gap-0.5 rounded-md border p-px">
-      {modes.map(({ value, Icon, label }) => (
-        <Button
-          key={value}
-          variant={view === value ? 'secondary' : 'ghost'}
-          size="icon-sm"
-          onClick={() => onChange(value)}
-          aria-pressed={view === value}
-          title={label}
-          aria-label={label}
-        >
-          <Icon />
-        </Button>
-      ))}
     </div>
   );
 }

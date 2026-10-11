@@ -21,6 +21,14 @@ export const LIBRARY_SORTS = [
 /** How the library list is ordered when it isn't grouped by series. */
 export type LibrarySort = (typeof LIBRARY_SORTS)[number];
 
+/**
+ * How much each book row shows, in the library (`AppSettings.libraryView`) and on a reading list's
+ * page (`AppSettings.readingListView`): `full` (cover, details, credits, file information, rating,
+ * tags), `medium` (cover, title, series and volume, progress, rating) or `compact` (title, volume
+ * and series only).
+ */
+export type BookRowView = 'full' | 'medium' | 'compact';
+
 /** User preferences, persisted key by key in the `settings` table (see `SettingsRepository`). */
 export interface AppSettings {
   /** Interface language: one forced by the user, or `system` to follow the OS (English when it isn't supported). */
@@ -32,11 +40,10 @@ export interface AppSettings {
    * the library is read anonymously: nothing is saved, and it reopens from its first page.
    */
   addOpenedBooksToLibrary: boolean;
-  /**
-   * How much each row of the library shows: `full` (cover, details, credits, file information, tags),
-   * `medium` (cover, title, series and volume, progress) or `compact` (title, volume and series only).
-   */
-  libraryView: 'full' | 'medium' | 'compact';
+  /** How much each row of the library shows (see {@link BookRowView}). */
+  libraryView: BookRowView;
+  /** How much each row of a reading list's page shows, set apart from the library's (see {@link BookRowView}). */
+  readingListView: BookRowView;
   /** Whether the library list is grouped by series, each series behind a heading that can be folded. */
   libraryGroupBySeries: boolean;
   /**
@@ -93,6 +100,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   readingDirection: 'ltr',
   addOpenedBooksToLibrary: true,
   libraryView: 'full',
+  readingListView: 'full',
   libraryGroupBySeries: false,
   librarySort: 'lastOpened',
   sidebarCollapsed: false,
@@ -135,6 +143,8 @@ export type SettingValidators = { [K in keyof AppSettings]: (value: unknown) => 
 
 const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
 const isString = (value: unknown): value is string => typeof value === 'string';
+const isBookRowView = (value: unknown): value is BookRowView =>
+  value === 'full' || value === 'medium' || value === 'compact';
 
 /**
  * One type guard per setting, the single definition of what a stored value may be. The main process
@@ -146,8 +156,8 @@ export const SETTING_VALIDATORS: SettingValidators = {
   language: (value): value is LanguageSetting => value === 'system' || (isString(value) && isSupportedLanguage(value)),
   readingDirection: (value): value is AppSettings['readingDirection'] => value === 'ltr' || value === 'rtl',
   addOpenedBooksToLibrary: isBoolean,
-  libraryView: (value): value is AppSettings['libraryView'] =>
-    value === 'full' || value === 'medium' || value === 'compact',
+  libraryView: isBookRowView,
+  readingListView: isBookRowView,
   libraryGroupBySeries: isBoolean,
   librarySort: (value): value is AppSettings['librarySort'] =>
     isString(value) && (LIBRARY_SORTS as readonly string[]).includes(value),

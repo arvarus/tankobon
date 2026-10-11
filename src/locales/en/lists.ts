@@ -30,6 +30,8 @@ export default {
   read: 'Read',
   moveUp: 'Move up',
   moveDown: 'Move down',
+  dragHint: 'Drag to move the book in the list',
+  dragHandle: 'Move “{{title}}” in the list',
   removeFromList: 'Remove from list',
   full: 'List full ({{max}} books at most)',
   showLists: 'Show reading lists',

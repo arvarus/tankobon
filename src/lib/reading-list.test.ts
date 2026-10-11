@@ -18,6 +18,7 @@ import {
   moveUnfinished,
   nextToRead,
   seriesEntries,
+  toggleTag,
   tagLabel,
 } from './reading-list';
 
@@ -47,6 +48,19 @@ function entry(id: string, overrides: Partial<LibraryEntry> = {}): LibraryEntry 
 }
 
 const done = (id: string) => entry(id, { currentPage: 9 });
+
+describe('toggleTag', () => {
+  it('adds a missing tag at the end and takes out a present one', () => {
+    expect(toggleTag(['a'], READ_TAG)).toEqual(['a', READ_TAG]);
+    expect(toggleTag(['a', READ_TAG, 'b'], READ_TAG)).toEqual(['a', 'b']);
+  });
+
+  it('leaves the given array untouched', () => {
+    const tags = ['a'];
+    toggleTag(tags, 'b');
+    expect(tags).toEqual(['a']);
+  });
+});
 
 describe('isFinished', () => {
   it('is true on the last page or with the Lu tag', () => {

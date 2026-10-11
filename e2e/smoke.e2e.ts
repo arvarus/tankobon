@@ -98,3 +98,24 @@ test('a reading list offers its next book on the last page', async () => {
   await expect(page.getByRole('img', { name: 'Page 1' })).toBeVisible();
   await expect.poll(() => savedPage(page, 'Alpha')).toBe(2);
 });
+
+test('a reading list has its own display mode', async () => {
+  const page = await start({
+    books: [{ title: 'Alpha', pageCount: 3 }],
+    lists: [{ name: 'Saga', books: ['Alpha'] }],
+  });
+  await page.getByRole('link', { name: 'Reading lists' }).first().click();
+  await page.getByRole('link', { name: 'Saga' }).first().click();
+  // Full by default: the cover, the rating and the tag field, as in the library.
+  await expect(page.getByRole('button', { name: 'Open Alpha' })).toBeVisible();
+  await expect(page.getByPlaceholder('+ tag')).toBeVisible();
+
+  await page.getByRole('button', { name: /^Compact/ }).click();
+  await expect(page.getByRole('button', { name: 'Open Alpha' })).toBeHidden();
+  await expect(page.getByPlaceholder('+ tag')).toBeHidden();
+  const views = await page.evaluate(async () => {
+    const settings = await window.tankobon.settings.getAll();
+    return [settings.readingListView, settings.libraryView];
+  });
+  expect(views).toEqual(['compact', 'full']);
+});
