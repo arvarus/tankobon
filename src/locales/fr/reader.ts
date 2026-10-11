@@ -30,6 +30,7 @@ const reader: Translation<typeof en> = {
   pageAlt: 'Page {{page}}',
   previousPage: 'Page précédente',
   nextPage: 'Page suivante',
+  pages: 'Pages',
 };
 
 export default reader;
