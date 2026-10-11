@@ -257,6 +257,8 @@ The whole library is in the [data store](#renderer-data-store) and is filtered c
 
 `AppSettings.libraryView` (`full`/`medium`/`compact`, persisted like any setting) picks how much each row shows; the toolbar's `ViewModePicker` writes it through `useSettings()`, and the virtualizer's estimated row height depends on it (rows are measured anyway).
 
+`AppSettings.libraryGroupBySeries` (off by default, the toolbar's "Regrouper par série" toggle) groups the filtered entries by series: `groupBySeries()` (`src/lib/library-groups.ts`, pure and tested) turns them into a flat list of `LibraryRow`s, a `SeriesHeaderRow` (series name, count, finished count through `isFinished()`) followed by the series' books, so the virtualizer still sees one list of rows of varying height. Series are matched case-insensitively on the trimmed name (`seriesKey()`), sorted with a numeric `Intl.Collator`, the books without a series last; within a series, books follow their `volume` in natural order, then their title. Which series are folded is page state (a `Set` of keys), not a setting; a folded series keeps only its heading row. With grouping off, `ungroupedRows()` keeps the `lastOpenedAt DESC` order of the store.
+
 The library page (`src/routes/index.tsx`) draws only the rows near the viewport (`@tanstack/react-virtual`, which measures each row since their height varies with wrapping tags and the optional metadata line), inside its own scroll container below the toolbar; it filters with `useDeferredValue` so the search field never waits for the list, and scrolls back to the top when the filters change. A row scrolled out of view is unmounted, with its local state (a half-typed tag).
 
 ### Folder scanning

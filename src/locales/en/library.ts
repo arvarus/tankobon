@@ -69,6 +69,11 @@ export default {
   viewFull: 'Full: all the information',
   viewMedium: 'Medium: cover and basic information',
   viewCompact: 'Compact: title, volume and series',
+  groupBySeries: 'Group by series',
+  noSeries: 'No series',
+  seriesProgress: '{{finished}} / {{count}} read',
+  expandSeries: 'Unfold {{series}}',
+  collapseSeries: 'Fold {{series}}',
   tags: {
     read: 'Read',
     toRead: 'To read',

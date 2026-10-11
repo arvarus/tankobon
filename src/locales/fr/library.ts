@@ -71,6 +71,11 @@ const library: Translation<typeof en> = {
   viewFull: 'Complet : toutes les informations',
   viewMedium: 'Intermédiaire : couverture et informations de base',
   viewCompact: 'Compact : titre, volume et série',
+  groupBySeries: 'Regrouper par série',
+  noSeries: 'Sans série',
+  seriesProgress: 'Lus : {{finished}} / {{count}}',
+  expandSeries: 'Déplier {{series}}',
+  collapseSeries: 'Replier {{series}}',
   tags: {
     read: 'Lu',
     toRead: 'À lire',

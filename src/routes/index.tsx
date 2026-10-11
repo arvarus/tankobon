@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { FolderOpen, FolderTree, GripVertical, LayoutList, ListPlus, Rows2, Rows3, Pencil, ScanSearch, Search, Star, Trash2, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, FolderOpen, FolderTree, GripVertical, Layers, LayoutList, ListPlus, Rows2, Rows3, Pencil, ScanSearch, Search, Star, Trash2, X } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,6 +25,7 @@ import {
   type RatingFilter,
 } from '@/lib/library-filter';
 import { formatPageSize } from '@/lib/image-scan';
+import { groupBySeries, ungroupedRows, type SeriesHeaderRow } from '@/lib/library-groups';
 import { creditRoleLabel } from '@/lib/metadata-review';
 import { selectedEntries, toggleSelection } from '@/lib/library-selection';
 import { encodeDraggedEntry, LIBRARY_ENTRY_DRAG_TYPE, tagLabel, TO_READ_TAG } from '@/lib/reading-list';
@@ -51,6 +52,9 @@ type LibraryView = AppSettings['libraryView'];
 /** Height guessed for a row before it is measured, per display mode. */
 const ESTIMATED_ROW_HEIGHT: Record<LibraryView, number> = { full: 128, medium: 104, compact: 49 };
 
+/** Height guessed for a series heading of the grouped view. */
+const ESTIMATED_HEADER_HEIGHT = 41;
+
 function LibraryPage() {
   const { t } = useTranslation(['library', 'common']);
   const { confirm, dialog: confirmDialog } = useConfirm();
@@ -59,6 +63,7 @@ function LibraryPage() {
   const library = useLibrary();
   const { settings, update } = useSettings();
   const view = settings.libraryView;
+  const grouped = settings.libraryGroupBySeries;
   const entries = library ?? NO_ENTRIES;
   const [filters, setFilters] = useState<LibraryFilters>(EMPTY_FILTERS);
   const [scan, setScan] = useState<ScanProgress | null>(null);
@@ -74,18 +79,33 @@ function LibraryPage() {
   const deferredFilters = useDeferredValue(filters);
   const visible = useMemo(() => filterEntries(entries, deferredFilters), [entries, deferredFilters]);
   const tags = useMemo(() => availableTags(entries, QUICK_TAGS), [entries]);
-  const selection = useMemo(() => selectedEntries(selected, visible, entries), [selected, visible, entries]);
-  const shownSelected = visible.filter((entry) => selected.has(entry.id)).length;
+  // Folded series last for the page's life only; a new key (a series renamed) starts unfolded.
+  const [collapsedSeries, setCollapsedSeries] = useState<ReadonlySet<string>>(() => new Set());
+  const rows = useMemo(
+    () => (grouped ? groupBySeries(visible, collapsedSeries) : ungroupedRows(visible)),
+    [grouped, visible, collapsedSeries],
+  );
+  const toggleSeries = (key: string) =>
+    setCollapsedSeries((current) => {
+      const next = new Set(current);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
+  // The books in the order they are drawn (grouped by series or not, folded series left out): the
+  // order of a Shift-click range, of "select all" and of the books sent to a reading list.
+  const shown = useMemo(() => rows.flatMap((row) => (row.kind === 'entry' ? [row.entry] : [])), [rows]);
+  const selection = useMemo(() => selectedEntries(selected, shown, entries), [selected, shown, entries]);
+  const shownSelected = shown.filter((entry) => selected.has(entry.id)).length;
 
   const tick = (id: string, shift: boolean) => {
-    setSelected(toggleSelection(selected, visible.map((entry) => entry.id), id, anchor, shift));
+    setSelected(toggleSelection(selected, shown.map((entry) => entry.id), id, anchor, shift));
     setAnchor(id);
   };
 
   const tickAllShown = () => {
     const next = new Set(selected);
-    const select = shownSelected < visible.length;
-    for (const entry of visible) {
+    const select = shownSelected < shown.length;
+    for (const entry of shown) {
       if (select) next.add(entry.id);
       else next.delete(entry.id);
     }
@@ -156,14 +176,18 @@ function LibraryPage() {
   // A new search starts from the top, not from wherever the previous results were scrolled to.
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
-  }, [deferredFilters]);
+  }, [deferredFilters, grouped]);
   // The virtualizer's functions aren't memoized, which the React Compiler lint can't know is fine here.
   // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
-    count: visible.length,
+    count: rows.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => ESTIMATED_ROW_HEIGHT[view],
-    getItemKey: (index) => visible[index].id,
+    estimateSize: (index) => (rows[index].kind === 'series' ? ESTIMATED_HEADER_HEIGHT : ESTIMATED_ROW_HEIGHT[view]),
+    getItemKey: (index) => {
+      const row = rows[index];
+      // A series heading's key can't collide with an entry id (a UUID).
+      return row.kind === 'series' ? `series:${row.key}` : row.entry.id;
+    },
     overscan: 6,
   });
 
@@ -194,14 +218,16 @@ function LibraryPage() {
           total={entries.length}
           view={view}
           onViewChange={(next) => update('libraryView', next)}
+          grouped={grouped}
+          onGroupedChange={(next) => update('libraryGroupBySeries', next)}
         />
       )}
 
-      {visible.length > 0 && (
+      {shown.length > 0 && (
         <SelectionBar
           selectedCount={selection.length}
           shownSelected={shownSelected}
-          shown={visible.length}
+          shown={shown.length}
           onToggleAll={tickAllShown}
           onClear={() => setSelected(new Set())}
           onAddToList={() => setListEntries(selection)}
@@ -216,7 +242,20 @@ function LibraryPage() {
         <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto rounded-md border">
           <ul className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
             {virtualizer.getVirtualItems().map((item) => {
-              const entry = visible[item.index];
+              const row = rows[item.index];
+              if (row.kind === 'series') {
+                return (
+                  <SeriesHeader
+                    key={`series:${row.key}`}
+                    row={row}
+                    ref={virtualizer.measureElement}
+                    index={item.index}
+                    start={item.start}
+                    onToggle={() => toggleSeries(row.key)}
+                  />
+                );
+              }
+              const entry = row.entry;
               const pageSize = formatPageSize(entry, currentLanguage());
               return (
             <li
@@ -371,6 +410,49 @@ function LibraryPage() {
   );
 }
 
+/** A series heading of the grouped view: folds or unfolds its books on click. */
+function SeriesHeader({
+  row,
+  ref,
+  index,
+  start,
+  onToggle,
+}: {
+  row: SeriesHeaderRow;
+  ref: (element: HTMLLIElement | null) => void;
+  index: number;
+  start: number;
+  onToggle: () => void;
+}) {
+  const { t } = useTranslation('library');
+  const name = row.series ?? t('noSeries');
+  const Chevron = row.collapsed ? ChevronRight : ChevronDown;
+  return (
+    <li
+      ref={ref}
+      data-index={index}
+      style={{ transform: `translateY(${start}px)` }}
+      className="absolute top-0 left-0 w-full border-b bg-muted/50"
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={!row.collapsed}
+        aria-label={t(row.collapsed ? 'expandSeries' : 'collapseSeries', { series: name })}
+        className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-accent"
+      >
+        <Chevron className="size-4 shrink-0 text-muted-foreground" />
+        <span className={cn('min-w-0 truncate font-semibold', row.series === null && 'text-muted-foreground italic')}>
+          {name}
+        </span>
+        <span className="ml-auto shrink-0 text-xs text-muted-foreground">
+          {t('seriesProgress', { finished: row.finished, count: row.count })}
+        </span>
+      </button>
+    </li>
+  );
+}
+
 /** "Series · Vol. 3": what the medium and compact views show under or next to the title. */
 function seriesLine(entry: LibraryEntry, t: TFunction<['library', 'common']>): string {
   return [entry.series, entry.volume && t('volumeShort', { volume: entry.volume })].filter(Boolean).join(' · ');
@@ -513,6 +595,8 @@ function LibraryToolbar({
   total,
   view,
   onViewChange,
+  grouped,
+  onGroupedChange,
 }: {
   filters: LibraryFilters;
   onChange: (filters: LibraryFilters) => void;
@@ -521,6 +605,8 @@ function LibraryToolbar({
   total: number;
   view: LibraryView;
   onViewChange: (view: LibraryView) => void;
+  grouped: boolean;
+  onGroupedChange: (grouped: boolean) => void;
 }) {
   const { t } = useTranslation('library');
   const active = hasActiveFilters(filters);
@@ -552,6 +638,17 @@ function LibraryToolbar({
         />
 
         <ViewModePicker view={view} onChange={onViewChange} />
+
+        <Button
+          variant={grouped ? 'secondary' : 'outline'}
+          size="icon"
+          onClick={() => onGroupedChange(!grouped)}
+          aria-pressed={grouped}
+          title={t('groupBySeries')}
+          aria-label={t('groupBySeries')}
+        >
+          <Layers />
+        </Button>
 
         {active && (
           <Button variant="ghost" size="sm" onClick={() => onChange(EMPTY_FILTERS)}>
@@ -652,7 +749,7 @@ function ViewModePicker({ view, onChange }: { view: LibraryView; onChange: (view
     { value: 'compact', Icon: Rows3, label: t('viewCompact') },
   ] as const;
   return (
-    <div role="group" aria-label={t('viewMode')} className="flex items-center gap-0.5 rounded-md border p-0.5">
+    <div role="group" aria-label={t('viewMode')} className="flex h-9 items-center gap-0.5 rounded-md border p-px">
       {modes.map(({ value, Icon, label }) => (
         <Button
           key={value}
@@ -680,7 +777,7 @@ function RatingFilterPicker({
 }) {
   const { t } = useTranslation('library');
   return (
-    <div className="flex items-center gap-1 rounded-md border px-2 py-1">
+    <div className="flex h-9 items-center gap-1 rounded-md border px-2">
       <span className="text-xs text-muted-foreground">{t('ratingFilter')}</span>
       {[1, 2, 3, 4, 5].map((value) => (
         <button
