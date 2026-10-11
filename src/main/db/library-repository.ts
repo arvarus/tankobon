@@ -197,6 +197,22 @@ export class LibraryRepository {
     return this.db.prepare('SELECT 1 FROM library WHERE path = ?').get(filePath) !== undefined;
   }
 
+  /** Id of the entry whose file is `filePath`, or null when that file isn't in the library. */
+  idOfPath(filePath: string): string | null {
+    const row = this.db.prepare('SELECT id FROM library WHERE path = ?').get(filePath) as { id: string } | undefined;
+    return row?.id ?? null;
+  }
+
+  /**
+   * Points an entry at its file's new location, after the library organization moved it; everything
+   * else (progress, rating, tags, metadata, reading-list places) stays. Returns false when the entry
+   * is gone or another entry already has that path (paths are unique).
+   */
+  updatePath(id: string, filePath: string): boolean {
+    if (this.hasPath(filePath)) return false;
+    return Number(this.db.prepare('UPDATE library SET path = ? WHERE id = ?').run(filePath, id).changes) > 0;
+  }
+
   /**
    * Adds a comic discovered by a folder scan. Unlike `touch`, an entry that already exists is left
    * completely alone — a scan is not a read, so it must not bump `last_opened_at` or refresh

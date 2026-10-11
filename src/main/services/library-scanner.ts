@@ -16,6 +16,8 @@ export interface ScanSummary {
   skipped: number;
   failed: number;
   total: number;
+  /** The entries this scan created, for the library organization. */
+  addedEntries: { id: string; path: string }[];
 }
 
 /** Whether a file name has one of the `SUPPORTED_COMIC_EXTENSIONS` (case-insensitive). */
@@ -70,7 +72,7 @@ export async function scanIntoLibrary(
   onProgress({ phase: 'scanning', processed: 0, total: 0, currentFile: directory });
   const files = await collectComicFiles(directory);
 
-  const summary: ScanSummary = { added: 0, skipped: 0, failed: 0, total: files.length };
+  const summary: ScanSummary = { added: 0, skipped: 0, failed: 0, total: files.length, addedEntries: [] };
 
   for (const [index, filePath] of files.entries()) {
     onProgress({ phase: 'importing', processed: index, total: files.length, currentFile: filePath });
@@ -86,6 +88,8 @@ export async function scanIntoLibrary(
       const title = path.basename(filePath, path.extname(filePath));
       repo.register(filePath, title, pageCount, fileCount, size);
       summary.added += 1;
+      const id = repo.idOfPath(filePath);
+      if (id) summary.addedEntries.push({ id, path: filePath });
     } catch {
       summary.failed += 1;
     }

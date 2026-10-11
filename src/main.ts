@@ -18,7 +18,12 @@ import { registerAppIpc } from './main/ipc/app';
 import { registerComicIpc } from './main/ipc/comic';
 import { registerDatabaseIpc } from './main/ipc/database';
 import { registerDataIpc } from './main/ipc/data';
-import { broadcastImageScanProgress, createResynchronizer, registerLibraryIpc } from './main/ipc/library';
+import {
+  broadcastImageScanProgress,
+  createLibraryOrganizer,
+  createResynchronizer,
+  registerLibraryIpc,
+} from './main/ipc/library';
 import { registerMetadataIpc } from './main/ipc/metadata';
 import { registerReadingListIpc } from './main/ipc/reading-lists';
 import { registerStatsIpc } from './main/ipc/stats';
@@ -103,6 +108,8 @@ app.whenReady().then(() => {
     onProgress: broadcastImageScanProgress,
     onUpdated: (entries) => broadcastDataChange({ scope: 'library', upserted: entries }),
   });
+  // Moves the added books into the organized folder, when the setting asks for it.
+  const organizer = createLibraryOrganizer(libraryRepo, settingsRepo, decoder, broadcastDataChange);
   const resynchronizer = createResynchronizer(
     libraryRepo,
     folderRepo,
@@ -110,8 +117,18 @@ app.whenReady().then(() => {
     decoder,
     broadcastDataChange,
     imageScanner,
+    organizer,
   );
-  registerLibraryIpc(libraryRepo, folderRepo, resynchronizer, settingsRepo, decoder, broadcastDataChange, imageScanner);
+  registerLibraryIpc(
+    libraryRepo,
+    folderRepo,
+    resynchronizer,
+    settingsRepo,
+    decoder,
+    broadcastDataChange,
+    imageScanner,
+    organizer,
+  );
   registerReadingListIpc(readingListRepo, broadcastDataChange);
   registerStatsIpc(statsRepo);
   registerSettingsIpc(settingsRepo, broadcastDataChange);

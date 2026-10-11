@@ -13,6 +13,7 @@ import { MetadataDialog } from '@/components/metadata-dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useLibrary } from '@/hooks/use-library';
+import { useOrganizationOffer } from '@/hooks/use-organization-offer';
 import { useSettings } from '@/hooks/use-settings';
 import { appData } from '@/lib/app-data';
 import {
@@ -52,6 +53,7 @@ const ESTIMATED_ROW_HEIGHT: Record<LibraryView, number> = { full: 128, medium: 1
 function LibraryPage() {
   const { t } = useTranslation(['library', 'common']);
   const { confirm, dialog: confirmDialog } = useConfirm();
+  const offerOrganization = useOrganizationOffer(confirm);
   const navigate = useNavigate();
   const library = useLibrary();
   const { settings, update } = useSettings();
@@ -85,14 +87,24 @@ function LibraryPage() {
     const parts = [t('scanAdded', { count: result.added, directory: result.directory })];
     if (result.skipped > 0) parts.push(t('scanSkipped', { count: result.skipped }));
     if (result.failed > 0) parts.push(t('scanFailed', { count: result.failed }));
-    setScanStatus(result.total === 0 ? t('scanNoneFound', { directory: result.directory }) : parts.join(' · '));
+    if (result.total === 0) {
+      setScanStatus(t('scanNoneFound', { directory: result.directory }));
+      return;
+    }
+    setScanStatus(parts.join(' · '));
+    parts.push(...(await offerOrganization(result.organization)));
+    setScanStatus(parts.join(' · '));
   };
 
   const addFile = async () => {
     setScanStatus(null);
     const result = await window.tankobon.library.addFile();
-    if (result.status === 'added') setScanStatus(t('fileAdded', { title: result.title }));
-    else if (result.status === 'exists') setScanStatus(t('fileExists', { title: result.title }));
+    if (result.status === 'added') {
+      const parts = [t('fileAdded', { title: result.title })];
+      setScanStatus(parts[0]);
+      parts.push(...(await offerOrganization(result.organization)));
+      setScanStatus(parts.join(' · '));
+    } else if (result.status === 'exists') setScanStatus(t('fileExists', { title: result.title }));
     else if (result.status === 'error') setScanStatus(result.message);
   };
 

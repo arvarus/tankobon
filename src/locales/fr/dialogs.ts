@@ -7,6 +7,7 @@ const dialogs: Translation<typeof en> = {
   addFile: 'Ajouter une BD',
   addFolder: 'Ajouter un dossier de BD',
   chooseDatabaseFolder: 'Choisir le dossier de la base de données',
+  chooseOrganizationFolder: 'Choisir le dossier de la bibliothèque organisée',
   exportData: 'Exporter les données',
   importData: 'Importer des données',
 };

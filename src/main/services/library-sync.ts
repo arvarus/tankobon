@@ -21,6 +21,8 @@ export interface ResyncSummary {
   failed: number;
   /** Folders that couldn't be read (missing, unplugged drive): left alone, nothing removed from them. */
   unreachable: number;
+  /** The entries added, for the library organization. */
+  addedEntries: { id: string; path: string }[];
   /** Ids of the removed entries and the path of their file, for the caller's follow-up (thumbnails, notifications). */
   removedEntries: { id: string; path: string }[];
 }
@@ -65,7 +67,7 @@ export async function resyncLibrary(
   onProgress: (progress: ScanProgress) => void,
   inspect: (filePath: string) => Promise<ArchiveSummary>,
 ): Promise<ResyncSummary> {
-  const summary: ResyncSummary = { added: 0, removed: 0, failed: 0, unreachable: 0, removedEntries: [] };
+  const summary: ResyncSummary = { added: 0, removed: 0, failed: 0, unreachable: 0, removedEntries: [], addedEntries: [] };
   // Each folder reports its own `done`; the caller only wants the one after the last.
   const forward = (progress: ScanProgress) => {
     if (progress.phase !== 'done') onProgress(progress);
@@ -80,6 +82,7 @@ export async function resyncLibrary(
     const scanned = await scanIntoLibrary(repo, folder, forward, inspect);
     summary.added += scanned.added;
     summary.failed += scanned.failed;
+    summary.addedEntries.push(...scanned.addedEntries);
 
     const found = new Set(await collectComicFiles(folder));
     for (const entry of repo.list()) {

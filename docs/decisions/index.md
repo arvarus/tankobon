@@ -18,6 +18,7 @@ An ADR records one structural decision: the context, what was decided, and what 
 | [0012](./0012-decoder-utility-process.md) | Comic files decoded in a utility process, not in the main process | Accepted |
 | [0013](./0013-renderer-data-store-data-changed.md) | One renderer data store, kept current by a `data:changed` push | Accepted |
 | [0014](./0014-achievements-evaluated-in-renderer.md) | Achievements evaluated in the renderer, only unlocks persisted | Accepted |
+| [0015](./0015-library-organization-moves-files.md) | Library organization: the app moves files into one subfolder per comic | Accepted |
 
 These first four ADRs were written after the fact, from the code and its comments, then checked by the maintainer.
 

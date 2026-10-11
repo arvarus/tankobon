@@ -1,4 +1,4 @@
-import { isApiKeySetting, isSettingKey, isValidSetting, pickApiKeys, toPublicSettings } from '../../shared/settings';
+import { MAIN_PROCESS_SETTINGS, isApiKeySetting, isSettingKey, isValidSetting, pickApiKeys, toPublicSettings } from '../../shared/settings';
 import type { SettingsRepository } from '../db/settings-repository';
 import { applyMainLanguage } from '../language';
 import type { NotifyDataChange } from './data-changes';
@@ -13,8 +13,8 @@ export const SETTINGS_CHANNELS = {
 } as const;
 
 function keyArg(key: unknown) {
-  if (!isSettingKey(key)) {
-    throw new IpcArgumentError('key', 'a setting name');
+  if (!isSettingKey(key) || MAIN_PROCESS_SETTINGS.includes(key)) {
+    throw new IpcArgumentError('key', 'a setting name the renderer may write');
   }
   return key;
 }

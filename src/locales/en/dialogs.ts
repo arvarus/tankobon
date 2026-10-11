@@ -5,6 +5,7 @@ export default {
   addFile: 'Add a comic',
   addFolder: 'Add a comics folder',
   chooseDatabaseFolder: 'Choose the database folder',
+  chooseOrganizationFolder: 'Choose the organized library folder',
   exportData: 'Export data',
   importData: 'Import data',
 };

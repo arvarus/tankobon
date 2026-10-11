@@ -4,6 +4,9 @@
  */
 import { isSupportedLanguage, type LanguageSetting } from './i18n';
 
+/** Modes of the library organization (see {@link AppSettings.libraryOrganization}). */
+export type LibraryOrganization = 'off' | 'ask' | 'always';
+
 /** User preferences, persisted key by key in the `settings` table (see `SettingsRepository`). */
 export interface AppSettings {
   /** Interface language: one forced by the user, or `system` to follow the OS (English when it isn't supported). */
@@ -44,6 +47,18 @@ export interface AppSettings {
   checkUpdatesOnStartup: boolean;
   /** When the last resynchronization finished (ISO 8601); empty when there has been none. */
   lastResyncAt: string;
+  /**
+   * Library organization: `off` leaves the files where they are; otherwise the comics added (a file,
+   * a folder, a resynchronization) can be moved into `libraryOrganizationFolder`, each in its own
+   * subfolder: `ask` offers it after each addition, `always` does it without asking. A comic found
+   * directly in that folder is always moved, unless `off`.
+   */
+  libraryOrganization: LibraryOrganization;
+  /**
+   * Folder the library organization moves the comics into (empty until one is chosen). Set only by
+   * the main process, through a folder dialog (`library:pick-organization-folder`): `settings:set` refuses it.
+   */
+  libraryOrganizationFolder: string;
   /** Folder last added with "Ajouter un dossier…" (empty before the first one): where the next folder dialog opens. */
   lastScanFolder: string;
 }
@@ -70,6 +85,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   checkUpdatesOnStartup: true,
   lastResyncAt: '',
   lastScanFolder: '',
+  libraryOrganization: 'off',
+  libraryOrganizationFolder: '',
 };
 
 /** A reader background preset; its label is the `settings:appearance.backgrounds.<name>` translation. */
@@ -122,7 +139,15 @@ export const SETTING_VALIDATORS: SettingValidators = {
   checkUpdatesOnStartup: isBoolean,
   lastResyncAt: (value): value is string => isString(value) && (value === '' || !Number.isNaN(Date.parse(value))),
   lastScanFolder: isString,
+  libraryOrganization: (value): value is LibraryOrganization => value === 'off' || value === 'ask' || value === 'always',
+  libraryOrganizationFolder: isString,
 };
+
+/**
+ * Settings only the main process writes: `settings:set` refuses them. The organized folder is one,
+ * since the app moves files into it: the renderer never names a path (it goes through a folder dialog).
+ */
+export const MAIN_PROCESS_SETTINGS: readonly (keyof AppSettings)[] = ['libraryOrganizationFolder'];
 
 /** Whether `key` names a setting of {@link AppSettings}. */
 export function isSettingKey(key: unknown): key is keyof AppSettings {

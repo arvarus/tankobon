@@ -108,7 +108,7 @@ export interface MetadataUpdate {
 export type AddFileResult =
   | { status: 'cancelled' }
   /** The comic was added to the library; the reader is not opened. */
-  | { status: 'added'; title: string }
+  | { status: 'added'; title: string; organization: OrganizationOutcome }
   /** The comic was already in the library, and is left untouched. */
   | { status: 'exists'; title: string }
   /** The file can't be opened (corrupted, unsupported…); `message` is in the interface language. */
@@ -151,6 +151,8 @@ export type ScanResult =
       failed: number;
       /** Supported files found in the tree, i.e. `added + skipped + failed`. */
       total: number;
+      /** What the library organization did with the comics added. */
+      organization: OrganizationOutcome;
     };
 
 /** Outcome of `library.resync()`. */
@@ -167,5 +169,32 @@ export type ResyncResult =
       unreachable: number;
       /** When it finished (ISO 8601); also stored as the `lastResyncAt` setting. */
       finishedAt: string;
+      /** What the library organization did with the comics added. */
+      organization: OrganizationOutcome;
     }
   | { status: 'error'; message: string };
+
+/**
+ * What the library organization (`AppSettings.libraryOrganization`) did with the comics an addition
+ * (a file, a folder, a resynchronization) brought into the library.
+ */
+export interface OrganizationOutcome {
+  /** Comics moved into the organized folder right away. */
+  moved: number;
+  /** Comics whose move failed: they stay where they were, still in the library. */
+  failed: number;
+  /**
+   * In `ask` mode, the comics to offer to move: `token` stands for them in `library.organize()`,
+   * `count` is how many, `folder` the organized folder. Null when there is nothing to offer.
+   */
+  pending: { token: string; count: number; folder: string } | null;
+}
+
+/** Result of `library.organize()` and `library.organizeAll()`; an error (no organized folder, folder unreachable, unknown token) has a translated `message`. */
+export type OrganizeResult = { status: 'ok'; moved: number; failed: number } | { status: 'error'; message: string };
+
+/** Result of `library.countUnorganized()`: how many library comics aren't in their place in the organized `folder` yet. */
+export type UnorganizedCountResult = { status: 'ok'; count: number; folder: string } | { status: 'error'; message: string };
+
+/** Result of `library.pickOrganizationFolder()`. */
+export type PickOrganizationFolderResult = { status: 'cancelled' } | { status: 'ok'; folder: string };
