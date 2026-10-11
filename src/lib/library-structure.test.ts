@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { levelChoices, setLevel, structureExample } from './library-structure';
+import { fileNameExample, levelChoices, setLevel, structureExample } from './library-structure';
 
 describe('levelChoices', () => {
   it('offers every level first, and neither letter nor year after', () => {
@@ -37,5 +37,17 @@ describe('structureExample', () => {
     expect(structureExample(['letter', 'series'])).toBe('T/Tintin/Tintin au Tibet.cbz');
     expect(structureExample(['year', 'author', 'album'])).toBe('1960/Hergé/Tintin au Tibet/Tintin au Tibet.cbz');
     expect(structureExample([])).toBe('');
+  });
+});
+
+describe('fileNameExample', () => {
+  it('names the sample album after the template, or its original name without one', () => {
+    expect(fileNameExample('{series} - T{volume} - {title}')).toBe('Tintin - T20 - Tintin au Tibet.cbz');
+    expect(fileNameExample('{author} ({year})')).toBe('Hergé (1960).cbz');
+    expect(fileNameExample('')).toBe('Tintin au Tibet.cbz');
+  });
+
+  it('is the last part of the structure example', () => {
+    expect(structureExample(['series'], '{series} {volume}')).toBe('Tintin/Tintin 20.cbz');
   });
 });

@@ -1,7 +1,9 @@
 /**
- * Editing the organized folder's tree (`AppSettings.libraryStructure`) in Paramètres › Bibliothèque.
+ * Editing the organized folder's tree (`AppSettings.libraryStructure`) and file name template
+ * (`AppSettings.libraryFileName`) in Paramètres › Bibliothèque.
  * @module
  */
+import { fillFileNameTemplate } from '@/shared/file-name-template';
 import { LIBRARY_LEVELS, MAX_LIBRARY_LEVELS, type LibraryLevel } from '@/shared/settings';
 
 /**
@@ -32,25 +34,43 @@ export function setLevel(structure: readonly LibraryLevel[], index: number, leve
   );
 }
 
-/** The folder each level gives the sample album of {@link structureExample}. */
-const SAMPLE: Record<Exclude<LibraryLevel, 'letter'>, string> = {
+/** The sample album of the examples (Tintin au Tibet, Tintin volume 20, by Hergé, 1960). */
+const SAMPLE = {
+  series: 'Tintin',
+  volume: '20',
+  title: 'Tintin au Tibet',
   year: '1960',
   author: 'Hergé',
-  series: 'Tintin',
-  album: 'Tintin au Tibet',
+};
+
+/** The folder each level gives the sample album. */
+const SAMPLE_FOLDERS: Record<Exclude<LibraryLevel, 'letter'>, string> = {
+  year: SAMPLE.year,
+  author: SAMPLE.author,
+  series: SAMPLE.series,
+  album: SAMPLE.title,
 };
 
 /**
- * Where `structure` puts a sample album (Tintin au Tibet, by Hergé, 1960), for the settings page:
- * `T/Tintin/Tintin au Tibet.cbz` for `['letter', 'series']`. Empty for the default layout, which the
- * page describes in words.
+ * The file name the template `fileName` gives the sample album, extension included:
+ * `Tintin - T20 - Tintin au Tibet.cbz` for `{series} - T{volume} - {title}`, `Tintin au Tibet.cbz`
+ * (its original name) for the empty template.
  */
-export function structureExample(structure: readonly LibraryLevel[]): string {
+export function fileNameExample(fileName: string): string {
+  return `${fileName === '' ? SAMPLE.title : fillFileNameTemplate(fileName, SAMPLE).trim()}.cbz`;
+}
+
+/**
+ * Where `structure` puts the sample album, named by the template `fileName`, for the settings page:
+ * `T/Tintin/Tintin au Tibet.cbz` for `['letter', 'series']` and no template. Empty for the default
+ * layout, which the page describes in words.
+ */
+export function structureExample(structure: readonly LibraryLevel[], fileName = ''): string {
   if (structure.length === 0) return '';
   const folders: string[] = [];
   for (let index = structure.length - 1; index >= 0; index -= 1) {
     const level = structure[index];
-    folders.unshift(level === 'letter' ? (folders[0]?.[0]?.toUpperCase() ?? '#') : SAMPLE[level]);
+    folders.unshift(level === 'letter' ? (folders[0]?.[0]?.toUpperCase() ?? '#') : SAMPLE_FOLDERS[level]);
   }
-  return [...folders, 'Tintin au Tibet.cbz'].join('/');
+  return [...folders, fileNameExample(fileName)].join('/');
 }

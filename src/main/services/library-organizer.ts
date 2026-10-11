@@ -7,6 +7,7 @@ import { constants } from 'node:fs';
 import { copyFile, mkdir, rename, rmdir, stat, unlink } from 'node:fs/promises';
 import path from 'node:path';
 
+import { fillFileNameTemplate } from '../../shared/file-name-template';
 import { t } from '../../shared/i18n';
 import type { LibraryEntry } from '../../shared/library';
 import type { LibraryLevel, LibraryOrganization } from '../../shared/settings';
@@ -45,7 +46,11 @@ function originalStem(filePath: string, id: string): string {
  * cut name loses its trailing spaces and dots (Windows refuses a name ending with them).
  */
 export function organizedFolderName(filePath: string, id: string): string {
-  const name = originalStem(filePath, id);
+  return folderNameOf(originalStem(filePath, id), id);
+}
+
+/** {@link organizedFolderName} for a file whose name without extension is `name`. */
+function folderNameOf(name: string, id: string): string {
   const suffix = ` (${id})`;
   const room = MAX_NAME_BYTES - Buffer.byteLength(suffix);
   const kept = Buffer.byteLength(name) > room ? truncateToBytes(name, room).replace(/[\s.]+$/, '') : name;
@@ -81,7 +86,10 @@ export function letterFolderName(next: string): string {
 }
 
 /** What the organization reads of a library entry to place its file. */
-export type OrganizedEntry = Pick<LibraryEntry, 'id' | 'path' | 'title' | 'series' | 'releaseDate' | 'credits'>;
+export type OrganizedEntry = Pick<
+  LibraryEntry,
+  'id' | 'path' | 'title' | 'series' | 'volume' | 'releaseDate' | 'credits'
+>;
 
 /**
  * The author a comic is filed under: its first writer, else the first person credited, as
@@ -124,23 +132,49 @@ export function structureFolders(structure: readonly LibraryLevel[], entry: Orga
   return folders;
 }
 
-/** Where the organization files comics: the organized folder and its tree (`AppSettings.libraryStructure`). */
-export interface OrganizationTarget {
-  root: string;
-  structure: readonly LibraryLevel[];
+/**
+ * The name, without extension, that the template `fileName` (`AppSettings.libraryFileName`) gives
+ * `entry`'s file: each field filled from the entry (a missing series, volume, year or author giving the
+ * translated "Unknown"; the author as in the `author` level), then made safe like a folder name and cut
+ * so that `extension` still fits in {@link MAX_NAME_BYTES}.
+ */
+export function templatedStem(fileName: string, entry: OrganizedEntry, extension: string): string {
+  const unknown = t('library:organizationUnknown');
+  const name = fillFileNameTemplate(fileName, {
+    series: entry.series?.trim() || unknown,
+    volume: entry.volume?.trim() || unknown,
+    title: entry.title,
+    year: levelValue('year', entry) ?? unknown,
+    author: authorName(entry) ?? unknown,
+  });
+  const room = MAX_NAME_BYTES - Buffer.byteLength(extension);
+  return safeFolderName(truncateToBytes(safeFolderName(name), room));
 }
 
 /**
- * Where the organization puts a comic, best first. Without a structure, a single place:
- * `<root>/<organizedFolderName>/<original file name>`. With one, the file goes in the last level's
- * folder under its original name, or, when another file has that name there,
- * `<name> (<library id>).<extension>`. A comic at any of these places is in place.
+ * Where the organization files comics: the organized folder, its tree (`AppSettings.libraryStructure`)
+ * and the file name template (`AppSettings.libraryFileName`, empty to keep the original names).
+ */
+export interface OrganizationTarget {
+  root: string;
+  structure: readonly LibraryLevel[];
+  fileName: string;
+}
+
+/**
+ * Where the organization puts a comic, best first. Its name is the original file name, or the one
+ * {@link templatedStem} gives when the target has a file name template, the extension being kept.
+ * Without a structure, a single place: `<root>/<name> (<library id>)/<name>.<extension>` (see
+ * {@link organizedFolderName}). With one, the file goes in the last level's folder under that name,
+ * or, when another file has that name there, `<name> (<library id>).<extension>`. A comic at any of
+ * these places is in place.
  */
 export function organizedPaths(target: OrganizationTarget, entry: OrganizedEntry): string[] {
   const extension = path.extname(entry.path);
-  const stem = originalStem(entry.path, entry.id);
+  const stem =
+    target.fileName === '' ? originalStem(entry.path, entry.id) : templatedStem(target.fileName, entry, extension);
   if (target.structure.length === 0) {
-    return [path.join(target.root, organizedFolderName(entry.path, entry.id), `${stem}${extension}`)];
+    return [path.join(target.root, folderNameOf(stem, entry.id), `${stem}${extension}`)];
   }
   const folder = path.join(target.root, ...structureFolders(target.structure, entry));
   const suffix = ` (${entry.id})`;

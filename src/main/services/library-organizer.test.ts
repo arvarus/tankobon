@@ -19,6 +19,7 @@ import {
   planOrganization,
   safeFolderName,
   structureFolders,
+  templatedStem,
   unorganizedIds,
   type OrganizedEntry,
 } from './library-organizer';
@@ -57,7 +58,7 @@ function repository(): LibraryRepository {
 const ID = '3f2a9c1e-0000-4000-8000-000000000001';
 
 /** The default layout, one subfolder per comic, in `root`. */
-const flat = (root: string) => ({ root, structure: [] });
+const flat = (root: string) => ({ root, structure: [], fileName: '' });
 
 describe('organizedFolderName', () => {
   it('is the file name without its extension, then the id', () => {
@@ -197,6 +198,7 @@ function entry(fields: Partial<OrganizedEntry> = {}): OrganizedEntry {
     path: '/comics/Tintin au Tibet.cbz',
     title: 'Tintin au Tibet',
     series: 'Tintin',
+    volume: '20',
     releaseDate: '1960-01',
     credits: [credit('', 'Hergé', 'writer')],
     ...fields,
@@ -267,7 +269,7 @@ describe('structureFolders', () => {
 
 describe('organizedPaths', () => {
   it('puts the file straight in the last level, with an id-suffixed fallback name', () => {
-    expect(organizedPaths({ root: '/org', structure: ['series'] }, entry())).toEqual([
+    expect(organizedPaths({ root: '/org', structure: ['series'], fileName: '' }, entry())).toEqual([
       path.join('/org', 'Tintin', 'Tintin au Tibet.cbz'),
       path.join('/org', 'Tintin', `Tintin au Tibet (${ID}).cbz`),
     ]);
@@ -275,10 +277,69 @@ describe('organizedPaths', () => {
 
   it('keeps the original name of a file renamed by a collision', () => {
     const renamed = entry({ path: `/org/Tintin/Tintin au Tibet (${ID}).cbz` });
-    expect(organizedPath({ root: '/org', structure: ['year'] }, renamed)).toBe(
+    expect(organizedPath({ root: '/org', structure: ['year'], fileName: '' }, renamed)).toBe(
       path.join('/org', '1960', 'Tintin au Tibet.cbz'),
     );
     expect(organizedPath(flat('/org'), renamed)).toBe(path.join('/org', `Tintin au Tibet (${ID})`, 'Tintin au Tibet.cbz'));
+  });
+});
+
+describe('templatedStem', () => {
+  it('fills the template from the entry', () => {
+    expect(templatedStem('{series} - T{volume} - {title} ({year}, {author})', entry(), '.cbz')).toBe(
+      'Tintin - T20 - Tintin au Tibet (1960, Hergé)',
+    );
+  });
+
+  it('writes "Unknown" for a missing field and makes the name safe', () => {
+    const bare = entry({ series: null, volume: '  ', releaseDate: null, credits: [], title: 'Quoi?' });
+    expect(templatedStem('{series} - T{volume} - {title} {year} {author}', bare, '.cbz')).toBe(
+      'Unknown - TUnknown - Quoi_ Unknown Unknown',
+    );
+  });
+
+  it('cuts a long name so that the extension still fits', () => {
+    const long = entry({ title: 'é'.repeat(200) });
+    const stem = templatedStem('{title}', long, '.cbz');
+    expect(Buffer.byteLength(`${stem}.cbz`)).toBeLessThanOrEqual(MAX_NAME_BYTES);
+  });
+});
+
+describe('organizedPaths with a file name template', () => {
+  const fileName = '{series} - T{volume} - {title}';
+
+  it('renames the file in the last level, with an id-suffixed fallback', () => {
+    expect(organizedPaths({ root: '/org', structure: ['series'], fileName }, entry())).toEqual([
+      path.join('/org', 'Tintin', 'Tintin - T20 - Tintin au Tibet.cbz'),
+      path.join('/org', 'Tintin', `Tintin - T20 - Tintin au Tibet (${ID}).cbz`),
+    ]);
+  });
+
+  it('names the subfolder of the default layout after the new name', () => {
+    expect(organizedPath({ root: '/org', structure: [], fileName }, entry())).toBe(
+      path.join('/org', `Tintin - T20 - Tintin au Tibet (${ID})`, 'Tintin - T20 - Tintin au Tibet.cbz'),
+    );
+  });
+
+  it('renames the comics already in place when the template changes', async () => {
+    const source = await tree(['a/Tome 1.cbz']);
+    const target = await tree([]);
+    const repo = repository();
+    const file = path.join(source, 'a', 'Tome 1.cbz');
+    repo.register(file, 'Tome 1', 1, 1, 1);
+    const id = repo.idOfPath(file)!;
+    repo.updateMetadata(id, { series: 'Blacksad', volume: '1', title: 'Quelque part entre les ombres' });
+
+    await organizeEntries(repo, { root: target, structure: ['series'], fileName: '' }, [id]);
+    const renamed = { root: target, structure: ['series'] as const, fileName };
+    expect(unorganizedIds(repo, renamed)).toEqual([id]);
+    await organizeEntries(repo, renamed, [id]);
+
+    const expected = path.join(target, 'Blacksad', 'Blacksad - T1 - Quelque part entre les ombres.cbz');
+    expect(repo.get(id)?.path).toBe(expected);
+    expect(await readFile(expected, 'utf8')).toBe('a/Tome 1.cbz');
+    expect(await exists(path.join(target, 'Blacksad', 'Tome 1.cbz'))).toBe(false);
+    expect(unorganizedIds(repo, renamed)).toEqual([]);
   });
 });
 
@@ -294,7 +355,7 @@ describe('organizeEntries with a structure', () => {
       repo.updateMetadata(id, { series: 'Blacksad' });
       return id;
     });
-    const structure = { root: target, structure: ['letter', 'series'] as const };
+    const structure = { root: target, structure: ['letter', 'series'] as const, fileName: '' };
 
     const summary = await organizeEntries(repo, structure, ids);
 
@@ -312,8 +373,8 @@ describe('organizeEntries with a structure', () => {
     const id = repo.idOfPath(path.join(source, 'Tome 1.cbz'))!;
     repo.updateMetadata(id, { series: 'Blacksad', releaseDate: '2000' });
 
-    await organizeEntries(repo, { root: target, structure: ['letter', 'series'] }, [id]);
-    const byYear = { root: target, structure: ['year', 'series'] as const };
+    await organizeEntries(repo, { root: target, structure: ['letter', 'series'], fileName: '' }, [id]);
+    const byYear = { root: target, structure: ['year', 'series'] as const, fileName: '' };
     expect(unorganizedIds(repo, byYear)).toEqual([id]);
     await organizeEntries(repo, byYear, [id]);
 
