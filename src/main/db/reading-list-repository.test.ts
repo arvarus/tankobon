@@ -57,6 +57,24 @@ describe('ReadingListRepository', () => {
     expect(lists.get(list.id)?.entryIds).toHaveLength(MAX_READING_LIST_SIZE);
   });
 
+  it('adds several books at once, in order, as far as the list has room', () => {
+    const list = okList(lists.create('Pile'));
+    lists.addEntry(list.id, ids[1]);
+    expect(lists.addEntries(list.id, [ids[2], ids[1], 'gone', ids[0], ids[2]])).toMatchObject({
+      status: 'ok',
+      list: { entryIds: [ids[1], ids[2], ids[0]] },
+      added: 2,
+      alreadyIn: 1,
+      overLimit: 0,
+      missing: 1,
+    });
+    const extra = Array.from({ length: MAX_READING_LIST_SIZE }, (_, i) => library.touch(`/comics/x-${i}.cbz`, `x${i}`, 10, 10, 100).id);
+    const result = lists.addEntries(list.id, extra);
+    expect(result).toMatchObject({ status: 'ok', added: MAX_READING_LIST_SIZE - 3, overLimit: 3 });
+    expect(lists.get(list.id)?.entryIds).toHaveLength(MAX_READING_LIST_SIZE);
+    expect(lists.addEntries('nope', [ids[0]]).status).toBe('error');
+  });
+
   it('refuses unknown lists and books', () => {
     expect(lists.addEntry('nope', ids[0]).status).toBe('error');
     const list = okList(lists.create('Pile'));

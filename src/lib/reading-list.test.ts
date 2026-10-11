@@ -3,18 +3,21 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { applyLanguage } from '@/shared/i18n';
 import { READ_TAG, type LibraryEntry } from '@/shared/library';
 
-import type { ReadingList } from '@/shared/reading-list';
+import { MAX_READING_LIST_SIZE, type ReadingList } from '@/shared/reading-list';
 
 import {
-  decodeDraggedEntry,
+  bulkAddFeedback,
+  bulkAddRequest,
+  decodeDraggedEntries,
   dropFeedback,
-  encodeDraggedEntry,
+  encodeDraggedEntries,
   isFinished,
   listEntries,
   listProgress,
   moveItem,
   moveUnfinished,
   nextToRead,
+  seriesEntries,
   tagLabel,
 } from './reading-list';
 
@@ -120,19 +123,22 @@ describe('moveItem', () => {
 });
 
 describe('dragged entry encoding', () => {
-  it('round-trips a book', () => {
-    const book = { id: 'a', title: 'Blacksad « T1 »' };
-    expect(decodeDraggedEntry(encodeDraggedEntry(book))).toEqual(book);
+  it('round-trips one book or several', () => {
+    const books = [{ id: 'a', title: 'Blacksad « T1 »' }, { id: 'b', title: 'Blacksad « T2 »' }];
+    expect(decodeDraggedEntries(encodeDraggedEntries(books.slice(0, 1)))).toEqual(books.slice(0, 1));
+    expect(decodeDraggedEntries(encodeDraggedEntries(books))).toEqual(books);
   });
 
   it('rejects anything else', () => {
-    expect(decodeDraggedEntry('')).toBeNull();
-    expect(decodeDraggedEntry('not json')).toBeNull();
-    expect(decodeDraggedEntry('null')).toBeNull();
-    expect(decodeDraggedEntry('"a"')).toBeNull();
-    expect(decodeDraggedEntry('{"id":"","title":"x"}')).toBeNull();
-    expect(decodeDraggedEntry('{"id":1,"title":"x"}')).toBeNull();
-    expect(decodeDraggedEntry('{"id":"a"}')).toBeNull();
+    expect(decodeDraggedEntries('')).toBeNull();
+    expect(decodeDraggedEntries('not json')).toBeNull();
+    expect(decodeDraggedEntries('null')).toBeNull();
+    expect(decodeDraggedEntries('[]')).toBeNull();
+    expect(decodeDraggedEntries('{"id":"a","title":"x"}')).toBeNull();
+    expect(decodeDraggedEntries('["a"]')).toBeNull();
+    expect(decodeDraggedEntries('[{"id":"","title":"x"}]')).toBeNull();
+    expect(decodeDraggedEntries('[{"id":1,"title":"x"}]')).toBeNull();
+    expect(decodeDraggedEntries('[{"id":"a","title":"x"},{"id":"b"}]')).toBeNull();
   });
 });
 
@@ -175,5 +181,53 @@ describe('tagLabel', () => {
     expect(tagLabel('Prêté')).toBe('Prêté');
     applyLanguage('fr');
     expect(tagLabel(READ_TAG)).toBe('Lu');
+  });
+});
+
+describe('seriesEntries', () => {
+  const library = [
+    entry('t10', { series: 'Astérix', volume: '10' }),
+    entry('hs', { series: 'asterix ', volume: null, title: 'Hors-série' }),
+    entry('t2', { series: 'Astérix', volume: '2' }),
+    entry('other', { series: 'Tintin', volume: '1' }),
+    entry('alone'),
+  ];
+
+  it('lists the series by natural volume order, ignoring case and accents, unnumbered last', () => {
+    expect(seriesEntries(library[0], library).map((e) => e.id)).toEqual(['t2', 't10', 'hs']);
+  });
+
+  it('is just the book when it has no series', () => {
+    expect(seriesEntries(library[4], library)).toEqual([library[4]]);
+  });
+});
+
+describe('bulk adding', () => {
+  beforeAll(() => applyLanguage('fr'));
+  afterAll(() => applyLanguage('en'));
+
+  const list: ReadingList = { id: 'l', name: 'Été', createdAt: '2024-01-01', entryIds: ['a'] };
+
+  it('sends only the books not in the list yet, cut to the room left', () => {
+    expect(bulkAddRequest(list, ['a', 'b', 'c', 'b'])).toEqual({ ids: ['b', 'c'], alreadyIn: 1, overLimit: 0 });
+    const almostFull = { ...list, entryIds: Array.from({ length: MAX_READING_LIST_SIZE - 1 }, (_, i) => `x${i}`) };
+    expect(bulkAddRequest(almostFull, ['b', 'c', 'd'])).toEqual({ ids: ['b'], alreadyIn: 0, overLimit: 2 });
+  });
+
+  it('sums up what was added and what was not', () => {
+    const request = { ids: ['b', 'c'], alreadyIn: 1, overLimit: 1 };
+    const result = { status: 'ok' as const, list, added: 2, alreadyIn: 0, overLimit: 0, missing: 0 };
+    expect(bulkAddFeedback(list, request, result)).toEqual({
+      message: `2 livres ajoutés à « Été » · 1 y était déjà · 1 non ajouté : la liste est pleine (${MAX_READING_LIST_SIZE} livres au maximum)`,
+      error: false,
+    });
+  });
+
+  it('is an error when nothing fit, or when the call was refused', () => {
+    expect(bulkAddFeedback(list, { ids: [], alreadyIn: 0, overLimit: 3 }, null).error).toBe(true);
+    expect(bulkAddFeedback(list, { ids: ['b'], alreadyIn: 0, overLimit: 0 }, { status: 'error', message: 'Non' })).toEqual({
+      message: 'Non',
+      error: true,
+    });
   });
 });

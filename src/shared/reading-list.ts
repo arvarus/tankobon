@@ -27,6 +27,16 @@ export interface ReadingList {
 export type ReadingListResult = { status: 'ok'; list: ReadingList } | { status: 'error'; message: string };
 
 /**
+ * Outcome of adding several books to a reading list at once (`readingLists.addEntries()`): the
+ * list as it now is, and how many of the requested books were added, were already in it, didn't
+ * fit under {@link MAX_READING_LIST_SIZE}, or are no longer in the library. Only an unknown list
+ * is an error: a list that fills up takes the books that fit, in the order given.
+ */
+export type ReadingListAddResult =
+  | { status: 'ok'; list: ReadingList; added: number; alreadyIn: number; overLimit: number; missing: number }
+  | { status: 'error'; message: string };
+
+/**
  * Outcome of reordering the reading lists themselves: every list in its new order, or a French
  * message when the order is stale (a list was created or deleted in the meantime).
  */
