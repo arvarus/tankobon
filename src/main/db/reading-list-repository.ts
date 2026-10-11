@@ -9,6 +9,7 @@ import { t } from '../../shared/i18n';
 import {
   MAX_READING_LIST_SIZE,
   type ReadingList,
+  type ReadingListAddResult,
   type ReadingListOrderResult,
   type ReadingListResult,
 } from '../../shared/reading-list';
@@ -150,6 +151,36 @@ export class ReadingListRepository {
       )
       .run(id, libraryId, id);
     return this.ok(id);
+  }
+
+  /**
+   * Puts several library entries at the end of a list, in the order given, in one transaction.
+   * Books already in the list stay where they are; once the list holds `MAX_READING_LIST_SIZE`
+   * books the remaining ones are left out (counted in `overLimit`), and ids no longer in the
+   * library are skipped (`missing`). Duplicates in `libraryIds` count once.
+   */
+  addEntries(id: string, libraryIds: string[]): ReadingListAddResult {
+    const list = this.get(id);
+    if (!list) {
+      return { status: 'error', message: t('errors:readingLists.notFound') };
+    }
+    const present = new Set(list.entryIds);
+    const exists = this.db.prepare('SELECT 1 FROM library WHERE id = ?');
+    const counts = { added: 0, alreadyIn: 0, overLimit: 0, missing: 0 };
+    const toAdd: string[] = [];
+    for (const libraryId of new Set(libraryIds)) {
+      if (present.has(libraryId)) counts.alreadyIn++;
+      else if (exists.get(libraryId) === undefined) counts.missing++;
+      else if (present.size + toAdd.length >= MAX_READING_LIST_SIZE) counts.overLimit++;
+      else toAdd.push(libraryId);
+    }
+    const insert = this.db.prepare(
+      `INSERT INTO reading_list_items (list_id, library_id, position)
+       SELECT ?, ?, COALESCE(MAX(position) + 1, 0) FROM reading_list_items WHERE list_id = ?`,
+    );
+    withTransaction(this.db, () => toAdd.forEach((libraryId) => insert.run(id, libraryId, id)));
+    counts.added = toAdd.length;
+    return { status: 'ok', list: this.get(id) ?? list, ...counts };
   }
 
   /** Takes a library entry out of a list; the book stays in the library. */

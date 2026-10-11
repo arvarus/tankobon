@@ -1,12 +1,18 @@
 /**
  * Pure reading-list logic for the renderer: which books count as finished, the list's progress,
  * the next book to read, the reordering rules (finished books stay where they are; the lists
- * themselves move freely), and the drag and drop of a library book onto a list.
+ * themselves move freely), the drag and drop of a library book onto a list, and adding several
+ * books at once (a whole series, or the library page's selection).
  * @module
  */
-import { t } from '@/shared/i18n';
+import { currentLanguage, t } from '@/shared/i18n';
 import { READ_TAG, type LibraryEntry } from '@/shared/library';
-import type { ReadingList, ReadingListResult } from '@/shared/reading-list';
+import {
+  MAX_READING_LIST_SIZE,
+  type ReadingList,
+  type ReadingListAddResult,
+  type ReadingListResult,
+} from '@/shared/reading-list';
 
 /** The library page's other quick tag, stored untranslated like {@link READ_TAG}. */
 export const TO_READ_TAG = 'À lire';
@@ -140,4 +146,69 @@ export function dropFeedback(list: ReadingList, entry: DraggedEntry, result: Rea
     return { message: t('lists:dropAlreadyIn', { title: entry.title, list: list.name }), error: false };
   }
   return { message: t('lists:dropAdded', { title: entry.title, list: list.name }), error: false };
+}
+
+/** How a series name is compared: trimmed, case and accents ignored ("Astérix" = "asterix "). */
+function seriesKey(series: string): string {
+  return series.trim().normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase();
+}
+
+/**
+ * Every library book of `entry`'s series, by volume (natural order: "2" before "10", books
+ * without a volume last), then title. Series names match ignoring case and accents. Just
+ * `[entry]` when it has no series.
+ */
+export function seriesEntries(entry: LibraryEntry, library: LibraryEntry[]): LibraryEntry[] {
+  if (!entry.series?.trim()) return [entry];
+  const key = seriesKey(entry.series);
+  const collator = new Intl.Collator(currentLanguage(), { numeric: true, sensitivity: 'base' });
+  return library
+    .filter((other) => other.series != null && seriesKey(other.series) === key)
+    .sort((a, b) => {
+      if (a.volume === null || b.volume === null) {
+        if (a.volume !== b.volume) return a.volume === null ? 1 : -1;
+      } else {
+        const byVolume = collator.compare(a.volume, b.volume);
+        if (byVolume !== 0) return byVolume;
+      }
+      return collator.compare(a.title, b.title);
+    });
+}
+
+/**
+ * What to send to `readingLists.addEntries()` to put `ids` in `list`: the books not already in
+ * it (as the renderer knows it), cut to the room left under {@link MAX_READING_LIST_SIZE}, so a
+ * selection of thousands of books stays a short call. The books already in the list and those
+ * cut off are counted here, to be merged with the call's answer by {@link bulkAddFeedback}.
+ */
+export interface BulkAddRequest {
+  ids: string[];
+  alreadyIn: number;
+  overLimit: number;
+}
+
+/** Prepares adding `ids` to `list`, in that order (duplicates count once); see {@link BulkAddRequest}. */
+export function bulkAddRequest(list: ReadingList, ids: readonly string[]): BulkAddRequest {
+  const present = new Set(list.entryIds);
+  const unique = [...new Set(ids)];
+  const fresh = unique.filter((id) => !present.has(id));
+  const room = Math.max(0, MAX_READING_LIST_SIZE - list.entryIds.length);
+  return { ids: fresh.slice(0, room), alreadyIn: unique.length - fresh.length, overLimit: Math.max(0, fresh.length - room) };
+}
+
+/**
+ * The message after adding several books to `list` at once: how many were added, then, when
+ * some weren't, how many were already in it and how many didn't fit (the list being full).
+ * `result` is `readingLists.addEntries()`'s answer, or null when there was nothing to send.
+ */
+export function bulkAddFeedback(list: ReadingList, request: BulkAddRequest, result: ReadingListAddResult | null): DropFeedback {
+  if (result?.status === 'error') return { message: result.message, error: true };
+  const added = result?.added ?? 0;
+  const alreadyIn = request.alreadyIn + (result?.alreadyIn ?? 0);
+  const overLimit = request.overLimit + (result?.overLimit ?? 0);
+  const parts = [t('lists:bulkAdded', { count: added, list: list.name })];
+  if (alreadyIn > 0) parts.push(t('lists:bulkAlreadyIn', { count: alreadyIn }));
+  if (overLimit > 0) parts.push(t('lists:bulkOverLimit', { count: overLimit, max: MAX_READING_LIST_SIZE }));
+  if (result && result.missing > 0) parts.push(t('lists:bulkMissing', { count: result.missing }));
+  return { message: parts.join(' · '), error: added === 0 && overLimit > 0 };
 }

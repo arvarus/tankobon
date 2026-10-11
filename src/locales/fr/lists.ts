@@ -38,6 +38,21 @@ const lists: Translation<typeof en> = {
   hideLists: 'Masquer les listes de lecture',
   dropAlreadyIn: '« {{title}} » est déjà dans « {{list}} ».',
   dropAdded: '« {{title}} » ajouté à « {{list}} ».',
+  selectedBooks_one: '{{count}} livre sélectionné',
+  selectedBooks_other: '{{count}} livres sélectionnés',
+  addWhat: 'Que faut-il ajouter ?',
+  thisBook: 'Ce livre',
+  wholeSeries_one: 'Toute la série « {{series}} » ({{count}} livre)',
+  wholeSeries_other: 'Toute la série « {{series}} » ({{count}} livres)',
+  someAlreadyIn: '{{count}} / {{total}} déjà dedans',
+  bulkAdded_one: '{{count}} livre ajouté à « {{list}} »',
+  bulkAdded_other: '{{count}} livres ajoutés à « {{list}} »',
+  bulkAlreadyIn_one: '{{count}} y était déjà',
+  bulkAlreadyIn_other: '{{count}} y étaient déjà',
+  bulkOverLimit_one: '{{count}} non ajouté : la liste est pleine ({{max}} livres au maximum)',
+  bulkOverLimit_other: '{{count}} non ajoutés : la liste est pleine ({{max}} livres au maximum)',
+  bulkMissing_one: '{{count}} n’est plus dans la bibliothèque',
+  bulkMissing_other: '{{count}} ne sont plus dans la bibliothèque',
 };
 
 export default lists;

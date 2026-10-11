@@ -26,6 +26,7 @@ import {
 } from '@/lib/library-filter';
 import { formatPageSize } from '@/lib/image-scan';
 import { creditRoleLabel } from '@/lib/metadata-review';
+import { selectedEntries, toggleSelection } from '@/lib/library-selection';
 import { encodeDraggedEntry, LIBRARY_ENTRY_DRAG_TYPE, tagLabel, TO_READ_TAG } from '@/lib/reading-list';
 import { currentLanguage } from '@/shared/i18n';
 import { LanguageFlag } from '@/components/language-flag';
@@ -64,11 +65,32 @@ function LibraryPage() {
   const [scanStatus, setScanStatus] = useState<string | null>(null);
   const [lookupEntry, setLookupEntry] = useState<LibraryEntry | null>(null);
   const [editEntry, setEditEntry] = useState<LibraryEntry | null>(null);
-  const [listEntry, setListEntry] = useState<LibraryEntry | null>(null);
+  const [listEntries, setListEntries] = useState<LibraryEntry[] | null>(null);
+  // Ids of the books ticked for a group action; kept across filter changes, so a selection can be
+  // built from several searches. `anchor` is the book ticked last, the start of a Shift-click range.
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const [anchor, setAnchor] = useState<string | null>(null);
   // The input follows the keystrokes; filtering and re-laying out the list can lag behind them.
   const deferredFilters = useDeferredValue(filters);
   const visible = useMemo(() => filterEntries(entries, deferredFilters), [entries, deferredFilters]);
   const tags = useMemo(() => availableTags(entries, QUICK_TAGS), [entries]);
+  const selection = useMemo(() => selectedEntries(selected, visible, entries), [selected, visible, entries]);
+  const shownSelected = visible.filter((entry) => selected.has(entry.id)).length;
+
+  const tick = (id: string, shift: boolean) => {
+    setSelected(toggleSelection(selected, visible.map((entry) => entry.id), id, anchor, shift));
+    setAnchor(id);
+  };
+
+  const tickAllShown = () => {
+    const next = new Set(selected);
+    const select = shownSelected < visible.length;
+    for (const entry of visible) {
+      if (select) next.add(entry.id);
+      else next.delete(entry.id);
+    }
+    setSelected(next);
+  };
 
   // Subscribed for the whole page's life rather than around each scan: the main process starts
   // sending progress as soon as the directory is picked, which is before `addFolder()` resolves.
@@ -175,6 +197,17 @@ function LibraryPage() {
         />
       )}
 
+      {visible.length > 0 && (
+        <SelectionBar
+          selectedCount={selection.length}
+          shownSelected={shownSelected}
+          shown={visible.length}
+          onToggleAll={tickAllShown}
+          onClear={() => setSelected(new Set())}
+          onAddToList={() => setListEntries(selection)}
+        />
+      )}
+
       {library === null ? null : entries.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('empty')}</p>
       ) : visible.length === 0 ? (
@@ -212,6 +245,15 @@ function LibraryPage() {
                 >
                   <GripVertical className="size-4" />
                 </div>
+                <input
+                  type="checkbox"
+                  checked={selected.has(entry.id)}
+                  // React derives a checkbox's change from its click, so the native event carries Shift.
+                  onChange={(event) => tick(entry.id, (event.nativeEvent as MouseEvent).shiftKey)}
+                  title={t('selectHint')}
+                  aria-label={t('selectNamed', { title: entry.title })}
+                  className="size-4 shrink-0 cursor-pointer"
+                />
                 <div
                   role="link"
                   tabIndex={-1}
@@ -288,7 +330,7 @@ function LibraryPage() {
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  onClick={() => setListEntry(entry)}
+                  onClick={() => setListEntries([entry])}
                   title={t('addToList')}
                   aria-label={t('addToList')}
                 >
@@ -323,7 +365,7 @@ function LibraryPage() {
         <MetadataDialog entry={lookupEntry} onClose={() => setLookupEntry(null)} onApplied={replaceEntry} />
       )}
       {editEntry && <BookEditDialog entry={editEntry} onClose={() => setEditEntry(null)} onSaved={replaceEntry} />}
-      {listEntry && <AddToListDialog entry={listEntry} onClose={() => setListEntry(null)} />}
+      {listEntries && <AddToListDialog entries={listEntries} onClose={() => setListEntries(null)} />}
       {confirmDialog}
     </div>
   );
@@ -545,6 +587,57 @@ function LibraryToolbar({
 
       {active && (
         <p className="text-xs text-muted-foreground">{t('shownOf', { shown, total })}</p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Above the list: a checkbox ticking every book shown (or none), and, once books are selected,
+ * their count and the group actions (add them to a reading list, clear the selection).
+ */
+function SelectionBar({
+  selectedCount,
+  shownSelected,
+  shown,
+  onToggleAll,
+  onClear,
+  onAddToList,
+}: {
+  selectedCount: number;
+  shownSelected: number;
+  shown: number;
+  onToggleAll: () => void;
+  onClear: () => void;
+  onAddToList: () => void;
+}) {
+  const { t } = useTranslation('library');
+  const all = shownSelected === shown;
+  return (
+    <div className="flex min-h-8 flex-wrap items-center gap-2 px-3 text-sm">
+      <label className="flex cursor-pointer items-center gap-2 text-muted-foreground">
+        <input
+          type="checkbox"
+          checked={all}
+          ref={(input) => {
+            if (input) input.indeterminate = shownSelected > 0 && !all;
+          }}
+          onChange={onToggleAll}
+          className="size-4"
+        />
+        {selectedCount === 0 ? t('selectAllShown', { count: shown }) : t('selectedCount', { count: selectedCount })}
+      </label>
+      {selectedCount > 0 && (
+        <>
+          <Button variant="outline" size="sm" onClick={onAddToList}>
+            <ListPlus />
+            {t('addSelectionToList')}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onClear}>
+            <X />
+            {t('clearSelection')}
+          </Button>
+        </>
       )}
     </div>
   );
