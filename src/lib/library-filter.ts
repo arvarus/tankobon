@@ -29,7 +29,7 @@ export const EMPTY_FILTERS: LibraryFilters = { search: '', tags: [], rating: 'al
  * quick tags) are listed ahead of the rest even when nothing carries them yet, so "Lu"/"À lire"
  * keep a stable position instead of appearing and moving as entries get tagged.
  */
-export function availableTags(entries: LibraryEntry[], first: string[] = []): string[] {
+export function availableTags(entries: LibraryEntry[], first: readonly string[] = []): string[] {
   const rest = new Set<string>();
   for (const entry of entries) {
     for (const tag of entry.tags) {

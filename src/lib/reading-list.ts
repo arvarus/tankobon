@@ -17,6 +17,14 @@ import {
 /** The library page's other quick tag, stored untranslated like {@link READ_TAG}. */
 export const TO_READ_TAG = 'À lire';
 
+/** The tags always offered as one-click toggles on a book row and in the library's tag filter; any other tag is free-form. */
+export const QUICK_TAGS: readonly string[] = [READ_TAG, TO_READ_TAG];
+
+/** `tags` with `tag` added at the end, or taken out when already there: what a click on a tag toggle stores. */
+export function toggleTag(tags: readonly string[], tag: string): string[] {
+  return tags.includes(tag) ? tags.filter((t) => t !== tag) : [...tags, tag];
+}
+
 /**
  * How a tag is shown: the quick tags ({@link READ_TAG}, {@link TO_READ_TAG}) get their label in
  * the current language, any other tag is the user's own text.

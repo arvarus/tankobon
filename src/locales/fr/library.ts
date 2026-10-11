@@ -64,6 +64,7 @@ const library: Translation<typeof en> = {
   rate_one: 'Noter {{count}} étoile',
   rate_other: 'Noter {{count}} étoiles',
   removeTag: "Retirer l'étiquette {{tag}}",
+  toggleTag: 'Étiquette {{tag}}',
   newTag: '+ étiquette',
   searchPlaceholder: 'Rechercher un album, une série, un auteur…',
   searchLabel: 'Rechercher un album',

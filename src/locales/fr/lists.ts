@@ -32,6 +32,8 @@ const lists: Translation<typeof en> = {
   read: 'Lire',
   moveUp: 'Monter',
   moveDown: 'Descendre',
+  dragHint: 'Glisser pour déplacer le livre dans la liste',
+  dragHandle: 'Déplacer « {{title}} » dans la liste',
   removeFromList: 'Retirer de la liste',
   full: 'Liste pleine ({{max}} livres au maximum)',
   showLists: 'Afficher les listes de lecture',

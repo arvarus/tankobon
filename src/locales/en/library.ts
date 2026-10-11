@@ -62,6 +62,7 @@ export default {
   rate_one: 'Rate {{count}} star',
   rate_other: 'Rate {{count}} stars',
   removeTag: 'Remove the tag {{tag}}',
+  toggleTag: 'Tag {{tag}}',
   newTag: '+ tag',
   searchPlaceholder: 'Search an album, a series, an author…',
   searchLabel: 'Search an album',
