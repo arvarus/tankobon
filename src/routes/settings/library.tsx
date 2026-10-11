@@ -9,8 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useOrganizationOffer } from '@/hooks/use-organization-offer';
 import { useSettings } from '@/hooks/use-settings';
-import { levelChoices, setLevel, structureExample } from '@/lib/library-structure';
+import { fileNameExample, levelChoices, setLevel, structureExample } from '@/lib/library-structure';
 import { cn } from '@/lib/utils';
+import { FILE_NAME_FIELDS, MAX_FILE_NAME_TEMPLATE_LENGTH, fileNameTemplateError } from '@/shared/file-name-template';
 import type { ScanProgress } from '@/shared/library';
 import {
   MAX_LIBRARY_LEVELS,
@@ -195,6 +196,7 @@ function LibrarySettingsPage() {
           </Button>
         </div>
         <StructureEditor disabled={resyncing} />
+        <FileNameEditor disabled={resyncing} />
         <p className="text-sm text-muted-foreground">{t('organizeAllHint')}</p>
         <div>
           <Button
@@ -242,7 +244,7 @@ function StructureEditor({ disabled }: { disabled: boolean }) {
     if (isLibraryStructure(next)) update('libraryStructure', next);
   };
 
-  const example = structureExample(draft);
+  const example = structureExample(draft, settings.libraryFileName);
 
   return (
     <div className="flex flex-col gap-2">
@@ -277,6 +279,57 @@ function StructureEditor({ disabled }: { disabled: boolean }) {
         </p>
       )}
       <p className="text-sm text-muted-foreground">{t('structureHint')}</p>
+    </div>
+  );
+}
+
+/**
+ * The file name template: a text field saved as it is typed, as long as it is valid; an invalid one
+ * (a `/`, an unknown field) stays a local draft, with its error, until it is fixed.
+ */
+function FileNameEditor({ disabled }: { disabled: boolean }) {
+  const { t } = useTranslation('settings', { keyPrefix: 'library' });
+  const { settings, update } = useSettings();
+  const [draft, setDraft] = useState(settings.libraryFileName);
+  // Follows a change of the setting made elsewhere, like the tree above.
+  const [stored, setStored] = useState(settings.libraryFileName);
+  if (stored !== settings.libraryFileName) {
+    setStored(settings.libraryFileName);
+    setDraft(settings.libraryFileName);
+  }
+
+  const change = (value: string) => {
+    setDraft(value);
+    if (fileNameTemplateError(value) === null) update('libraryFileName', value);
+  };
+
+  const error = fileNameTemplateError(draft);
+  const fields = FILE_NAME_FIELDS.map((field) => `{${field}}`).join(' ');
+
+  return (
+    <div className="flex flex-col gap-2">
+      <label htmlFor="library-file-name" className="text-sm">
+        {t('fileName')}
+      </label>
+      <input
+        id="library-file-name"
+        type="text"
+        spellCheck={false}
+        autoComplete="off"
+        maxLength={MAX_FILE_NAME_TEMPLATE_LENGTH}
+        placeholder={t('fileNamePlaceholder')}
+        className="w-full max-w-md rounded-md border bg-background px-3 py-1.5 font-mono text-sm"
+        value={draft}
+        disabled={disabled}
+        aria-invalid={error !== null}
+        onChange={(event) => change(event.target.value)}
+      />
+      {error ? (
+        <p className="text-sm text-destructive">{t(`fileNameErrors.${error}`, { fields })}</p>
+      ) : (
+        <p className="text-sm text-muted-foreground">{t('structureExample', { path: fileNameExample(draft) })}</p>
+      )}
+      <p className="text-sm text-muted-foreground">{t('fileNameHint', { fields })}</p>
     </div>
   );
 }

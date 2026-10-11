@@ -2,6 +2,7 @@
  * Settings types shared between the main process and the renderer (via preload).
  * @module
  */
+import { isFileNameTemplate } from './file-name-template';
 import { isSupportedLanguage, type LanguageSetting } from './i18n';
 
 /** Modes of the library organization (see {@link AppSettings.libraryOrganization}). */
@@ -113,6 +114,13 @@ export interface AppSettings {
    * itself: "Organiser toute la bibliothèque…" moves the comics to their new place.
    */
   libraryStructure: LibraryLevel[];
+  /**
+   * Name given to the files the organization moves, without the extension: text with `{series}`,
+   * `{volume}`, `{title}`, `{year}` and `{author}` fields (see `fillFileNameTemplate()`), for example
+   * `{series} - T{volume} - {title}`. Empty (the default), a file keeps its original name. Like
+   * `libraryStructure`, changing it renames nothing by itself.
+   */
+  libraryFileName: string;
   /** Folder last added with "Ajouter un dossier…" (empty before the first one): where the next folder dialog opens. */
   lastScanFolder: string;
 }
@@ -144,6 +152,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   libraryOrganization: 'off',
   libraryOrganizationFolder: '',
   libraryStructure: [],
+  libraryFileName: '',
 };
 
 /** A reader background preset; its label is the `settings:appearance.backgrounds.<name>` translation. */
@@ -202,6 +211,7 @@ export const SETTING_VALIDATORS: SettingValidators = {
   libraryOrganization: (value): value is LibraryOrganization => value === 'off' || value === 'ask' || value === 'always',
   libraryOrganizationFolder: isString,
   libraryStructure: isLibraryStructure,
+  libraryFileName: isFileNameTemplate,
 };
 
 /**
