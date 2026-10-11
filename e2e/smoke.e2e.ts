@@ -54,7 +54,8 @@ test('continuous mode follows the scroll and saves the progress', async () => {
 
   // Pages load as they come near, and change height when they do: keep scrolling to the bottom
   // until the last page is the one crossing the middle of the window, and its progress is saved.
-  const scroller = page.locator('div.overflow-y-auto');
+  // By its role, not its Tailwind classes, which change with the layout.
+  const scroller = page.getByRole('region', { name: 'Pages' });
   await expect(async () => {
     await scroller.evaluate((element) => element.scrollTo({ top: element.scrollHeight }));
     await expect(page.getByText('4 / 4')).toBeVisible({ timeout: 500 });

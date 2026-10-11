@@ -28,4 +28,5 @@ export default {
   pageAlt: 'Page {{page}}',
   previousPage: 'Previous page',
   nextPage: 'Next page',
+  pages: 'Pages',
 };
