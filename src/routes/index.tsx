@@ -559,7 +559,7 @@ function ViewModePicker({ view, onChange }: { view: LibraryView; onChange: (view
     { value: 'compact', Icon: Rows3, label: t('viewCompact') },
   ] as const;
   return (
-    <div role="group" aria-label={t('viewMode')} className="flex items-center gap-0.5 rounded-md border p-0.5">
+    <div role="group" aria-label={t('viewMode')} className="flex h-9 items-center gap-0.5 rounded-md border p-px">
       {modes.map(({ value, Icon, label }) => (
         <Button
           key={value}
@@ -587,7 +587,7 @@ function RatingFilterPicker({
 }) {
   const { t } = useTranslation('library');
   return (
-    <div className="flex items-center gap-1 rounded-md border px-2 py-1">
+    <div className="flex h-9 items-center gap-1 rounded-md border px-2">
       <span className="text-xs text-muted-foreground">{t('ratingFilter')}</span>
       {[1, 2, 3, 4, 5].map((value) => (
         <button
