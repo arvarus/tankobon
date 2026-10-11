@@ -23,6 +23,8 @@ export interface AppSettings {
    * `medium` (cover, title, series and volume, progress) or `compact` (title, volume and series only).
    */
   libraryView: 'full' | 'medium' | 'compact';
+  /** Whether the library list is grouped by series, each series behind a heading that can be folded. */
+  libraryGroupBySeries: boolean;
   /** Whether the sidebar is collapsed to an icon-only rail. */
   sidebarCollapsed: boolean;
   /** Mouse/trackpad wheel direction in the reader: scrolling down advances or retreats a page. */
@@ -72,6 +74,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   readingDirection: 'ltr',
   addOpenedBooksToLibrary: true,
   libraryView: 'full',
+  libraryGroupBySeries: false,
   sidebarCollapsed: false,
   scrollDirection: 'standard',
   readingMode: 'single',
@@ -125,6 +128,7 @@ export const SETTING_VALIDATORS: SettingValidators = {
   addOpenedBooksToLibrary: isBoolean,
   libraryView: (value): value is AppSettings['libraryView'] =>
     value === 'full' || value === 'medium' || value === 'compact',
+  libraryGroupBySeries: isBoolean,
   sidebarCollapsed: isBoolean,
   scrollDirection: (value): value is AppSettings['scrollDirection'] => value === 'standard' || value === 'inverted',
   readingMode: (value): value is AppSettings['readingMode'] => value === 'single' || value === 'continuous',
