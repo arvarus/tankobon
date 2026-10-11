@@ -103,27 +103,36 @@ export function moveItem<T>(items: readonly T[], from: number, to: number): T[] 
  */
 export const LIBRARY_ENTRY_DRAG_TYPE = 'application/x-tankobon-entry';
 
-/** What a dragged library book carries: its id, and its title for the confirmation message. */
+/** What each dragged library book carries: its id, and its title for the confirmation message. */
 export interface DraggedEntry {
   id: string;
   title: string;
 }
 
-/** Encodes a dragged book for `DataTransfer.setData()` under {@link LIBRARY_ENTRY_DRAG_TYPE}. */
-export function encodeDraggedEntry(entry: DraggedEntry): string {
-  return JSON.stringify({ id: entry.id, title: entry.title });
+/**
+ * Encodes the dragged books (one, or the library page's selection) for `DataTransfer.setData()`
+ * under {@link LIBRARY_ENTRY_DRAG_TYPE}.
+ */
+export function encodeDraggedEntries(entries: readonly DraggedEntry[]): string {
+  return JSON.stringify(entries.map((entry) => ({ id: entry.id, title: entry.title })));
 }
 
 /**
- * Decodes what {@link encodeDraggedEntry} wrote; null for anything else (the data comes from a
- * drag, which another app could have started with the same type).
+ * Decodes what {@link encodeDraggedEntries} wrote; null for anything else, or for no book (the
+ * data comes from a drag, which another app could have started with the same type).
  */
-export function decodeDraggedEntry(data: string): DraggedEntry | null {
+export function decodeDraggedEntries(data: string): DraggedEntry[] | null {
   try {
     const parsed: unknown = JSON.parse(data);
-    if (typeof parsed !== 'object' || parsed === null) return null;
-    const { id, title } = parsed as Record<string, unknown>;
-    return typeof id === 'string' && id !== '' && typeof title === 'string' ? { id, title } : null;
+    if (!Array.isArray(parsed) || parsed.length === 0) return null;
+    const entries: DraggedEntry[] = [];
+    for (const item of parsed as unknown[]) {
+      if (typeof item !== 'object' || item === null) return null;
+      const { id, title } = item as Record<string, unknown>;
+      if (typeof id !== 'string' || id === '' || typeof title !== 'string') return null;
+      entries.push({ id, title });
+    }
+    return entries;
   } catch {
     return null;
   }

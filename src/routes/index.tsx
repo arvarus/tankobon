@@ -27,8 +27,8 @@ import {
 import { formatPageSize } from '@/lib/image-scan';
 import { groupBySeries, ungroupedRows, type SeriesHeaderRow } from '@/lib/library-groups';
 import { creditRoleLabel } from '@/lib/metadata-review';
-import { selectedEntries, toggleSelection } from '@/lib/library-selection';
-import { encodeDraggedEntry, LIBRARY_ENTRY_DRAG_TYPE, tagLabel, TO_READ_TAG } from '@/lib/reading-list';
+import { draggedEntries, selectedEntries, toggleSelection } from '@/lib/library-selection';
+import { encodeDraggedEntries, LIBRARY_ENTRY_DRAG_TYPE, tagLabel, TO_READ_TAG } from '@/lib/reading-list';
 import { currentLanguage } from '@/shared/i18n';
 import { LanguageFlag } from '@/components/language-flag';
 import { languageCountry } from '@/lib/language-flag';
@@ -267,19 +267,24 @@ function LibraryPage() {
             >
               <div className="flex items-center gap-3">
                 {/* Only the grip drags the book onto a reading list of the sidebar; the rest of the
-                    row opens it. The whole row is the drag image, so the user sees what is carried. */}
+                    row opens it. A selected book carries the whole selection with it. The whole row
+                    is the drag image (or a "N books" label for several), so the user sees what is carried. */}
                 <div
                   draggable
                   onDragStart={(event) => {
-                    event.dataTransfer.setData(LIBRARY_ENTRY_DRAG_TYPE, encodeDraggedEntry(entry));
+                    const carried = draggedEntries(entry, selection);
+                    event.dataTransfer.setData(LIBRARY_ENTRY_DRAG_TYPE, encodeDraggedEntries(carried));
                     // 'move', like the app's other drags, so the OS shows the same pointer (not the
                     // copy one with a "+"), even though the book stays in the library.
                     event.dataTransfer.effectAllowed = 'move';
-                    const row = event.currentTarget.closest('li');
-                    if (row) event.dataTransfer.setDragImage(row, 0, 0);
+                    if (carried.length > 1) setCountDragImage(event.dataTransfer, t('dragCount', { count: carried.length }));
+                    else {
+                      const row = event.currentTarget.closest('li');
+                      if (row) event.dataTransfer.setDragImage(row, 0, 0);
+                    }
                   }}
                   className="-ml-1 shrink-0 cursor-grab rounded-sm py-2 text-muted-foreground/60 hover:bg-accent hover:text-foreground active:cursor-grabbing"
-                  title={t('dragHint')}
+                  title={t(selected.has(entry.id) && selection.length > 1 ? 'dragSelectionHint' : 'dragHint')}
                   aria-label={t('dragHandle', { title: entry.title })}
                 >
                   <GripVertical className="size-4" />
@@ -451,6 +456,20 @@ function SeriesHeader({
       </button>
     </li>
   );
+}
+
+/**
+ * Shows `label` (e.g. "3 books") under the pointer while several books are dragged: a row alone
+ * would look like one book. The element only has to exist when the browser snapshots it, at the
+ * start of the drag, so it is removed right after.
+ */
+function setCountDragImage(dataTransfer: DataTransfer, label: string): void {
+  const badge = document.createElement('div');
+  badge.textContent = label;
+  badge.className = 'fixed -top-96 left-0 rounded-md border bg-background px-3 py-1.5 text-sm font-medium shadow-md';
+  document.body.append(badge);
+  dataTransfer.setDragImage(badge, 0, 0);
+  setTimeout(() => badge.remove());
 }
 
 /** "Series · Vol. 3": what the medium and compact views show under or next to the title. */

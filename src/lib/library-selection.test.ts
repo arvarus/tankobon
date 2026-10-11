@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { LibraryEntry } from '@/shared/library';
 
-import { selectedEntries, toggleSelection } from './library-selection';
+import { draggedEntries, selectedEntries, toggleSelection } from './library-selection';
 
 const order = ['a', 'b', 'c', 'd', 'e'];
 
@@ -45,5 +45,18 @@ describe('selectedEntries', () => {
 
   it('is empty without a selection', () => {
     expect(selectedEntries(new Set(), library, library)).toEqual([]);
+  });
+});
+
+describe('draggedEntries', () => {
+  const [a, b, c] = ['a', 'b', 'c'].map((id) => ({ id }) as LibraryEntry);
+
+  it('carries the whole selection from a selected book', () => {
+    expect(draggedEntries(b, [a, b])).toEqual([a, b]);
+  });
+
+  it('carries only an unselected book', () => {
+    expect(draggedEntries(c, [a, b])).toEqual([c]);
+    expect(draggedEntries(c, [])).toEqual([c]);
   });
 });

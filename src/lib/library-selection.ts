@@ -1,7 +1,7 @@
 /**
  * Pure logic of the library page's multiple selection: which books a click on a row's checkbox
- * selects (one, or a range with Shift), and the order the selected books are added to a reading
- * list in.
+ * selects (one, or a range with Shift), the order the selected books are added to a reading
+ * list in, and which books a drag carries.
  * @module
  */
 import type { LibraryEntry } from '@/shared/library';
@@ -45,4 +45,13 @@ export function selectedEntries(
   const shown = visible.filter((entry) => selected.has(entry.id));
   const shownIds = new Set(shown.map((entry) => entry.id));
   return [...shown, ...library.filter((entry) => selected.has(entry.id) && !shownIds.has(entry.id))];
+}
+
+/**
+ * The books a drag from the grip of `entry` carries: the whole selection when `entry` is part of
+ * it, otherwise `entry` alone (as in a file manager, dragging an unselected item leaves the
+ * selection out). `selection` is in display order, see {@link selectedEntries}.
+ */
+export function draggedEntries(entry: LibraryEntry, selection: readonly LibraryEntry[]): LibraryEntry[] {
+  return selection.some((selected) => selected.id === entry.id) ? [...selection] : [entry];
 }

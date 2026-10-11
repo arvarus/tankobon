@@ -8,9 +8,9 @@ import { MAX_READING_LIST_SIZE, type ReadingList } from '@/shared/reading-list';
 import {
   bulkAddFeedback,
   bulkAddRequest,
-  decodeDraggedEntry,
+  decodeDraggedEntries,
   dropFeedback,
-  encodeDraggedEntry,
+  encodeDraggedEntries,
   isFinished,
   listEntries,
   listProgress,
@@ -123,19 +123,22 @@ describe('moveItem', () => {
 });
 
 describe('dragged entry encoding', () => {
-  it('round-trips a book', () => {
-    const book = { id: 'a', title: 'Blacksad « T1 »' };
-    expect(decodeDraggedEntry(encodeDraggedEntry(book))).toEqual(book);
+  it('round-trips one book or several', () => {
+    const books = [{ id: 'a', title: 'Blacksad « T1 »' }, { id: 'b', title: 'Blacksad « T2 »' }];
+    expect(decodeDraggedEntries(encodeDraggedEntries(books.slice(0, 1)))).toEqual(books.slice(0, 1));
+    expect(decodeDraggedEntries(encodeDraggedEntries(books))).toEqual(books);
   });
 
   it('rejects anything else', () => {
-    expect(decodeDraggedEntry('')).toBeNull();
-    expect(decodeDraggedEntry('not json')).toBeNull();
-    expect(decodeDraggedEntry('null')).toBeNull();
-    expect(decodeDraggedEntry('"a"')).toBeNull();
-    expect(decodeDraggedEntry('{"id":"","title":"x"}')).toBeNull();
-    expect(decodeDraggedEntry('{"id":1,"title":"x"}')).toBeNull();
-    expect(decodeDraggedEntry('{"id":"a"}')).toBeNull();
+    expect(decodeDraggedEntries('')).toBeNull();
+    expect(decodeDraggedEntries('not json')).toBeNull();
+    expect(decodeDraggedEntries('null')).toBeNull();
+    expect(decodeDraggedEntries('[]')).toBeNull();
+    expect(decodeDraggedEntries('{"id":"a","title":"x"}')).toBeNull();
+    expect(decodeDraggedEntries('["a"]')).toBeNull();
+    expect(decodeDraggedEntries('[{"id":"","title":"x"}]')).toBeNull();
+    expect(decodeDraggedEntries('[{"id":1,"title":"x"}]')).toBeNull();
+    expect(decodeDraggedEntries('[{"id":"a","title":"x"},{"id":"b"}]')).toBeNull();
   });
 });
 
