@@ -21,7 +21,12 @@ import type { LibraryRepository } from '../db/library-repository';
 import type { SettingsRepository } from '../db/settings-repository';
 import type { DecoderClient } from '../decoder/decoder-client';
 import type { ImageStatsScanner } from '../services/image-stats-scanner';
-import { organizeEntries, planOrganization, unorganizedIds } from '../services/library-organizer';
+import {
+  organizeEntries,
+  planOrganization,
+  unorganizedIds,
+  type OrganizationTarget,
+} from '../services/library-organizer';
 import { openErrorMessage } from '../services/open-error';
 import { scanIntoLibrary } from '../services/library-scanner';
 import { resyncLibrary } from '../services/library-sync';
@@ -154,22 +159,27 @@ export function createLibraryOrganizer(
   const lock = createLibraryRunLock();
 
   const current = () => {
-    const { libraryOrganization: mode, libraryOrganizationFolder: root } = settings.getAll();
-    return { mode, root };
+    const { libraryOrganization: mode, libraryOrganizationFolder: root, libraryStructure: structure } =
+      settings.getAll();
+    return { mode, root, structure };
   };
 
   /** The organized folder when the organization is on and its folder is there, else the error to return. */
-  const usableRoot = async (): Promise<{ root: string } | { status: 'error'; message: string }> => {
-    const { mode, root } = current();
+  const usableRoot = async (): Promise<{ target: OrganizationTarget } | { status: 'error'; message: string }> => {
+    const { mode, root, structure } = current();
     if (mode === 'off' || root === '') return { status: 'error', message: t('errors:library.organizationOff') };
     if (!(await isDirectory(root))) {
       return { status: 'error', message: t('errors:library.organizationFolderUnreachable', { folder: root }) };
     }
-    return { root };
+    return { target: { root, structure } };
   };
 
-  const move = async (root: string, ids: string[], onProgress?: (processed: number, total: number, file: string) => void) => {
-    const summary = await organizeEntries(repo, root, ids, onProgress);
+  const move = async (
+    target: OrganizationTarget,
+    ids: string[],
+    onProgress?: (processed: number, total: number, file: string) => void,
+  ) => {
+    const summary = await organizeEntries(repo, target, ids, onProgress);
     if (summary.moved.length > 0) {
       notify({ scope: 'library' });
       // Covers are cached by path: the old ones are useless, the new ones come back on demand.
@@ -185,14 +195,14 @@ export function createLibraryOrganizer(
     },
 
     async afterAdd(added) {
-      const { mode, root } = current();
+      const { mode, root, structure } = current();
       const plan = planOrganization(mode, root, added);
       if (plan.now.length === 0 && plan.offer.length === 0) return NOTHING_ORGANIZED;
       if (!(await isDirectory(root))) {
         // An unplugged drive: nothing moves, and offering would only fail again.
         return { moved: 0, failed: plan.now.length + plan.offer.length, pending: null };
       }
-      const { moved, failed } = await move(root, plan.now);
+      const { moved, failed } = await move({ root, structure }, plan.now);
       if (plan.offer.length === 0) return { moved, failed, pending: null };
 
       const token = randomUUID();
@@ -208,24 +218,24 @@ export function createLibraryOrganizer(
       const ids = offers.get(token);
       if (!ids) return { status: 'error', message: t('errors:library.organizationExpired') };
       const usable = await usableRoot();
-      if (!('root' in usable)) return usable;
+      if (!('target' in usable)) return usable;
       offers.delete(token);
-      return { status: 'ok', ...(await move(usable.root, ids)) };
+      return { status: 'ok', ...(await move(usable.target, ids)) };
     },
 
     async countUnorganized() {
       const usable = await usableRoot();
-      if (!('root' in usable)) return usable;
-      return { status: 'ok', count: unorganizedIds(repo, usable.root).length, folder: usable.root };
+      if (!('target' in usable)) return usable;
+      return { status: 'ok', count: unorganizedIds(repo, usable.target).length, folder: usable.target.root };
     },
 
     async organizeAll(onProgress = () => undefined) {
       const usable = await usableRoot();
-      if (!('root' in usable)) return usable;
+      if (!('target' in usable)) return usable;
       if (!lock.tryStart('organize')) return { status: 'error', message: lock.busyMessage() };
       try {
-        const ids = unorganizedIds(repo, usable.root);
-        const result = await move(usable.root, ids, (processed, total, currentFile) =>
+        const ids = unorganizedIds(repo, usable.target);
+        const result = await move(usable.target, ids, (processed, total, currentFile) =>
           onProgress({ phase: 'importing', processed, total, currentFile }),
         );
         return { status: 'ok', ...result };

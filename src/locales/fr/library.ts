@@ -14,9 +14,11 @@ const library: Translation<typeof en> = {
   organizeMoved_other: '{{count}} déplacées dans le dossier organisé',
   organizeFailed_one: "{{count}} n'a pas pu être déplacée",
   organizeFailed_other: "{{count}} n'ont pas pu être déplacées",
+  // Folder of the organized library for a comic with no year or author (see AppSettings.libraryStructure).
+  organizationUnknown: 'Inconnu',
   organizeConfirmTitle: 'Organiser ces BD ?',
-  organizeConfirm_one: 'Déplacer la BD ajoutée dans {{folder}}, dans son propre sous-dossier ? Le fichier quitte son emplacement actuel.',
-  organizeConfirm_other: 'Déplacer les {{count}} BD ajoutées dans {{folder}}, chacune dans son propre sous-dossier ? Les fichiers quittent leur emplacement actuel.',
+  organizeConfirm_one: 'Déplacer la BD ajoutée dans {{folder}} ? Le fichier quitte son emplacement actuel.',
+  organizeConfirm_other: 'Déplacer les {{count}} BD ajoutées dans {{folder}} ? Les fichiers quittent leur emplacement actuel.',
   organizeConfirmAction: 'Déplacer',
   scanSkipped_one: '{{count}} déjà présente',
   scanSkipped_other: '{{count}} déjà présentes',

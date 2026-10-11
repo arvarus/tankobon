@@ -4,16 +4,23 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { applyLanguage } from '../../shared/i18n';
+import type { Credit } from '../../shared/library';
 import { LibraryRepository } from '../db/library-repository';
 import { migrate } from '../db/schema';
 import {
   MAX_NAME_BYTES,
+  letterFolderName,
   moveFile,
   organizedFolderName,
   organizedPath,
+  organizedPaths,
   organizeEntries,
   planOrganization,
+  safeFolderName,
+  structureFolders,
   unorganizedIds,
+  type OrganizedEntry,
 } from './library-organizer';
 
 const roots: string[] = [];
@@ -48,6 +55,9 @@ function repository(): LibraryRepository {
 }
 
 const ID = '3f2a9c1e-0000-4000-8000-000000000001';
+
+/** The default layout, one subfolder per comic, in `root`. */
+const flat = (root: string) => ({ root, structure: [] });
 
 describe('organizedFolderName', () => {
   it('is the file name without its extension, then the id', () => {
@@ -100,9 +110,9 @@ describe('organizeEntries', () => {
     const id = repo.idOfPath(from)!;
     repo.updateTags(id, ['Lu']);
 
-    const summary = await organizeEntries(repo, target, [id]);
+    const summary = await organizeEntries(repo, flat(target), [id]);
 
-    const to = organizedPath(target, from, id);
+    const to = summary.moved[0]?.to;
     expect(to).toBe(path.join(target, `Tome 1 (${id})`, 'Tome 1.cbz'));
     expect(summary).toEqual({ moved: [{ id, from, to }], failed: 0 });
     expect(await exists(to)).toBe(true);
@@ -118,7 +128,7 @@ describe('organizeEntries', () => {
     repo.register('/nowhere/gone.cbz', 'gone', 1, 1, 1);
     const gone = repo.idOfPath('/nowhere/gone.cbz')!;
 
-    const first = await organizeEntries(repo, target, [gone, 'unknown-id']);
+    const first = await organizeEntries(repo, flat(target), [gone, 'unknown-id']);
     expect(first).toEqual({ moved: [], failed: 1 });
     expect(repo.get(gone)?.path).toBe('/nowhere/gone.cbz');
   });
@@ -130,8 +140,8 @@ describe('organizeEntries', () => {
     repo.register(from, 'a', 1, 1, 1);
     const id = repo.idOfPath(from)!;
 
-    await organizeEntries(repo, target, [id]);
-    const again = await organizeEntries(repo, target, [id]);
+    await organizeEntries(repo, flat(target), [id]);
+    const again = await organizeEntries(repo, flat(target), [id]);
 
     expect(again).toEqual({ moved: [], failed: 0 });
     expect(repo.get(id)?.path).toBe(path.join(target, `a (${id})`, 'a.cbz'));
@@ -167,12 +177,148 @@ describe('unorganizedIds', () => {
     for (const name of ['a.cbz', 'b.cbz']) repo.register(path.join(source, name), name, 1, 1, 1);
     const a = repo.idOfPath(path.join(source, 'a.cbz'))!;
     const b = repo.idOfPath(path.join(source, 'b.cbz'))!;
-    expect(unorganizedIds(repo, target).sort()).toEqual([a, b].sort());
+    expect(unorganizedIds(repo, flat(target)).sort()).toEqual([a, b].sort());
 
     const progress: [number, number][] = [];
-    await organizeEntries(repo, target, [a], (processed, total) => progress.push([processed, total]));
+    await organizeEntries(repo, flat(target), [a], (processed, total) => progress.push([processed, total]));
 
     expect(progress).toEqual([[0, 1]]);
-    expect(unorganizedIds(repo, target)).toEqual([b]);
+    expect(unorganizedIds(repo, flat(target))).toEqual([b]);
+  });
+});
+
+function credit(firstName: string, lastName: string, role: Credit['role']): Credit {
+  return { personId: `${firstName}-${lastName}`, firstName, lastName, role };
+}
+
+function entry(fields: Partial<OrganizedEntry> = {}): OrganizedEntry {
+  return {
+    id: ID,
+    path: '/comics/Tintin au Tibet.cbz',
+    title: 'Tintin au Tibet',
+    series: 'Tintin',
+    releaseDate: '1960-01',
+    credits: [credit('', 'Hergé', 'writer')],
+    ...fields,
+  };
+}
+
+describe('safeFolderName', () => {
+  it('replaces the characters Windows refuses and trims the ends', () => {
+    expect(safeFolderName(' AC/DC: "Live"? <1>. ')).toBe('AC_DC_ _Live__ _1_');
+  });
+
+  it('suffixes a reserved device name', () => {
+    expect(safeFolderName('Con')).toBe('Con_');
+    expect(safeFolderName('lpt1.txt')).toBe('lpt1.txt_');
+  });
+
+  it('cuts a long name to fit the OS limit', () => {
+    expect(Buffer.byteLength(safeFolderName('é'.repeat(300)))).toBeLessThanOrEqual(MAX_NAME_BYTES);
+  });
+
+  it('falls back to the translated "Unknown"', () => {
+    applyLanguage('fr');
+    try {
+      expect(safeFolderName(' .. ')).toBe('Inconnu');
+    } finally {
+      applyLanguage('en');
+    }
+    expect(safeFolderName('')).toBe('Unknown');
+  });
+});
+
+describe('letterFolderName', () => {
+  it('takes the first letter, upper-cased and without its accent', () => {
+    expect(letterFolderName('astérix')).toBe('A');
+    expect(letterFolderName('Élise')).toBe('E');
+  });
+
+  it('keeps a digit and uses # for anything else', () => {
+    expect(letterFolderName('2001 Nights')).toBe('2');
+    expect(letterFolderName('_Untitled')).toBe('#');
+    expect(letterFolderName('')).toBe('#');
+  });
+});
+
+describe('structureFolders', () => {
+  it('names one folder per level', () => {
+    expect(structureFolders(['year', 'author', 'album'], entry())).toEqual(['1960', 'Hergé', 'Tintin au Tibet']);
+  });
+
+  it('names a letter level after the next level', () => {
+    expect(structureFolders(['letter', 'series'], entry())).toEqual(['T', 'Tintin']);
+    expect(structureFolders(['letter', 'author', 'series'], entry())).toEqual(['H', 'Hergé', 'Tintin']);
+  });
+
+  it('files under the first writer, as last name then first name', () => {
+    const credits = [credit('Albert', 'Uderzo', 'artist'), credit('René', 'Goscinny', 'writer')];
+    expect(structureFolders(['author'], entry({ credits }))).toEqual(['Goscinny René']);
+    expect(structureFolders(['author'], entry({ credits: [credit('Albert', 'Uderzo', 'artist')] }))).toEqual([
+      'Uderzo Albert',
+    ]);
+  });
+
+  it('uses "Unknown" for a missing year or author and the title for a missing series', () => {
+    const bare = entry({ series: null, releaseDate: null, credits: [] });
+    expect(structureFolders(['year', 'author', 'series'], bare)).toEqual(['Unknown', 'Unknown', 'Tintin au Tibet']);
+  });
+});
+
+describe('organizedPaths', () => {
+  it('puts the file straight in the last level, with an id-suffixed fallback name', () => {
+    expect(organizedPaths({ root: '/org', structure: ['series'] }, entry())).toEqual([
+      path.join('/org', 'Tintin', 'Tintin au Tibet.cbz'),
+      path.join('/org', 'Tintin', `Tintin au Tibet (${ID}).cbz`),
+    ]);
+  });
+
+  it('keeps the original name of a file renamed by a collision', () => {
+    const renamed = entry({ path: `/org/Tintin/Tintin au Tibet (${ID}).cbz` });
+    expect(organizedPath({ root: '/org', structure: ['year'] }, renamed)).toBe(
+      path.join('/org', '1960', 'Tintin au Tibet.cbz'),
+    );
+    expect(organizedPath(flat('/org'), renamed)).toBe(path.join('/org', `Tintin au Tibet (${ID})`, 'Tintin au Tibet.cbz'));
+  });
+});
+
+describe('organizeEntries with a structure', () => {
+  it('files comics by series, renaming one whose name is taken', async () => {
+    const source = await tree(['a/Tome 1.cbz', 'b/Tome 1.cbz']);
+    const target = await tree([]);
+    const repo = repository();
+    const ids = ['a', 'b'].map((folder) => {
+      const file = path.join(source, folder, 'Tome 1.cbz');
+      repo.register(file, 'Tome 1', 1, 1, 1);
+      const id = repo.idOfPath(file)!;
+      repo.updateMetadata(id, { series: 'Blacksad' });
+      return id;
+    });
+    const structure = { root: target, structure: ['letter', 'series'] as const };
+
+    const summary = await organizeEntries(repo, structure, ids);
+
+    expect(summary.failed).toBe(0);
+    expect(repo.get(ids[0])?.path).toBe(path.join(target, 'B', 'Blacksad', 'Tome 1.cbz'));
+    expect(repo.get(ids[1])?.path).toBe(path.join(target, 'B', 'Blacksad', `Tome 1 (${ids[1]}).cbz`));
+    expect(unorganizedIds(repo, structure)).toEqual([]);
+  });
+
+  it('moves the comics again when the structure changes, deleting the emptied folders', async () => {
+    const source = await tree(['Tome 1.cbz']);
+    const target = await tree([]);
+    const repo = repository();
+    repo.register(path.join(source, 'Tome 1.cbz'), 'Tome 1', 1, 1, 1);
+    const id = repo.idOfPath(path.join(source, 'Tome 1.cbz'))!;
+    repo.updateMetadata(id, { series: 'Blacksad', releaseDate: '2000' });
+
+    await organizeEntries(repo, { root: target, structure: ['letter', 'series'] }, [id]);
+    const byYear = { root: target, structure: ['year', 'series'] as const };
+    expect(unorganizedIds(repo, byYear)).toEqual([id]);
+    await organizeEntries(repo, byYear, [id]);
+
+    expect(repo.get(id)?.path).toBe(path.join(target, '2000', 'Blacksad', 'Tome 1.cbz'));
+    expect(await exists(path.join(target, 'B'))).toBe(false);
+    expect(await exists(target)).toBe(true);
   });
 });
