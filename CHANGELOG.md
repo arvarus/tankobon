@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented here. This file is maintained by [release-please](https://github.com/googleapis/release-please) from the [Conventional Commits](https://www.conventionalcommits.org/) merged into `master`: don't edit released entries by hand. New versions are inserted above the previous ones.
 
+## [0.7.0](https://github.com/pprb/tankobon/compare/v0.6.0...v0.7.0) (2026-10-12)
+
+
+### Features
+
+* **home:** add a continue reading block ([#102](https://github.com/pprb/tankobon/issues/102)) ([e588f18](https://github.com/pprb/tankobon/commit/e588f181936299fbce115952afac09a0adbc42e9))
+* **home:** add an empty home page shown at start-up ([#101](https://github.com/pprb/tankobon/issues/101)) ([0230102](https://github.com/pprb/tankobon/commit/0230102c04b40a2336e5874c21428a10298b8753))
+* **home:** choose the home page's sections and order in the settings ([#107](https://github.com/pprb/tankobon/issues/107)) ([3d34a00](https://github.com/pprb/tankobon/commit/3d34a0073f320a69b5dff0acaad9c418a9eb1bca))
+* **home:** list the 5 most recently added books ([#103](https://github.com/pprb/tankobon/issues/103)) ([968304c](https://github.com/pprb/tankobon/commit/968304cbe1f1db4a2abf65b1ee18e0b32dfaf335))
+* **home:** list the lowest-rated books to give them a second chance ([#108](https://github.com/pprb/tankobon/issues/108)) ([d848cb0](https://github.com/pprb/tankobon/commit/d848cb025493849aa4751b6e3494235f8a19b0e0))
+* **home:** set how many books each section shows, with arrows and hide-when-empty ([#109](https://github.com/pprb/tankobon/issues/109)) ([772756f](https://github.com/pprb/tankobon/commit/772756fa64fe399516ca7c4b42f53a8520f7ae93))
+* **home:** suggest five random unread books ([#104](https://github.com/pprb/tankobon/issues/104)) ([a28cf25](https://github.com/pprb/tankobon/commit/a28cf2552fcaa1d368feea038c25ec7410203b57))
+* **home:** suggest the five best-rated books to rediscover ([#106](https://github.com/pprb/tankobon/issues/106)) ([db538f4](https://github.com/pprb/tankobon/commit/db538f46627245fe62f7beeb9e073c5f01507411))
+
+
+### Bug Fixes
+
+* **reader:** find the continuous scroll area by its role in the e2e tests ([#99](https://github.com/pprb/tankobon/issues/99)) ([c4a2e97](https://github.com/pprb/tankobon/commit/c4a2e979828d9f9521da42d3461e438f21b5a568))
+
 ## [0.6.0](https://github.com/pprb/tankobon/compare/v0.5.0...v0.6.0) (2026-10-11)
 
 
