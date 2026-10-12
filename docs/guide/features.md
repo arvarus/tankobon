@@ -6,7 +6,7 @@ The mouse pointer turns into a hand over everything that can be clicked (buttons
 
 ## Home
 
-"Accueil" is the page shown when the app starts, first entry of the sidebar. It is an empty page for now; blocks will be added to it.
+"Accueil" is the page shown when the app starts, first entry of the sidebar. Its first block, "À lire", suggests five books drawn at random among those not finished yet (a book already started counts; one at its last page or tagged `Lu` doesn't). Clicking a book opens it in the reader; "Tirer d'autres livres" draws a new selection. The draw is made once the library is loaded and doesn't change when a book is edited elsewhere. More blocks will be added to the page.
 
 ## Library
 
