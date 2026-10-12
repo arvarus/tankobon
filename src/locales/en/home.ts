@@ -6,4 +6,9 @@ export default {
     shuffle: 'Pick other books',
     empty: 'No unread book in the library.',
   },
+  continueReading: 'Continue reading',
+  continueReadingPage: 'Page {{page}} / {{total}}',
+  recentlyAdded: 'Recently added',
+  recentlyAddedEmpty: 'No book in the library yet.',
+  openBook: 'Open {{title}}',
 };
