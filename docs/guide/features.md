@@ -6,7 +6,7 @@ The mouse pointer turns into a hand over everything that can be clicked (buttons
 
 ## Home
 
-"Accueil" is the page shown when the app starts, first entry of the sidebar. It is an empty page for now; blocks will be added to it.
+"Accueil" is the page shown when the app starts, first entry of the sidebar. It shows a "Redécouvrez vos favoris" block: the 5 best-rated books of the library (highest rating first, and among equal ratings the one opened longest ago first), with cover, title and stars. Clicking one opens it in the reader. The block is hidden while no book is rated. More blocks will be added.
 
 ## Library
 
