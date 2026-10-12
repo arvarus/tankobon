@@ -4,11 +4,13 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { BookCover } from '@/components/book-cover';
+import { BookRating } from '@/components/book-row';
 import { Button } from '@/components/ui/button';
 import { useLibrary } from '@/hooks/use-library';
 import { continueReading } from '@/lib/continue-reading';
 import { pickRandomUnread } from '@/lib/home-picks';
 import { recentlyAdded } from '@/lib/recent-books';
+import { lowestRated } from '@/lib/second-chance';
 import type { LibraryEntry } from '@/shared/library';
 
 export const Route = createFileRoute('/')({
@@ -23,7 +25,7 @@ function HomePage() {
   const recent = useMemo(() => (library ? recentlyAdded(library) : []), [library]);
 
   return (
-    <div className="p-6">
+    <div className="space-y-6 p-6">
       <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
       {books.length > 0 && (
         <section className="mt-6" aria-labelledby="continue-reading">
@@ -72,6 +74,7 @@ function HomePage() {
         )}
       </section>
       <Suggestions />
+      <SecondChance />
     </div>
   );
 }
@@ -118,6 +121,45 @@ function Suggestions() {
                 <BookCover entryId={entry.id} title={entry.title} className="aspect-[2/3] w-full" />
                 <span className="mt-1 line-clamp-2 text-sm">{entry.title}</span>
               </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/** The five lowest-rated books, as covers like the other blocks, with their rating editable in place. */
+function SecondChance() {
+  const { t } = useTranslation('home');
+  const library = useLibrary();
+  const entries = useMemo(() => (library ? lowestRated(library) : []), [library]);
+
+  if (!library) return null;
+  return (
+    <section className="mt-6" aria-labelledby="second-chance">
+      <h2 id="second-chance" className="text-lg font-medium">
+        {t('secondChance.title')}
+      </h2>
+      <p className="text-sm text-muted-foreground">{t('secondChance.description')}</p>
+      {entries.length === 0 ? (
+        <p className="mt-3 text-sm text-muted-foreground">{t('secondChance.empty')}</p>
+      ) : (
+        <ul className="mt-3 flex flex-wrap gap-4">
+          {entries.map((entry) => (
+            <li key={entry.id} className="w-32">
+              <Link
+                to="/reader"
+                search={{ book: entry.id }}
+                aria-label={t('openBook', { title: entry.title })}
+                className="block rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                <BookCover entryId={entry.id} title={entry.title} className="aspect-[2/3] w-full" />
+                <span className="mt-1 line-clamp-2 text-sm">{entry.title}</span>
+              </Link>
+              <div className="mt-1">
+                <BookRating entry={entry} />
+              </div>
             </li>
           ))}
         </ul>
