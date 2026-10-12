@@ -8,6 +8,16 @@ const home: Translation<typeof en> = {
     description: 'Vos livres les moins bien notés (2 étoiles ou moins). Peut-être le moment de leur redonner une chance.',
     empty: 'Aucun livre mal noté pour l’instant.',
   },
+  suggestions: {
+    title: 'À lire',
+    shuffle: 'Tirer d’autres livres',
+    empty: 'Aucun livre non lu dans la bibliothèque.',
+  },
+  continueReading: 'Reprendre la lecture',
+  continueReadingPage: 'Page {{page}} / {{total}}',
+  recentlyAdded: 'Derniers ajouts',
+  recentlyAddedEmpty: 'Aucun livre dans la bibliothèque pour le moment.',
+  openBook: 'Ouvrir {{title}}',
 };
 
 export default home;
