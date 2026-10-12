@@ -1,10 +1,9 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { Shuffle } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { BookCover } from '@/components/book-cover';
-import { BookDetails } from '@/components/book-row';
 import { Button } from '@/components/ui/button';
 import { useLibrary } from '@/hooks/use-library';
 import { continueReading } from '@/lib/continue-reading';
@@ -83,7 +82,6 @@ function HomePage() {
  */
 function Suggestions() {
   const { t } = useTranslation('home');
-  const navigate = useNavigate();
   const library = useLibrary();
   const [picks, setPicks] = useState<LibraryEntry[] | null>(null);
 
@@ -95,8 +93,8 @@ function Suggestions() {
   const shown = drawn.flatMap((entry) => byId.get(entry.id) ?? []);
 
   return (
-    <section aria-labelledby="home-suggestions" className="mt-6 max-w-3xl space-y-3">
-      <div className="flex items-center justify-between gap-3">
+    <section className="mt-6" aria-labelledby="home-suggestions">
+      <div className="flex items-center gap-3">
         <h2 id="home-suggestions" className="text-lg font-medium">
           {t('suggestions.title')}
         </h2>
@@ -106,16 +104,20 @@ function Suggestions() {
         </Button>
       </div>
       {shown.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('suggestions.empty')}</p>
+        <p className="mt-3 text-sm text-muted-foreground">{t('suggestions.empty')}</p>
       ) : (
-        <ul className="divide-y rounded-md border">
+        <ul className="mt-3 flex flex-wrap gap-4">
           {shown.map((entry) => (
-            <li key={entry.id} className="p-3">
-              <BookDetails
-                entry={entry}
-                view="medium"
-                onOpen={() => void navigate({ to: '/reader', search: { book: entry.id } })}
-              />
+            <li key={entry.id} className="w-32">
+              <Link
+                to="/reader"
+                search={{ book: entry.id }}
+                aria-label={t('openBook', { title: entry.title })}
+                className="block rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                <BookCover entryId={entry.id} title={entry.title} className="aspect-[2/3] w-full" />
+                <span className="mt-1 line-clamp-2 text-sm">{entry.title}</span>
+              </Link>
             </li>
           ))}
         </ul>
