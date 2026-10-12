@@ -6,7 +6,7 @@ The mouse pointer turns into a hand over everything that can be clicked (buttons
 
 ## Home
 
-"Accueil" is the page shown when the app starts, first entry of the sidebar. It is an empty page for now; blocks will be added to it.
+"Accueil" is the page shown when the app starts, first entry of the sidebar. It shows a "Derniers ajouts" block with the 5 books most recently added to the library (by date added, newest first), each as its cover and title; clicking one opens it in the reader. An empty library shows a short message instead. More blocks will be added to the page.
 
 ## Library
 
