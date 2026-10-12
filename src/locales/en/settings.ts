@@ -145,6 +145,10 @@ export default {
     sectionsTitle: 'Home page sections',
     sectionsHint: 'Choose which sections the home page shows, and their order.',
     sections: {
+      continueReading: 'Continue reading',
+      recentlyAdded: 'Recently added',
+      favorites: 'Rediscover your favorites',
+      suggestions: 'Something to read (random unread books)',
       secondChance: 'Second chance (lowest-rated books)',
     },
     moveUp: 'Move up',

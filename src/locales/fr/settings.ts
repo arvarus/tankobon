@@ -147,6 +147,10 @@ const settings: Translation<typeof en> = {
     sectionsTitle: 'Sections de l’accueil',
     sectionsHint: 'Choisissez les sections affichées sur l’accueil, et leur ordre.',
     sections: {
+      continueReading: 'Reprendre la lecture',
+      recentlyAdded: 'Derniers ajouts',
+      favorites: 'Redécouvrez vos favoris',
+      suggestions: 'À lire (livres non lus tirés au hasard)',
       secondChance: 'Une deuxième chance (livres les moins bien notés)',
     },
     moveUp: 'Monter',

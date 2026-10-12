@@ -57,7 +57,7 @@ export type LibrarySort = (typeof LIBRARY_SORTS)[number];
 export type BookRowView = 'full' | 'medium' | 'compact';
 
 /** Every block of the home page, in the order they show by default. */
-export const HOME_SECTIONS = ['secondChance'] as const;
+export const HOME_SECTIONS = ['continueReading', 'recentlyAdded', 'favorites', 'suggestions', 'secondChance'] as const;
 
 /** A block of the home page (`settings:home.sections.<id>` is its label). */
 export type HomeSection = (typeof HOME_SECTIONS)[number];
