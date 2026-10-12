@@ -92,7 +92,7 @@ function RootLayout() {
             {collapsed ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
           </Button>
         </div>
-        {nav.map(({ to, label, icon: Icon }) =>
+        {nav.filter(({ to }) => to !== '/' || settings.homeEnabled).map(({ to, label, icon: Icon }) =>
           to === '/lists' ? (
             <ReadingListsNav key={to} collapsed={collapsed} />
           ) : (

@@ -4,6 +4,7 @@ export default {
   sections: {
     reading: 'Reading',
     appearance: 'Display',
+    home: 'Home',
     library: 'Library',
     metadata: 'Metadata',
     data: 'Data',
@@ -136,6 +137,24 @@ export default {
     clearConfirm_one: '{{entries}} comics and {{count}} reading list will be removed, with their progress, ratings, tags and details. The comic files stay on disk.',
     clearConfirm_other: '{{entries}} comics and {{count}} reading lists will be removed, with their progress, ratings, tags and details. The comic files stay on disk.',
     clearAction: 'Clear',
+  },
+  home: {
+    enabled: 'Home page',
+    enabledLabel: 'Show the home page',
+    enabledHint: 'Turned off, the "Home" entry leaves the sidebar and the app starts on the library.',
+    sectionsTitle: 'Home page sections',
+    sectionsHint: 'Choose which sections the home page shows, and their order.',
+    sections: {
+      continueReading: 'Continue reading',
+      recentlyAdded: 'Recently added',
+      favorites: 'Rediscover your favorites',
+      suggestions: 'Something to read (random unread books)',
+      secondChance: 'Second chance (lowest-rated books)',
+    },
+    moveUp: 'Move up',
+    moveDown: 'Move down',
+    moveUpNamed: 'Move "{{name}}" up',
+    moveDownNamed: 'Move "{{name}}" down',
   },
   about: {
     version: 'Version',

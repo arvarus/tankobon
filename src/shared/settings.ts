@@ -56,6 +56,34 @@ export type LibrarySort = (typeof LIBRARY_SORTS)[number];
  */
 export type BookRowView = 'full' | 'medium' | 'compact';
 
+/** Every block of the home page, in the order they show by default. */
+export const HOME_SECTIONS = ['continueReading', 'recentlyAdded', 'favorites', 'suggestions', 'secondChance'] as const;
+
+/** A block of the home page (`settings:home.sections.<id>` is its label). */
+export type HomeSection = (typeof HOME_SECTIONS)[number];
+
+/** One block of the home page in {@link AppSettings.homeSections}: whether it is shown, at its place in the list. */
+export interface HomeSectionSetting {
+  id: HomeSection;
+  visible: boolean;
+}
+
+/**
+ * Whether `value` is a list of distinct, known {@link HomeSection}s with a `visible` flag each. It
+ * may hold only some of them: `resolveHomeSections()` (renderer) appends the missing ones.
+ */
+export function isHomeSections(value: unknown): value is HomeSectionSetting[] {
+  if (!Array.isArray(value)) return false;
+  const ids = new Set<unknown>();
+  for (const item of value) {
+    if (typeof item !== 'object' || item === null) return false;
+    const { id, visible } = item as Record<string, unknown>;
+    if (typeof visible !== 'boolean' || !(HOME_SECTIONS as readonly unknown[]).includes(id) || ids.has(id)) return false;
+    ids.add(id);
+  }
+  return true;
+}
+
 /** User preferences, persisted key by key in the `settings` table (see `SettingsRepository`). */
 export interface AppSettings {
   /** Interface language: one forced by the user, or `system` to follow the OS (English when it isn't supported). */
@@ -78,6 +106,16 @@ export interface AppSettings {
    * first), by date added, by release date (books without one last) or by title, each both ways.
    */
   librarySort: LibrarySort;
+  /**
+   * Whether the home page exists: off, the sidebar has no "Accueil" entry and the app starts on the
+   * library.
+   */
+  homeEnabled: boolean;
+  /**
+   * The home page's blocks in display order, each shown or hidden. A block missing from the list
+   * (added by a later release) is appended, shown; see {@link isHomeSections}.
+   */
+  homeSections: HomeSectionSetting[];
   /** Whether the sidebar is collapsed to an icon-only rail. */
   sidebarCollapsed: boolean;
   /** Mouse/trackpad wheel direction in the reader: scrolling down advances or retreats a page. */
@@ -144,6 +182,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   readingListView: 'full',
   libraryGroupBySeries: false,
   librarySort: 'lastOpened',
+  homeEnabled: true,
+  homeSections: HOME_SECTIONS.map((id) => ({ id, visible: true })),
   sidebarCollapsed: false,
   scrollDirection: 'standard',
   readingMode: 'single',
@@ -204,6 +244,8 @@ export const SETTING_VALIDATORS: SettingValidators = {
   libraryGroupBySeries: isBoolean,
   librarySort: (value): value is AppSettings['librarySort'] =>
     isString(value) && (LIBRARY_SORTS as readonly string[]).includes(value),
+  homeEnabled: isBoolean,
+  homeSections: isHomeSections,
   sidebarCollapsed: isBoolean,
   scrollDirection: (value): value is AppSettings['scrollDirection'] => value === 'standard' || value === 'inverted',
   readingMode: (value): value is AppSettings['readingMode'] => value === 'single' || value === 'continuous',
