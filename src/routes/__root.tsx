@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Home,
   Library,
   List,
   ListOrdered,
@@ -41,7 +42,8 @@ export const Route = createRootRoute({
 });
 
 const nav = [
-  { to: '/', label: 'library', icon: Library },
+  { to: '/', label: 'home', icon: Home },
+  { to: '/library', label: 'library', icon: Library },
   { to: '/lists', label: 'readingLists', icon: ListOrdered },
   { to: '/reader', label: 'reader', icon: BookOpen },
   { to: '/stats', label: 'stats', icon: BarChart3 },

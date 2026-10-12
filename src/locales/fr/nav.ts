@@ -2,6 +2,7 @@ import type en from '../en/nav';
 import type { Translation } from '../types';
 
 const nav: Translation<typeof en> = {
+  home: 'Accueil',
   library: 'Bibliothèque',
   readingLists: 'Listes de lecture',
   achievements: 'Accomplissements',
