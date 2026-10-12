@@ -1,10 +1,10 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { Shuffle } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { BookCover } from '@/components/book-cover';
-import { BookDetails, BookRating } from '@/components/book-row';
+import { BookRating } from '@/components/book-row';
 import { Button } from '@/components/ui/button';
 import { useLibrary } from '@/hooks/use-library';
 import { continueReading } from '@/lib/continue-reading';
@@ -129,10 +129,9 @@ function Suggestions() {
   );
 }
 
-/** The five lowest-rated books, with their rating editable in place, to give them another try. */
+/** The five lowest-rated books, as covers like the other blocks, with their rating editable in place. */
 function SecondChance() {
   const { t } = useTranslation('home');
-  const navigate = useNavigate();
   const library = useLibrary();
   const entries = useMemo(() => (library ? lowestRated(library) : []), [library]);
 
@@ -146,15 +145,21 @@ function SecondChance() {
       {entries.length === 0 ? (
         <p className="mt-3 text-sm text-muted-foreground">{t('secondChance.empty')}</p>
       ) : (
-        <ul className="mt-3 divide-y rounded-md border">
+        <ul className="mt-3 flex flex-wrap gap-4">
           {entries.map((entry) => (
-            <li key={entry.id} className="flex items-center gap-3 p-3">
-              <BookDetails
-                entry={entry}
-                view="medium"
-                onOpen={() => void navigate({ to: '/reader', search: { book: entry.id } })}
-              />
-              <BookRating entry={entry} />
+            <li key={entry.id} className="w-32">
+              <Link
+                to="/reader"
+                search={{ book: entry.id }}
+                aria-label={t('openBook', { title: entry.title })}
+                className="block rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                <BookCover entryId={entry.id} title={entry.title} className="aspect-[2/3] w-full" />
+                <span className="mt-1 line-clamp-2 text-sm">{entry.title}</span>
+              </Link>
+              <div className="mt-1">
+                <BookRating entry={entry} />
+              </div>
             </li>
           ))}
         </ul>
