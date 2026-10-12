@@ -6,7 +6,7 @@ The mouse pointer turns into a hand over everything that can be clicked (buttons
 
 ## Home
 
-"Accueil" is the page shown when the app starts, first entry of the sidebar. It shows a "Derniers ajouts" block with the 5 books most recently added to the library (by date added, newest first), each as its cover and title; clicking one opens it in the reader. An empty library shows a short message instead. More blocks will be added to the page.
+"Accueil" is the page shown when the app starts, first entry of the sidebar. It shows a **"Reprendre la lecture"** block with the covers of the last five books you opened and started but did not finish (past the first page, last page not reached, no "Lu" tag), most recently opened first, each with its title and page ("Page 4 / 10"). Clicking one opens it in the reader at its saved page. The block is hidden when there is nothing to resume. Below it, a **"Derniers ajouts"** block shows the 5 books most recently added to the library (by date added, newest first), each as its cover and title; clicking one opens it in the reader. An empty library shows a short message instead. More blocks will be added to the page.
 
 ## Library
 
