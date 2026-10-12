@@ -1,17 +1,21 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { useMemo } from 'react';
+import { Shuffle } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { BookCover } from '@/components/book-cover';
+import { Button } from '@/components/ui/button';
 import { useLibrary } from '@/hooks/use-library';
 import { continueReading } from '@/lib/continue-reading';
+import { pickRandomUnread } from '@/lib/home-picks';
 import { recentlyAdded } from '@/lib/recent-books';
+import type { LibraryEntry } from '@/shared/library';
 
 export const Route = createFileRoute('/')({
   component: HomePage,
 });
 
-/** The page shown when the app starts: "continue reading" and "recently added" blocks, more will follow. */
+/** The page shown when the app starts: "continue reading", "recently added" and "to read" (random unread books) blocks, more will follow. */
 function HomePage() {
   const { t } = useTranslation('home');
   const library = useLibrary();
@@ -67,6 +71,57 @@ function HomePage() {
           </ul>
         )}
       </section>
+      <Suggestions />
     </div>
+  );
+}
+
+/**
+ * Five random unread books. The draw is made once the library is loaded and kept until the
+ * button redraws it, so a rating or a tag changing in the store doesn't reshuffle the block.
+ */
+function Suggestions() {
+  const { t } = useTranslation('home');
+  const library = useLibrary();
+  const [picks, setPicks] = useState<LibraryEntry[] | null>(null);
+
+  if (!library) return null;
+  const drawn = picks ?? pickRandomUnread(library);
+  if (!picks) setPicks(drawn);
+  // Keep the books' latest state (progress, tags) while the selection itself stays put.
+  const byId = new Map(library.map((entry) => [entry.id, entry]));
+  const shown = drawn.flatMap((entry) => byId.get(entry.id) ?? []);
+
+  return (
+    <section className="mt-6" aria-labelledby="home-suggestions">
+      <div className="flex items-center gap-3">
+        <h2 id="home-suggestions" className="text-lg font-medium">
+          {t('suggestions.title')}
+        </h2>
+        <Button variant="outline" size="sm" onClick={() => setPicks(pickRandomUnread(library))}>
+          <Shuffle />
+          {t('suggestions.shuffle')}
+        </Button>
+      </div>
+      {shown.length === 0 ? (
+        <p className="mt-3 text-sm text-muted-foreground">{t('suggestions.empty')}</p>
+      ) : (
+        <ul className="mt-3 flex flex-wrap gap-4">
+          {shown.map((entry) => (
+            <li key={entry.id} className="w-32">
+              <Link
+                to="/reader"
+                search={{ book: entry.id }}
+                aria-label={t('openBook', { title: entry.title })}
+                className="block rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                <BookCover entryId={entry.id} title={entry.title} className="aspect-[2/3] w-full" />
+                <span className="mt-1 line-clamp-2 text-sm">{entry.title}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

@@ -3,6 +3,11 @@ import type { Translation } from '../types';
 
 const home: Translation<typeof en> = {
   title: 'Accueil',
+  suggestions: {
+    title: 'À lire',
+    shuffle: 'Tirer d’autres livres',
+    empty: 'Aucun livre non lu dans la bibliothèque.',
+  },
   continueReading: 'Reprendre la lecture',
   continueReadingPage: 'Page {{page}} / {{total}}',
   recentlyAdded: 'Derniers ajouts',
