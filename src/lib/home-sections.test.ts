@@ -1,19 +1,28 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  HOME_SECTION_DEFAULT_COUNT,
+  HOME_SECTION_HIDE_WHEN_EMPTY_DEFAULT,
   HOME_SECTIONS,
   isHomeSections,
   type HomeSectionSetting,
 } from "@/shared/settings";
 
 import {
+  clampHomeCount,
   moveHomeSection,
+  setHomeSectionOptions,
   resolveHomeSections,
   setHomeSectionVisible,
   visibleHomeSections,
 } from "./home-sections";
 
-const all = HOME_SECTIONS.map((id) => ({ id, visible: true }));
+const all = HOME_SECTIONS.map((id) => ({
+  id,
+  visible: true,
+  count: HOME_SECTION_DEFAULT_COUNT,
+  hideWhenEmpty: HOME_SECTION_HIDE_WHEN_EMPTY_DEFAULT[id],
+}));
 const ids = (sections: readonly HomeSectionSetting[]) =>
   sections.map((section) => section.id);
 
@@ -31,10 +40,12 @@ describe("home sections", () => {
   });
 
   it("lists only the visible blocks", () => {
-    expect(visibleHomeSections([])).toEqual([...HOME_SECTIONS]);
+    expect(visibleHomeSections([]).map((section) => section.id)).toEqual([
+      ...HOME_SECTIONS,
+    ]);
     expect(
       visibleHomeSections([{ id: "favorites", visible: false }]),
-    ).not.toContain("favorites");
+    ).not.toContainEqual(expect.objectContaining({ id: "favorites" }));
   });
 
   it("shows or hides a block", () => {
@@ -56,6 +67,39 @@ describe("home sections", () => {
     expect(moveHomeSection([], HOME_SECTIONS.length - 1, 1)).toEqual(all);
   });
 
+  it("fills the options a stored block lacks and keeps the ones it has", () => {
+    const [first] = resolveHomeSections([
+      { id: "favorites", visible: true, count: 12, hideWhenEmpty: false },
+    ]);
+    expect(first).toMatchObject({ count: 12, hideWhenEmpty: false });
+    const [old] = resolveHomeSections([{ id: "favorites", visible: true }]);
+    expect(old).toMatchObject({
+      count: HOME_SECTION_DEFAULT_COUNT,
+      hideWhenEmpty: true,
+    });
+  });
+
+  it("clamps the count between 3 and 20", () => {
+    expect(clampHomeCount(1)).toBe(3);
+    expect(clampHomeCount(99)).toBe(20);
+    expect(clampHomeCount(7.6)).toBe(8);
+    expect(clampHomeCount(Number.NaN)).toBe(HOME_SECTION_DEFAULT_COUNT);
+  });
+
+  it("sets one block's options without touching the others", () => {
+    const next = setHomeSectionOptions([], "suggestions", {
+      count: 50,
+      hideWhenEmpty: true,
+    });
+    expect(next.find((s) => s.id === "suggestions")).toMatchObject({
+      count: 20,
+      hideWhenEmpty: true,
+    });
+    expect(next.filter((s) => s.id !== "suggestions")).toEqual(
+      all.filter((s) => s.id !== "suggestions"),
+    );
+  });
+
   it("validates the stored list", () => {
     expect(isHomeSections([])).toBe(true);
     expect(isHomeSections(all)).toBe(true);
@@ -68,5 +112,18 @@ describe("home sections", () => {
       ]),
     ).toBe(false);
     expect(isHomeSections("favorites")).toBe(false);
+    expect(
+      isHomeSections([
+        { id: "favorites", visible: true, count: 3, hideWhenEmpty: true },
+      ]),
+    ).toBe(true);
+    for (const count of [2, 21, 5.5, "5"]) {
+      expect(isHomeSections([{ id: "favorites", visible: true, count }])).toBe(
+        false,
+      );
+    }
+    expect(
+      isHomeSections([{ id: "favorites", visible: true, hideWhenEmpty: 1 }]),
+    ).toBe(false);
   });
 });

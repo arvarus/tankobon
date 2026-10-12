@@ -62,23 +62,61 @@ export const HOME_SECTIONS = ['continueReading', 'recentlyAdded', 'favorites', '
 /** A block of the home page (`settings:home.sections.<id>` is its label). */
 export type HomeSection = (typeof HOME_SECTIONS)[number];
 
-/** One block of the home page in {@link AppSettings.homeSections}: whether it is shown, at its place in the list. */
+/** The fewest books a home block can be set to show. */
+export const HOME_SECTION_MIN_COUNT = 3;
+
+/** The most books a home block can be set to show. */
+export const HOME_SECTION_MAX_COUNT = 20;
+
+/** How many books a home block shows until the user sets it. */
+export const HOME_SECTION_DEFAULT_COUNT = 5;
+
+/**
+ * Whether a block is hidden while it has nothing to show, until the user sets it: the blocks that
+ * had no empty state before the option existed keep disappearing, the others keep their message.
+ */
+export const HOME_SECTION_HIDE_WHEN_EMPTY_DEFAULT: Record<HomeSection, boolean> = {
+  continueReading: true,
+  recentlyAdded: false,
+  favorites: true,
+  suggestions: false,
+  secondChance: false,
+};
+
+/**
+ * One block of the home page in {@link AppSettings.homeSections}: whether it is shown, at its place in
+ * the list. `count` (between {@link HOME_SECTION_MIN_COUNT} and {@link HOME_SECTION_MAX_COUNT}) and
+ * `hideWhenEmpty` are absent from settings saved before they existed; `resolveHomeSections()` (renderer)
+ * fills them in.
+ */
 export interface HomeSectionSetting {
   id: HomeSection;
   visible: boolean;
+  /** How many books the block offers. */
+  count?: number;
+  /** Hide the block while it has no book, instead of showing an explanatory message. */
+  hideWhenEmpty?: boolean;
 }
 
 /**
- * Whether `value` is a list of distinct, known {@link HomeSection}s with a `visible` flag each. It
- * may hold only some of them: `resolveHomeSections()` (renderer) appends the missing ones.
+ * Whether `value` is a list of distinct, known {@link HomeSection}s with a `visible` flag each, and
+ * optionally a whole `count` within the allowed range and a `hideWhenEmpty` flag. It may hold only
+ * some of them: `resolveHomeSections()` (renderer) appends the missing ones.
  */
 export function isHomeSections(value: unknown): value is HomeSectionSetting[] {
   if (!Array.isArray(value)) return false;
   const ids = new Set<unknown>();
   for (const item of value) {
     if (typeof item !== 'object' || item === null) return false;
-    const { id, visible } = item as Record<string, unknown>;
+    const { id, visible, count, hideWhenEmpty } = item as Record<string, unknown>;
     if (typeof visible !== 'boolean' || !(HOME_SECTIONS as readonly unknown[]).includes(id) || ids.has(id)) return false;
+    if (
+      count !== undefined &&
+      (typeof count !== 'number' || !Number.isInteger(count) || count < HOME_SECTION_MIN_COUNT || count > HOME_SECTION_MAX_COUNT)
+    ) {
+      return false;
+    }
+    if (hideWhenEmpty !== undefined && typeof hideWhenEmpty !== 'boolean') return false;
     ids.add(id);
   }
   return true;

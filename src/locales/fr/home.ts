@@ -14,6 +14,9 @@ const home: Translation<typeof en> = {
     empty: 'Aucun livre non lu dans la bibliothèque.',
   },
   continueReading: 'Reprendre la lecture',
+  continueReadingEmpty: 'Aucun livre en cours de lecture.',
+  scrollPrevious: 'Défiler vers la gauche',
+  scrollNext: 'Défiler vers la droite',
   continueReadingPage: 'Page {{page}} / {{total}}',
   recentlyAdded: 'Derniers ajouts',
   recentlyAddedEmpty: 'Aucun livre dans la bibliothèque pour le moment.',
@@ -21,6 +24,7 @@ const home: Translation<typeof en> = {
   favorites: {
     title: 'Redécouvrez vos favoris',
     rating: '{{rating}} / 5',
+    empty: 'Aucun livre noté pour l’instant.',
   },
 };
 
