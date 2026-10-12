@@ -262,6 +262,10 @@ The whole library is in the [data store](#renderer-data-store) and is filtered c
 
 The library page (`src/routes/library.tsx`, at `/library`) draws only the rows near the viewport (`@tanstack/react-virtual`, which measures each row since their height varies with wrapping tags and the optional metadata line), inside its own scroll container below the toolbar; it filters with `useDeferredValue` so the search field never waits for the list, and scrolls back to the top when the filters change. A row scrolled out of view is unmounted, with its local state (a half-typed tag).
 
+### Home page
+
+`src/routes/index.tsx` is a set of blocks reading the [data store](#renderer-data-store). The "second chance" block lists `lowestRated()` (`src/lib/second-chance.ts`, pure and tested): books rated 1 to `LOW_RATING_MAX` (2), worst first, cut to `SECOND_CHANCE_LIMIT` (5), rendered with `BookDetails` and `BookRating`.
+
 ### Folder scanning
 
 `library:add-folder` opens a directory picker, then `scanIntoLibrary()` (`src/main/services/library-scanner.ts`) walks it recursively for supported files. Unreadable directories are skipped; symlinks are never followed (`Dirent.isDirectory()` is false for them, which also rules out cycles). Learning a page count means opening each file (in the [decoder process](#decoder-process), through `inspect`: the scanner only owns the walk and the database), which is the slow part: progress is pushed file by file over `library:scan-progress`. The renderer subscribes via `library.onScanProgress()` for the whole life of the library page, not around each call, because progress starts as soon as the directory is picked. A file that won't open only counts as `failed`.

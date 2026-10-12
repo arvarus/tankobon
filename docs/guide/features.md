@@ -6,7 +6,9 @@ The mouse pointer turns into a hand over everything that can be clicked (buttons
 
 ## Home
 
-"Accueil" is the page shown when the app starts, first entry of the sidebar. It is an empty page for now; blocks will be added to it.
+"Accueil" is the page shown when the app starts, first entry of the sidebar. It is made of blocks; there is one for now.
+
+- **Give them a second chance**: the five lowest-rated books of the library (rated 1 or 2 stars, worst first, then by title). Unrated books are not listed. Click a book to open it; the stars can be changed right there, and a book rated 3 or more leaves the list.
 
 ## Library
 
