@@ -72,7 +72,7 @@ function ReaderPage() {
     });
     if (!confirmed) return;
     await window.tankobon.library.remove(failedEntry.id);
-    void navigate({ to: '/' });
+    void navigate({ to: '/library' });
   };
 
   if (!comic) {

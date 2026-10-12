@@ -6,6 +6,7 @@ import bookEdit from './book-edit';
 import common from './common';
 import dialogs from './dialogs';
 import errors from './errors';
+import home from './home';
 import lists from './lists';
 import library from './library';
 import menu from './menu';
@@ -15,4 +16,4 @@ import reader from './reader';
 import settings from './settings';
 import stats from './stats';
 
-export default { achievements, book, bookEdit, common, dialogs, errors, library, lists, menu, metadata, nav, reader, settings, stats };
+export default { achievements, book, bookEdit, common, dialogs, errors, home, library, lists, menu, metadata, nav, reader, settings, stats };

@@ -4,6 +4,10 @@ Tankōbon is a library manager and reader for digital comics, BD and manga. It o
 
 The mouse pointer turns into a hand over everything that can be clicked (buttons, links, menus, checkboxes and their labels), and keeps the usual arrow over disabled controls.
 
+## Home
+
+"Accueil" is the page shown when the app starts, first entry of the sidebar. It is an empty page for now; blocks will be added to it.
+
 ## Library
 
 - **Page sizes**: once comics are added (file, folder, resynchronization, JSON import, or a book opened for the first time), the app measures their pages in the background, one book at a time, and shows each book's average page size ("Pages ~1 200 × 1 800 px", the simple average of the pages' widths and heights) on its row in the library. A bar at the bottom of the window shows "Mesure de la taille des pages…" with a progress gauge while the measure runs; the library stays usable meanwhile. Pages whose size can't be read are left out of the average (a PDF's pages are measured at the size they are rendered at). A book that can't be measured shows no size and is tried again at the next start.

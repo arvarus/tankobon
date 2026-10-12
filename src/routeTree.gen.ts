@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AchievementsRouteImport } from './routes/achievements'
+import { Route as LibraryRouteImport } from './routes/library'
 import { Route as ReaderRouteImport } from './routes/reader'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as StatsRouteImport } from './routes/stats'
@@ -32,6 +33,11 @@ const IndexRoute = IndexRouteImport.update({
 const AchievementsRoute = AchievementsRouteImport.update({
   id: '/achievements',
   path: '/achievements',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LibraryRoute = LibraryRouteImport.update({
+  id: '/library',
+  path: '/library',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReaderRoute = ReaderRouteImport.update({
@@ -98,6 +104,7 @@ const SettingsReadingRoute = SettingsReadingRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/achievements': typeof AchievementsRoute
+  '/library': typeof LibraryRoute
   '/reader': typeof ReaderRoute
   '/settings': typeof SettingsRouteWithChildren
   '/stats': typeof StatsRoute
@@ -114,6 +121,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/achievements': typeof AchievementsRoute
+  '/library': typeof LibraryRoute
   '/reader': typeof ReaderRoute
   '/stats': typeof StatsRoute
   '/lists/$listId': typeof ListsListIdRoute
@@ -130,6 +138,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/achievements': typeof AchievementsRoute
+  '/library': typeof LibraryRoute
   '/reader': typeof ReaderRoute
   '/settings': typeof SettingsRouteWithChildren
   '/stats': typeof StatsRoute
@@ -148,6 +157,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/achievements'
+    | '/library'
     | '/reader'
     | '/settings'
     | '/stats'
@@ -164,6 +174,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/achievements'
+    | '/library'
     | '/reader'
     | '/stats'
     | '/lists/$listId'
@@ -179,6 +190,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/achievements'
+    | '/library'
     | '/reader'
     | '/settings'
     | '/stats'
@@ -196,6 +208,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AchievementsRoute: typeof AchievementsRoute
+  LibraryRoute: typeof LibraryRoute
   ReaderRoute: typeof ReaderRoute
   SettingsRoute: typeof SettingsRouteWithChildren
   StatsRoute: typeof StatsRoute
@@ -217,6 +230,13 @@ declare module '@tanstack/react-router' {
       path: '/achievements'
       fullPath: '/achievements'
       preLoaderRoute: typeof AchievementsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/library': {
+      id: '/library'
+      path: '/library'
+      fullPath: '/library'
+      preLoaderRoute: typeof LibraryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reader': {
@@ -333,6 +353,7 @@ const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AchievementsRoute: AchievementsRoute,
+  LibraryRoute: LibraryRoute,
   ReaderRoute: ReaderRoute,
   SettingsRoute: SettingsRouteWithChildren,
   StatsRoute: StatsRoute,

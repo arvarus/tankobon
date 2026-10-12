@@ -1,5 +1,6 @@
 // The sidebar.
 export default {
+  home: 'Home',
   library: 'Library',
   readingLists: 'Reading lists',
   achievements: 'Achievements',

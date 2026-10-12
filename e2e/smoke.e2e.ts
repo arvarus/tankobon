@@ -9,6 +9,8 @@ let app: RunningApp | undefined;
 
 async function start(seed: Seed): Promise<Page> {
   app = await launchApp(seed);
+  // The app starts on the home page; most tests begin in the library.
+  await app.page.getByRole('link', { name: 'Library' }).click();
   return app.page;
 }
 
