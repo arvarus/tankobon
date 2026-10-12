@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { Shuffle } from 'lucide-react';
+import { Shuffle, Star } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -8,6 +8,7 @@ import { BookRating } from '@/components/book-row';
 import { Button } from '@/components/ui/button';
 import { useLibrary } from '@/hooks/use-library';
 import { continueReading } from '@/lib/continue-reading';
+import { topRated } from '@/lib/home-favorites';
 import { pickRandomUnread } from '@/lib/home-picks';
 import { recentlyAdded } from '@/lib/recent-books';
 import { lowestRated } from '@/lib/second-chance';
@@ -22,6 +23,7 @@ function HomePage() {
   const { t } = useTranslation('home');
   const library = useLibrary();
   const books = library ? continueReading(library) : [];
+  const favorites = useMemo(() => (library ? topRated(library) : []), [library]);
   const recent = useMemo(() => (library ? recentlyAdded(library) : []), [library]);
 
   return (
@@ -73,6 +75,37 @@ function HomePage() {
           </ul>
         )}
       </section>
+      {favorites.length > 0 && (
+        <section className="mt-6" aria-labelledby="home-favorites">
+          <h2 id="home-favorites" className="text-lg font-medium">
+            {t('favorites.title')}
+          </h2>
+          <ul className="mt-3 flex flex-wrap gap-4">
+            {favorites.map((entry) => (
+              <li key={entry.id} className="w-32">
+                <Link
+                  to="/reader"
+                  search={{ book: entry.id }}
+                  aria-label={t('openBook', { title: entry.title })}
+                  className="block rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+                >
+                  <BookCover entryId={entry.id} title={entry.title} className="aspect-[2/3] w-full" />
+                  <span className="mt-1 line-clamp-2 text-sm">{entry.title}</span>
+                  <span className="mt-0.5 flex gap-0.5" role="img" aria-label={t('favorites.rating', { rating: entry.rating })}>
+                    {[1, 2, 3, 4, 5].map((value) => (
+                      <Star
+                        key={value}
+                        className={`size-3.5 ${value <= entry.rating ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/40'}`}
+                        aria-hidden
+                      />
+                    ))}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <Suggestions />
       <SecondChance />
     </div>

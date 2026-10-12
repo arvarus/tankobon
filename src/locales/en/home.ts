@@ -16,4 +16,8 @@ export default {
   recentlyAdded: 'Recently added',
   recentlyAddedEmpty: 'No book in the library yet.',
   openBook: 'Open {{title}}',
+  favorites: {
+    title: 'Rediscover your favorites',
+    rating: '{{rating}} / 5',
+  },
 };

@@ -18,6 +18,10 @@ const home: Translation<typeof en> = {
   recentlyAdded: 'Derniers ajouts',
   recentlyAddedEmpty: 'Aucun livre dans la bibliothèque pour le moment.',
   openBook: 'Ouvrir {{title}}',
+  favorites: {
+    title: 'Redécouvrez vos favoris',
+    rating: '{{rating}} / 5',
+  },
 };
 
 export default home;
