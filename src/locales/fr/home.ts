@@ -5,6 +5,9 @@ const home: Translation<typeof en> = {
   title: 'Accueil',
   continueReading: 'Reprendre la lecture',
   continueReadingPage: 'Page {{page}} / {{total}}',
+  recentlyAdded: 'Derniers ajouts',
+  recentlyAddedEmpty: 'Aucun livre dans la bibliothèque pour le moment.',
+  openBook: 'Ouvrir {{title}}',
 };
 
 export default home;
