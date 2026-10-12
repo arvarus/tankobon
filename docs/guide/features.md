@@ -6,7 +6,7 @@ The mouse pointer turns into a hand over everything that can be clicked (buttons
 
 ## Home
 
-"Accueil" is the page shown when the app starts, first entry of the sidebar. It is an empty page for now; blocks will be added to it.
+"Accueil" is the page shown when the app starts, first entry of the sidebar. It shows a **"Reprendre la lecture"** block with the covers of the last five books you opened and started but did not finish (past the first page, last page not reached, no "Lu" tag), most recently opened first, each with its title and page ("Page 4 / 10"). Clicking one opens it in the reader at its saved page. The block is hidden when there is nothing to resume. More blocks will be added to the page.
 
 ## Library
 
