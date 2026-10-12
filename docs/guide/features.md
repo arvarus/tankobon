@@ -6,7 +6,7 @@ The mouse pointer turns into a hand over everything that can be clicked (buttons
 
 ## Home
 
-"Accueil" is the page shown when the app starts, first entry of the sidebar. It is made of blocks. **"Une deuxième chance"** lists the 10 worst-rated books of the library (rated 1 or 2 stars, worst first, then by title; unrated books are not listed) with their cover and a clickable rating, so a rating can be changed on the spot; a click on a book opens it in the reader. The block is hidden when no book is rated that low.
+"Accueil" is the page shown when the app starts, first entry of the sidebar. It is made of blocks. **"Une deuxième chance"** lists the 10 worst-rated books of the library (rated 1 or 2 stars, worst first, then by title; unrated books are not listed) with their cover and a clickable rating, so a rating can be changed on the spot; a click on a book opens it in the reader. The block is hidden when no book is rated that low. Paramètres › Accueil manages the page: "Afficher la page d'accueil" turns it off (the "Accueil" entry leaves the sidebar and the app starts on the library), and each section has a checkbox to show or hide it and up/down buttons ("Monter"/"Descendre") to set the order. The choices are part of the exported settings.
 
 ## Library
 

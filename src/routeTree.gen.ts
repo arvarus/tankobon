@@ -21,6 +21,7 @@ import { Route as SettingsIndexRouteImport } from './routes/settings/index'
 import { Route as SettingsAboutRouteImport } from './routes/settings/about'
 import { Route as SettingsAppearanceRouteImport } from './routes/settings/appearance'
 import { Route as SettingsDataRouteImport } from './routes/settings/data'
+import { Route as SettingsHomeRouteImport } from './routes/settings/home'
 import { Route as SettingsLibraryRouteImport } from './routes/settings/library'
 import { Route as SettingsMetadataRouteImport } from './routes/settings/metadata'
 import { Route as SettingsReadingRouteImport } from './routes/settings/reading'
@@ -85,6 +86,11 @@ const SettingsDataRoute = SettingsDataRouteImport.update({
   path: '/data',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsHomeRoute = SettingsHomeRouteImport.update({
+  id: '/home',
+  path: '/home',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SettingsLibraryRoute = SettingsLibraryRouteImport.update({
   id: '/library',
   path: '/library',
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/settings/about': typeof SettingsAboutRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/data': typeof SettingsDataRoute
+  '/settings/home': typeof SettingsHomeRoute
   '/settings/library': typeof SettingsLibraryRoute
   '/settings/metadata': typeof SettingsMetadataRoute
   '/settings/reading': typeof SettingsReadingRoute
@@ -128,6 +135,7 @@ export interface FileRoutesByTo {
   '/settings/about': typeof SettingsAboutRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/data': typeof SettingsDataRoute
+  '/settings/home': typeof SettingsHomeRoute
   '/settings/library': typeof SettingsLibraryRoute
   '/settings/metadata': typeof SettingsMetadataRoute
   '/settings/reading': typeof SettingsReadingRoute
@@ -146,6 +154,7 @@ export interface FileRoutesById {
   '/settings/about': typeof SettingsAboutRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/data': typeof SettingsDataRoute
+  '/settings/home': typeof SettingsHomeRoute
   '/settings/library': typeof SettingsLibraryRoute
   '/settings/metadata': typeof SettingsMetadataRoute
   '/settings/reading': typeof SettingsReadingRoute
@@ -165,6 +174,7 @@ export interface FileRouteTypes {
     | '/settings/about'
     | '/settings/appearance'
     | '/settings/data'
+    | '/settings/home'
     | '/settings/library'
     | '/settings/metadata'
     | '/settings/reading'
@@ -181,6 +191,7 @@ export interface FileRouteTypes {
     | '/settings/about'
     | '/settings/appearance'
     | '/settings/data'
+    | '/settings/home'
     | '/settings/library'
     | '/settings/metadata'
     | '/settings/reading'
@@ -198,6 +209,7 @@ export interface FileRouteTypes {
     | '/settings/about'
     | '/settings/appearance'
     | '/settings/data'
+    | '/settings/home'
     | '/settings/library'
     | '/settings/metadata'
     | '/settings/reading'
@@ -302,6 +314,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsDataRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/home': {
+      id: '/settings/home'
+      path: '/home'
+      fullPath: '/settings/home'
+      preLoaderRoute: typeof SettingsHomeRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/settings/library': {
       id: '/settings/library'
       path: '/library'
@@ -330,6 +349,7 @@ interface SettingsRouteChildren {
   SettingsAboutRoute: typeof SettingsAboutRoute
   SettingsAppearanceRoute: typeof SettingsAppearanceRoute
   SettingsDataRoute: typeof SettingsDataRoute
+  SettingsHomeRoute: typeof SettingsHomeRoute
   SettingsLibraryRoute: typeof SettingsLibraryRoute
   SettingsMetadataRoute: typeof SettingsMetadataRoute
   SettingsReadingRoute: typeof SettingsReadingRoute
@@ -340,6 +360,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsAboutRoute: SettingsAboutRoute,
   SettingsAppearanceRoute: SettingsAppearanceRoute,
   SettingsDataRoute: SettingsDataRoute,
+  SettingsHomeRoute: SettingsHomeRoute,
   SettingsLibraryRoute: SettingsLibraryRoute,
   SettingsMetadataRoute: SettingsMetadataRoute,
   SettingsReadingRoute: SettingsReadingRoute,

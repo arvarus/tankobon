@@ -6,6 +6,7 @@ const settings: Translation<typeof en> = {
   sections: {
     reading: 'Lecture',
     appearance: 'Affichage',
+    home: 'Accueil',
     library: 'Bibliothèque',
     metadata: 'Métadonnées',
     data: 'Données',
@@ -138,6 +139,20 @@ const settings: Translation<typeof en> = {
     clearConfirm_one: '{{entries}} BD et {{count}} liste de lecture seront retirées, avec leur progression, leurs notes, leurs étiquettes et leurs infos. Les fichiers BD restent sur le disque.',
     clearConfirm_other: '{{entries}} BD et {{count}} listes de lecture seront retirées, avec leur progression, leurs notes, leurs étiquettes et leurs infos. Les fichiers BD restent sur le disque.',
     clearAction: 'Effacer',
+  },
+  home: {
+    enabled: 'Page d’accueil',
+    enabledLabel: 'Afficher la page d’accueil',
+    enabledHint: 'Désactivée, l’entrée « Accueil » disparaît de la barre latérale et l’application démarre sur la bibliothèque.',
+    sectionsTitle: 'Sections de l’accueil',
+    sectionsHint: 'Choisissez les sections affichées sur l’accueil, et leur ordre.',
+    sections: {
+      secondChance: 'Une deuxième chance (livres les moins bien notés)',
+    },
+    moveUp: 'Monter',
+    moveDown: 'Descendre',
+    moveUpNamed: 'Monter « {{name}} »',
+    moveDownNamed: 'Descendre « {{name}} »',
   },
   about: {
     version: 'Version',
