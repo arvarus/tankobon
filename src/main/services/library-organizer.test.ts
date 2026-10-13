@@ -13,7 +13,6 @@ import {
   letterFolderName,
   moveFile,
   organizedFolderName,
-  organizedPath,
   organizedPaths,
   organizeEntries,
   planOrganization,
@@ -277,10 +276,10 @@ describe('organizedPaths', () => {
 
   it('keeps the original name of a file renamed by a collision', () => {
     const renamed = entry({ path: `/org/Tintin/Tintin au Tibet (${ID}).cbz` });
-    expect(organizedPath({ root: '/org', structure: ['year'], fileName: '' }, renamed)).toBe(
+    expect(organizedPaths({ root: '/org', structure: ['year'], fileName: '' }, renamed)[0]).toBe(
       path.join('/org', '1960', 'Tintin au Tibet.cbz'),
     );
-    expect(organizedPath(flat('/org'), renamed)).toBe(path.join('/org', `Tintin au Tibet (${ID})`, 'Tintin au Tibet.cbz'));
+    expect(organizedPaths(flat('/org'), renamed)[0]).toBe(path.join('/org', `Tintin au Tibet (${ID})`, 'Tintin au Tibet.cbz'));
   });
 });
 
@@ -316,7 +315,7 @@ describe('organizedPaths with a file name template', () => {
   });
 
   it('names the subfolder of the default layout after the new name', () => {
-    expect(organizedPath({ root: '/org', structure: [], fileName }, entry())).toBe(
+    expect(organizedPaths({ root: '/org', structure: [], fileName }, entry())[0]).toBe(
       path.join('/org', `Tintin - T20 - Tintin au Tibet (${ID})`, 'Tintin - T20 - Tintin au Tibet.cbz'),
     );
   });
