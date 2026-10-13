@@ -208,13 +208,22 @@ export class DataStore {
     }
   }
 
-  /** Shows `patch` on an entry at once, then runs `persist`; the main process's echo confirms it. */
+  /**
+   * Shows `patch` on an entry at once, then runs `persist`; the main process's echo confirms it. If
+   * `persist` rejects, the library is reloaded (the optimistic value is dropped) and the error rethrown.
+   */
   async patchEntry(id: string, patch: Partial<LibraryEntry>, persist: () => Promise<unknown>): Promise<void> {
     if (this.library) {
       this.library = this.library.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry));
       this.emit('library');
     }
-    await this.guarded(`entry:${id}`, persist);
+    try {
+      await this.guarded(`entry:${id}`, persist);
+    } catch (error) {
+      // Refused or failed: the store must show what the database holds, not the value that never made it there.
+      await this.reloadLibrary().catch(() => undefined);
+      throw error;
+    }
   }
 
   /** Replaces an entry with a newer state of itself, e.g. what a metadata dialog just saved. */
@@ -222,7 +231,7 @@ export class DataStore {
     this.apply({ scope: 'library', upserted: [entry] });
   }
 
-  /** Shows a setting's new value at once, then runs `persist`. */
+  /** Shows a setting's new value at once, then runs `persist`; if it rejects, the settings are reloaded and the error rethrown. */
   async updateSetting<K extends keyof PublicSettings>(
     key: K,
     value: PublicSettings[K],
@@ -230,6 +239,11 @@ export class DataStore {
   ): Promise<void> {
     this.settings = { ...this.settings, [key]: value };
     this.emit('settings');
-    await this.guarded(`setting:${key}`, persist);
+    try {
+      await this.guarded(`setting:${key}`, persist);
+    } catch (error) {
+      await this.reloadSettings().catch(() => undefined);
+      throw error;
+    }
   }
 }
