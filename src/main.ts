@@ -1,5 +1,6 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import started from 'electron-squirrel-startup';
 
 import { applyAppMenu } from './main/app-menu';
@@ -13,6 +14,7 @@ import { ReadingListRepository } from './main/db/reading-list-repository';
 import { StatsRepository } from './main/db/stats-repository';
 import { SettingsRepository } from './main/db/settings-repository';
 import { broadcastDataChange } from './main/ipc/data-changes';
+import { setAppUrl } from './main/ipc/trusted-sender';
 import { registerAchievementsIpc } from './main/ipc/achievements';
 import { registerAppIpc } from './main/ipc/app';
 import { registerComicIpc } from './main/ipc/comic';
@@ -85,6 +87,11 @@ const createWindow = () => {
 };
 
 app.whenReady().then(() => {
+  // Only the application's own page may call the IPC handlers.
+  setAppUrl(
+    MAIN_WINDOW_VITE_DEV_SERVER_URL ??
+      pathToFileURL(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`)).href,
+  );
   const db = openDatabase();
   const libraryRepo = new LibraryRepository(db);
   const folderRepo = new LibraryFolderRepository(db);
