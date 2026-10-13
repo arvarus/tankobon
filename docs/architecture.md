@@ -18,6 +18,8 @@ The window is also locked to the app's own page: `src/main.ts` cancels `will-nav
 
 `src/main.ts` opens the database once, builds the repositories and the thumbnail cache, registers the IPC handlers of `src/main/ipc/*.ts`, then creates the window.
 
+**One instance at a time**: `main.ts` takes `app.requestSingleInstanceLock()` first; a second launch quits at once and the running instance (`second-instance`) restores and focuses its window, so two processes never write the same database file or run two decoders on the same library. The connection also sets `PRAGMA busy_timeout` (`configureConnection()`, `schema.ts`, 5 s), so a write that meets a lock held by something else (a sync tool, a second machine's copy) waits instead of failing with "database is locked". The journal mode is left at SQLite's default: WAL is unsafe on the synced folders the [database location](#database-location-db-location-ts) may point at.
+
 **Start-up loader**: `index.html` ships a static spinner inside `#root` (inline CSS, which the CSP's `style-src 'unsafe-inline'` allows; light/dark through `prefers-color-scheme`, since the settings aren't loaded yet). The window shows it while `src/renderer.tsx` waits for the settings and the language, and React's first `root.render()` replaces it, so there is nothing to hide.
 
 ### IPC channels

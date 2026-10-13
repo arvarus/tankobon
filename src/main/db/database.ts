@@ -12,7 +12,7 @@ import { mkdirSync } from 'node:fs';
 
 import type { DatabaseLocation } from '../../shared/data';
 import { resolveDatabaseLocation } from './db-location';
-import { migrate } from './schema';
+import { configureConnection, migrate } from './schema';
 
 /** Where the database lives for this run, resolved from Electron's `userData` directory (see db-location.ts). */
 export function databaseLocation(): DatabaseLocation {
@@ -24,6 +24,7 @@ export function openDatabase(): DatabaseSync {
   const { directory, filePath } = databaseLocation();
   mkdirSync(directory, { recursive: true });
   const db = new DatabaseSync(filePath);
+  configureConnection(db);
   migrate(db);
   return db;
 }

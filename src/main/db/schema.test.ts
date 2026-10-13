@@ -1,7 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { describe, expect, it } from 'vitest';
 
-import { migrate } from './schema';
+import { BUSY_TIMEOUT_MS, configureConnection, migrate } from './schema';
 
 function columnNames(db: DatabaseSync, table: string): string[] {
   return (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name);
@@ -143,5 +143,16 @@ describe('versioned migrations', () => {
 
     expect(userVersion(db)).toBe(99);
     expect(columnNames(db, 'library')).toEqual([]);
+  });
+});
+
+describe('configureConnection', () => {
+  it('makes the connection wait for a lock held elsewhere instead of failing at once', () => {
+    const db = new DatabaseSync(':memory:');
+    expect(db.prepare('PRAGMA busy_timeout').get()).toEqual({ timeout: 0 });
+
+    configureConnection(db);
+
+    expect(db.prepare('PRAGMA busy_timeout').get()).toEqual({ timeout: BUSY_TIMEOUT_MS });
   });
 });
