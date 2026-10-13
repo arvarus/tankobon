@@ -18,18 +18,14 @@ import { registerAppIpc } from './main/ipc/app';
 import { registerComicIpc } from './main/ipc/comic';
 import { registerDatabaseIpc } from './main/ipc/database';
 import { registerDataIpc } from './main/ipc/data';
-import {
-  broadcastImageScanProgress,
-  createLibraryOrganizer,
-  createResynchronizer,
-  registerLibraryIpc,
-} from './main/ipc/library';
+import { broadcastImageScanProgress, registerLibraryIpc } from './main/ipc/library';
 import { registerMetadataIpc } from './main/ipc/metadata';
 import { registerReadingListIpc } from './main/ipc/reading-lists';
 import { registerStatsIpc } from './main/ipc/stats';
 import { registerSettingsIpc } from './main/ipc/settings';
 import { applyMainLanguage, onMainLanguageApplied } from './main/language';
 import { createImageStatsScanner } from './main/services/image-stats-scanner';
+import { createLibraryOrganizer, createResynchronizer } from './main/services/library-organization';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
