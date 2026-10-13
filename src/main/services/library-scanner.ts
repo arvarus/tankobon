@@ -5,7 +5,7 @@
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 
-import { SUPPORTED_COMIC_EXTENSIONS } from '../../shared/comic';
+import { isSupportedComicFile } from '../../shared/comic';
 import type { ScanProgress } from '../../shared/library';
 import type { ArchiveSummary } from '../decoder/protocol';
 import type { LibraryRepository } from '../db/library-repository';
@@ -18,12 +18,6 @@ export interface ScanSummary {
   total: number;
   /** The entries this scan created, for the library organization. */
   addedEntries: { id: string; path: string }[];
-}
-
-/** Whether a file name has one of the `SUPPORTED_COMIC_EXTENSIONS` (case-insensitive). */
-export function isSupportedComicFile(fileName: string): boolean {
-  const extension = path.extname(fileName).slice(1).toLowerCase();
-  return (SUPPORTED_COMIC_EXTENSIONS as readonly string[]).includes(extension);
 }
 
 /**
