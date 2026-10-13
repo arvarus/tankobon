@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import type { NextInList } from '@/hooks/use-next-in-list';
 import { useReadingPace } from '@/hooks/use-reading-pace';
 import { useResumeScroll } from '@/hooks/use-resume-scroll';
+import { createTrailingDebounce, type TrailingDebounce } from '@/lib/trailing-debounce';
 import type { ComicInfo } from '@/shared/comic';
 
 /** Width of the page column as a fraction of the reading area; 1 fits the pages to its width. */
@@ -41,7 +42,21 @@ export function ContinuousReader({
 }: ContinuousReaderProps) {
   const { t } = useTranslation('reader');
   const [visiblePage, setVisiblePage] = useState(comic.resumePage);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onActivePageRef = useRef(onActivePage);
+  useEffect(() => {
+    onActivePageRef.current = onActivePage;
+  });
+  // Progress is saved 400 ms after the page stops changing, and at once when the reader goes away:
+  // closing within 400 ms of reaching the last page must still record it (and the book as finished).
+  const saveProgress = useRef<TrailingDebounce<number> | null>(null);
+  useEffect(() => {
+    const saver = createTrailingDebounce<number>((index) => onActivePageRef.current(index), 400);
+    saveProgress.current = saver;
+    return () => {
+      saver.flush();
+      saveProgress.current = null;
+    };
+  }, []);
   const scrollRef = useRef<HTMLDivElement>(null);
   const columnRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
@@ -73,15 +88,7 @@ export function ContinuousReader({
   const handleActive = useCallback(
     (index: number) => {
       setVisiblePage(index);
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => onActivePage(index), 400);
-    },
-    [onActivePage],
-  );
-
-  useEffect(
-    () => () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+      saveProgress.current?.schedule(index);
     },
     [],
   );
