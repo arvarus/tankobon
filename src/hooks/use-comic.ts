@@ -11,11 +11,16 @@ interface ComicState {
   page: number;
   /** Blob URL of the current page, null while loading. */
   pageUrl: string | null;
+  /**
+   * `<archive id>:<page index>` of the page `pageUrl` shows. `page` moves on before the new image
+   * has arrived, so it can't name the image on screen; this does. Null while there is none.
+   */
+  pageKey: string | null;
   error: string | null;
   loading: boolean;
 }
 
-const initialState: ComicState = { comic: null, page: 0, pageUrl: null, error: null, loading: false };
+const initialState: ComicState = { comic: null, page: 0, pageUrl: null, pageKey: null, error: null, loading: false };
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -77,7 +82,7 @@ export function useComic({ loadPages = true }: UseComicOptions = {}) {
         return;
       }
       revokeCurrentUrl();
-      setState({ comic, page: comic.resumePage, pageUrl: null, error: null, loading: loadPages });
+      setState({ comic, page: comic.resumePage, pageUrl: null, pageKey: null, error: null, loading: loadPages });
     } catch (error) {
       if (!mounted.current || request !== openRequest.current) return;
       setState((s) => ({ ...s, loading: false, error: errorMessage(error) }));
@@ -113,7 +118,7 @@ export function useComic({ loadPages = true }: UseComicOptions = {}) {
         revokeCurrentUrl();
         const url = URL.createObjectURL(new Blob([data], { type: mimeType }));
         currentUrl.current = url;
-        setState((s) => ({ ...s, pageUrl: url, loading: false }));
+        setState((s) => ({ ...s, pageUrl: url, pageKey: `${comicId}:${page}`, loading: false }));
       })
       .catch((error: unknown) => {
         if (!cancelled) {
