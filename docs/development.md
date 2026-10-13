@@ -94,7 +94,13 @@ The API reference covers the modules listed in `typedoc.json`'s `entryPoints`. E
 
 ## Dependency audit
 
-The one remaining `npm audit` finding as of 2026-09-30 is in dev-only tooling, never shipped in the packaged app: `esbuild` through `vitepress` 1.x (its bundled Vite 5). The advisory only concerns the dev server (`npm run docs:dev`); the published site is static. It has no fix until VitePress 2 leaves pre-release.
+As of 2026-10-13, `npm audit` reports 14 findings (8 high, 6 moderate) and `npm audit --omit=dev` 10 of them. None ships in the packaged app, and none is reachable by a file or an answer the app handles:
+
+- **`upscaler` → `wireit` → `chokidar`/`fast-glob`/`micromatch` → `braces`** (high, a denial of service on deeply nested glob patterns). `upscaler` 1.0.0 declares `wireit`, a build tool, as a runtime dependency; nothing of it is in the renderer bundle (`node_modules/upscaler/dist/browser/esm` doesn't reference it). `npm audit` proposes `upscaler@0.12.3`, a downgrade of a major version: not an option.
+- **`@tensorflow/tfjs` → `argparse` → `sprintf-js`** (moderate, a denial of service through unbounded precision specifiers in a format string): no fix exists. The umbrella package declares `argparse` for its own scripts; the browser entry the renderer imports (`dist/index.js`) doesn't reference it.
+- **Build and docs tooling**, never shipped: `esbuild` and `vite` through `vitepress` 1.x (its bundled Vite 5; the advisory only concerns the dev server, `npm run docs:dev`, and the published site is static; no fix until VitePress 2 leaves pre-release), and `braces` again through `vite-plugin-static-copy`'s `chokidar`, which only runs at build time on the project's own files.
+
+Re-read `npm audit` after each dependency bump: a new finding that is not in this list, or one on a package the renderer or the decoder process really loads, is a real one.
 
 Upgrading Electron Forge to 8 removed the `extract-zip` findings (`@electron/packager` 20 no longer depends on it) and made the former `tar`/`tmp` `overrides` unnecessary; `npm audit fix` took care of `brace-expansion`, `fast-uri` and `ip-address`.
 
