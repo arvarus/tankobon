@@ -18,6 +18,7 @@ export default {
   },
   decoder: {
     crashed: 'The file could not be read: the decoder stopped unexpectedly.',
+    timeout: 'The file could not be read: it took too long, so it was abandoned.',
   },
   database: {
     notWritable: 'Cannot write to {{directory}}.',

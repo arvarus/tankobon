@@ -19,6 +19,7 @@ const errors: Translation<typeof en> = {
   },
   decoder: {
     crashed: "Fichier illisible : le décodeur s'est arrêté de façon inattendue.",
+    timeout: 'Fichier illisible : la lecture a pris trop de temps et a été abandonnée.',
   },
   database: {
     notWritable: "Impossible d'écrire dans {{directory}}.",

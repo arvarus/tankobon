@@ -10,6 +10,7 @@ import type { DecoderClient } from '../decoder/decoder-client';
 import type { ImageStatsScanner } from '../services/image-stats-scanner';
 import { openErrorMessage } from '../services/open-error';
 import type { NotifyDataChange } from './data-changes';
+import { ArchiveOwners } from './archive-owners';
 import { existingDirectory, openDialogFor } from './dialogs';
 import { handle } from './handle';
 import { args, booleanArg, idArg, pageIndexArg } from './validate';
@@ -40,6 +41,10 @@ export function registerComicIpc(
   // With the library's books (by id), they are the only things `comic:open` accepts: the renderer
   // never names a path, so it can't have the main process read an arbitrary file.
   const pickedPaths = new Map<string, { path: string; addToLibrary: boolean }>();
+  // The archives each window opened: closed when the window is destroyed (a crashed or closed
+  // renderer never calls `comic:close`).
+  const owners = new ArchiveOwners();
+  const watchedSenders = new Set<number>();
 
   handle(COMIC_CHANNELS.pickFile, args(booleanArg), async (event, addToLibrary) => {
     const options: Electron.OpenDialogOptions = {
@@ -57,7 +62,7 @@ export function registerComicIpc(
     return token;
   });
 
-  handle(COMIC_CHANNELS.open, args(idArg), async (_event, ref): Promise<OpenComicResult> => {
+  handle(COMIC_CHANNELS.open, args(idArg), async (event, ref): Promise<OpenComicResult> => {
     // A dialog token, else a library entry id; anything else is not a book we know.
     const picked = pickedPaths.get(ref);
     const filePath = picked?.path ?? libraryRepo.get(ref)?.path;
@@ -66,6 +71,16 @@ export function registerComicIpc(
     }
     try {
       const comic = await decoder.open(filePath);
+      const sender = event.sender;
+      if (!watchedSenders.has(sender.id)) {
+        const senderId = sender.id;
+        watchedSenders.add(senderId);
+        sender.once('destroyed', () => {
+          watchedSenders.delete(senderId);
+          for (const id of owners.release(senderId)) void decoder.close(id).catch(() => undefined);
+        });
+      }
+      owners.add(sender.id, comic.id);
       // Anonymous read: with the option off, a book the library doesn't know is not added (unless it was
       // picked from the library page's "add a file"), so nothing is saved for it (no entry, no progress, no cover) and it reopens from its first page.
       const anonymous =
@@ -95,5 +110,8 @@ export function registerComicIpc(
 
   handle(COMIC_CHANNELS.readPage, args(idArg, pageIndexArg), (_event, id, index) => decoder.readPage(id, index));
 
-  handle(COMIC_CHANNELS.close, args(idArg), (_event, id) => decoder.close(id));
+  handle(COMIC_CHANNELS.close, args(idArg), (_event, id) => {
+    owners.remove(id);
+    return decoder.close(id);
+  });
 }

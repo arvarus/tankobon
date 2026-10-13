@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { applyLanguage } from '../../shared/i18n';
 import { DecoderClient, type DecoderChannel } from './decoder-client';
@@ -141,5 +141,66 @@ describe('DecoderClient', () => {
     await client.open('/a.cbz');
     client.dispose();
     expect(channel.killed).toBe(true);
+  });
+
+  describe('timeout', () => {
+    afterEach(() => vi.useRealTimers());
+
+    /** A first process that never answers, then well-behaved ones. */
+    function hangingClient() {
+      const channels: FakeChannel[] = [];
+      const client = new DecoderClient(
+        () => {
+          channels.push(new FakeChannel(channels.length === 0 ? () => undefined : echo));
+          return channels[channels.length - 1];
+        },
+        '/cache',
+        1000,
+      );
+      return { channels, client };
+    }
+
+    it('abandons a call that opens a file when it hangs: kills the process, fails the others, starts afresh', async () => {
+      vi.useFakeTimers();
+      const { channels, client } = hangingClient();
+
+      const hung = client.open('/trap.pdf');
+      const other = client.readPage('id', 0);
+      const hungResult = expect(hung).rejects.toThrow('trop de temps');
+      const otherResult = expect(other).rejects.toThrow('Fichier illisible');
+      await vi.advanceTimersByTimeAsync(1000);
+      await hungResult;
+      await otherResult;
+
+      expect(channels[0].killed).toBe(true);
+      await expect(client.open('/fine.cbz')).resolves.toEqual({ path: '/fine.cbz' });
+      expect(channels).toHaveLength(2);
+    });
+
+    it('does not time out the calls that are not about opening a file', async () => {
+      vi.useFakeTimers();
+      const { channels, client } = hangingClient();
+
+      let settled = false;
+      void client.readPage('id', 0).then(
+        () => (settled = true),
+        () => (settled = true),
+      );
+      await vi.advanceTimersByTimeAsync(10_000);
+
+      expect(settled).toBe(false);
+      expect(channels[0].killed).toBe(false);
+    });
+
+    it('leaves a call that is answered in time alone', async () => {
+      vi.useFakeTimers();
+      const channel = new FakeChannel(echo);
+      const client = new DecoderClient(() => channel, '/cache', 1000);
+
+      await expect(client.open('/a.cbz')).resolves.toEqual({ path: '/a.cbz' });
+      await vi.advanceTimersByTimeAsync(5000);
+
+      expect(channel.killed).toBe(false);
+    });
   });
 });

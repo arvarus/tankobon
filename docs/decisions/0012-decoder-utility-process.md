@@ -1,6 +1,6 @@
 # 0012. Comic files decoded in a utility process, not in the main process
 
-- **Status:** Accepted
+- **Status:** Accepted (amended by [0018](./0018-decoder-timeouts-and-archive-ownership.md): timeouts on the calls that open a file, archives tied to their window)
 - **Date:** 2026-10-03
 
 ## Context

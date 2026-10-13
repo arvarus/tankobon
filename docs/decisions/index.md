@@ -21,6 +21,7 @@ An ADR records one structural decision: the context, what was decided, and what 
 | [0015](./0015-library-organization-moves-files.md) | Library organization: the app moves files into one subfolder per comic | Accepted |
 | [0016](./0016-library-structure-levels.md) | Library structure: a tree of up to three metadata levels | Accepted |
 | [0017](./0017-library-file-name-template.md) | Library file names: a template of metadata fields | Accepted |
+| [0018](./0018-decoder-timeouts-and-archive-ownership.md) | Decoder calls bounded by a timeout, archives tied to their window | Accepted |
 
 These first four ADRs were written after the fact, from the code and its comments, then checked by the maintainer.
 
