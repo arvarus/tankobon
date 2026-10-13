@@ -30,7 +30,9 @@ export interface ResyncSummary {
 /** Whether `filePath` is inside `directory` (not the directory itself). */
 export function isInside(directory: string, filePath: string): boolean {
   const relative = path.relative(directory, filePath);
-  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
+  // A name that merely starts with two dots (`...Et alors.cbz`) is inside; only the `..` segment leaves.
+  const leavesDirectory = relative === '..' || relative.startsWith(`..${path.sep}`);
+  return relative !== '' && !leavesDirectory && !path.isAbsolute(relative);
 }
 
 async function isReadableDirectory(directory: string): Promise<boolean> {
