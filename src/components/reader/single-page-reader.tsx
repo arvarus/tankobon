@@ -39,6 +39,8 @@ interface SinglePageReaderProps {
   comic: ComicInfo;
   page: number;
   pageUrl: string | null;
+  /** Names the page `pageUrl` shows, see `useComic`. */
+  pageKey: string | null;
   error: string | null;
   loading: boolean;
   pickAndOpen: () => void;
@@ -55,6 +57,7 @@ export function SinglePageReader({
   comic,
   page,
   pageUrl,
+  pageKey,
   error,
   loading,
   pickAndOpen,
@@ -203,7 +206,7 @@ export function SinglePageReader({
     upscaledUrl,
     isUpscaling,
     error: upscaleError,
-  } = useImageUpscaler(pageUrl, upscaleEnabled && needsUpscale);
+  } = useImageUpscaler(pageUrl, upscaleEnabled && needsUpscale, pageKey);
 
   const { percent, remainingMinutes } = useReadingPace(comic.id, comic.pageCount, page);
 
