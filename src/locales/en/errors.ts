@@ -59,5 +59,7 @@ export default {
     invalidKey: '{{source}}: invalid API key.',
     notAlbumPage: '{{source}}: this page doesn’t describe an album.',
     notAlbumUrl: '{{source}}: this link isn’t an album page (https://www.bedetheque.com/BD-….html).',
+    redirected: '{{source}}: the service redirected to another site, request refused.',
+    tooLarge: '{{source}}: the response is too large.',
   },
 };

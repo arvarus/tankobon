@@ -64,6 +64,8 @@ export default {
   removeTag: 'Remove the tag {{tag}}',
   toggleTag: 'Tag {{tag}}',
   newTag: '+ tag',
+  addTagLabel: 'Add a tag',
+  ratingLabel: 'Rating',
   searchPlaceholder: 'Search an album, a series, an author…',
   searchLabel: 'Search an album',
   reset: 'Reset',

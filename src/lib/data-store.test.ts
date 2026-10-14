@@ -183,6 +183,31 @@ describe('DataStore', () => {
     expect(store.getSettings().pageSpacing).toBe(30);
   });
 
+  it('drops an optimistic entry change when the write is refused', async () => {
+    const { source } = fakeSource({ library: [entry('a', '2026-01')] });
+    const store = new DataStore(source);
+    store.start();
+    await flush();
+
+    await expect(
+      store.patchEntry('a', { rating: 5 }, () => Promise.reject(new Error('database is locked'))),
+    ).rejects.toThrow('database is locked');
+    expect(store.getLibrary()?.[0].rating).toBe(0);
+    expect(source.library.list).toHaveBeenCalledTimes(2);
+  });
+
+  it('drops an optimistic setting when the write is refused', async () => {
+    const { source } = fakeSource();
+    const store = new DataStore(source);
+    store.start();
+    await store.ready;
+
+    await expect(
+      store.updateSetting('pageSpacing', 20, () => Promise.reject(new Error('refused'))),
+    ).rejects.toThrow('refused');
+    expect(store.getSettings().pageSpacing).toBe(7);
+  });
+
   it('adds newly earned achievements once, and notifies its own slice', async () => {
     const { source, emit } = fakeSource();
     const store = new DataStore(source);

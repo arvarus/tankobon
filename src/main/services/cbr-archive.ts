@@ -8,7 +8,7 @@ import { join } from 'node:path';
 
 import type { ComicPage } from '../../shared/comic';
 import { t } from '../../shared/i18n';
-import { imageMimeType, isPageEntry, sortPages, type ComicArchive } from './comic-archive';
+import { imageMimeType, isPageEntry, MAX_ENTRY_SIZE, sortPages, type ComicArchive } from './comic-archive';
 import { checkedPage } from './image-size';
 
 // The Emscripten-compiled wasm module is copied next to the bundled decoder-worker.cjs (see
@@ -45,6 +45,7 @@ export class CbrArchive implements ComicArchive {
     readonly pages: readonly string[],
     readonly fileCount: number,
     private readonly data: ArrayBuffer,
+    private readonly sizes: ReadonlyMap<string, number>,
   ) {}
 
   /** Reads and indexes the archive; throws when it holds no image. */
@@ -58,7 +59,8 @@ export class CbrArchive implements ComicArchive {
     if (pages.length === 0) {
       throw new Error(t('errors:archive.noImages', { path: filePath }));
     }
-    return new CbrArchive(filePath, pages, files.length, data);
+    const sizes = new Map(files.map((header) => [header.name, header.unpSize]));
+    return new CbrArchive(filePath, pages, files.length, data, sizes);
   }
 
   /** Extracts page `index` (0-based); throws a `RangeError` when out of range. */
@@ -66,6 +68,10 @@ export class CbrArchive implements ComicArchive {
     const entryName = this.pages[index];
     if (entryName === undefined) {
       throw new RangeError(t('errors:archive.pageOutOfRange', { index, last: this.pages.length - 1 }));
+    }
+    // A few kilobytes of RAR can unpack to gigabytes: the size the header declares is checked before extracting.
+    if ((this.sizes.get(entryName) ?? 0) > MAX_ENTRY_SIZE) {
+      throw new Error(t('errors:archive.entryTooLarge', { entry: entryName }));
     }
     // Drained fully here too, for the same reason as in open().
     const [file] = await withExtractor(this.data, (extractor) => [...extractor.extract({ files: [entryName] }).files]);

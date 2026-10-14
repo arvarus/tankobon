@@ -60,6 +60,8 @@ const errors: Translation<typeof en> = {
     invalidKey: '{{source}} : clé API invalide.',
     notAlbumPage: '{{source}} : cette page ne décrit pas un album.',
     notAlbumUrl: "{{source}} : ce lien n'est pas celui d'une fiche album (https://www.bedetheque.com/BD-….html).",
+    redirected: "{{source}} : le service redirige vers un autre site, requête refusée.",
+    tooLarge: '{{source}} : la réponse est trop volumineuse.',
   },
 };
 

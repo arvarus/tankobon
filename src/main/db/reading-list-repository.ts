@@ -118,7 +118,7 @@ export class ReadingListRepository {
   /** Deletes every list; the books they held stay in the library. Returns how many were deleted. */
   clear(): number {
     const { count } = this.db.prepare('SELECT COUNT(*) AS count FROM reading_lists').get() as { count: number };
-    this.db.exec('DELETE FROM reading_list_items; DELETE FROM reading_lists;');
+    withTransaction(this.db, () => this.db.exec('DELETE FROM reading_list_items; DELETE FROM reading_lists;'));
     return count;
   }
 

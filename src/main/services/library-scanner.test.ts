@@ -6,7 +6,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { LibraryRepository } from '../db/library-repository';
 import { migrate } from '../db/schema';
-import { collectComicFiles, isSupportedComicFile, scanIntoLibrary } from './library-scanner';
+import { isSupportedComicFile } from '../../shared/comic';
+import { collectComicFiles, scanIntoLibrary } from './library-scanner';
 
 const roots: string[] = [];
 
