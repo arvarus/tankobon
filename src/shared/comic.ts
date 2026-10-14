@@ -42,6 +42,11 @@ export interface ComicPage {
 /** Extensions (without the dot) the app can open: used by the file dialog filter and the folder scanner. */
 export const SUPPORTED_COMIC_EXTENSIONS = ['cbz', 'cbr', 'pdf'] as const;
 
+/** Whether a file name has one of the {@link SUPPORTED_COMIC_EXTENSIONS} (case-insensitive). */
+export function isSupportedComicFile(fileName: string): boolean {
+  return comicFormat(fileName) !== null;
+}
+
 /** The format of a comic file: its extension, upper-cased ("CBZ", "CBR", "PDF"). */
 export type ComicFormat = Uppercase<(typeof SUPPORTED_COMIC_EXTENSIONS)[number]>;
 

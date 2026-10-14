@@ -27,6 +27,9 @@ export interface ComicArchive {
   close(): Promise<void>;
 }
 
+/** Largest page entry read into memory (200 MB, uncompressed size declared by the archive). */
+export const MAX_ENTRY_SIZE = 200 * 1024 * 1024;
+
 const IMAGE_MIME_TYPES: Record<string, string> = {
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',

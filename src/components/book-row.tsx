@@ -157,7 +157,8 @@ export function BookRating({ entry }: { entry: LibraryEntry }) {
   const { t } = useTranslation('library');
   const { id, rating } = entry;
   const rate = (value: number) =>
-    void appData.patchEntry(id, { rating: value }, () => window.tankobon.library.updateRating(id, value));
+    // A refused write is rolled back by the store; nothing more to show here.
+    void appData.patchEntry(id, { rating: value }, () => window.tankobon.library.updateRating(id, value)).catch(() => undefined);
   return (
     <div className="flex shrink-0 items-center gap-0.5" title={rating > 0 ? t('rating', { rating }) : t('notRated')}>
       {[1, 2, 3, 4, 5].map((value) => (
@@ -183,7 +184,9 @@ export function BookTags({ entry }: { entry: LibraryEntry }) {
 
   const toggle = (tag: string) => {
     const tags = toggleTag(entry.tags, tag);
-    void appData.patchEntry(entry.id, { tags }, () => window.tankobon.library.updateTags(entry.id, tags));
+    void appData
+      .patchEntry(entry.id, { tags }, () => window.tankobon.library.updateTags(entry.id, tags))
+      .catch(() => undefined);
   };
 
   const addCustomTag = () => {
