@@ -215,3 +215,44 @@ describe('LibraryRepository', () => {
     expect(repo.lastOpenedPath()).toBe('/comics/one.cbz');
   });
 });
+
+describe('LibraryRepository: failed writes and bounds', () => {
+  let db: DatabaseSync;
+  let repo: LibraryRepository;
+
+  beforeEach(() => {
+    db = new DatabaseSync(':memory:');
+    migrate(db);
+    repo = new LibraryRepository(db);
+  });
+
+  it('never records a page beyond the last one, nor a negative one', () => {
+    const entry = repo.touch('/comics/one.cbz', 'One', 20, 22, 1000);
+    repo.updateProgress(entry.id, 900_000);
+    expect(repo.get(entry.id)?.currentPage).toBe(19);
+    repo.updateProgress(entry.id, -4);
+    expect(repo.get(entry.id)?.currentPage).toBe(0);
+  });
+
+  it('clear() leaves everything in place when one of its deletions fails', () => {
+    const entry = repo.touch('/comics/one.cbz', 'One', 20, 22, 1000);
+    repo.updateMetadata(entry.id, { credits: [{ firstName: '', lastName: 'Hergé', role: 'writer' }] });
+    db.exec("CREATE TRIGGER no_delete BEFORE DELETE ON library BEGIN SELECT RAISE(ABORT, 'boom'); END");
+
+    expect(() => repo.clear()).toThrow('boom');
+
+    expect(repo.list()).toHaveLength(1);
+    expect(repo.get(entry.id)?.credits).toHaveLength(1);
+  });
+
+  it('updateMetadata() writes nothing when its credits cannot be written', () => {
+    const entry = repo.touch('/comics/one.cbz', 'One', 20, 22, 1000);
+    db.exec("CREATE TRIGGER no_credit BEFORE INSERT ON credits BEGIN SELECT RAISE(ABORT, 'boom'); END");
+
+    expect(() =>
+      repo.updateMetadata(entry.id, { title: 'Renamed', credits: [{ firstName: '', lastName: 'Hergé', role: 'writer' }] }),
+    ).toThrow('boom');
+
+    expect(repo.get(entry.id)).toMatchObject({ title: 'One', titleLocked: false });
+  });
+});

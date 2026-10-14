@@ -146,6 +146,16 @@ describe('ReadingListRepository', () => {
     expect(lists.list().map((l) => l.id)).toEqual(['old', 'new']);
   });
 
+  it('clear() keeps the lists and their books when a deletion fails', () => {
+    const list = okList(lists.create('Pile'));
+    lists.addEntry(list.id, ids[0]);
+    db.exec("CREATE TRIGGER no_delete BEFORE DELETE ON reading_lists BEGIN SELECT RAISE(ABORT, 'boom'); END");
+
+    expect(() => lists.clear()).toThrow('boom');
+
+    expect(lists.list()[0].entryIds).toEqual([ids[0]]);
+  });
+
   it('clears the library and the lists, people included', () => {
     library.updateMetadata(ids[0], { credits: [{ firstName: '', lastName: 'Hergé', role: 'author' }] });
     okList(lists.addEntry(okList(lists.create('Pile')).id, ids[0]));
