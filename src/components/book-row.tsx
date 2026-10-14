@@ -84,7 +84,10 @@ export function BookDetails({
       : [pageOf, note];
   const title = cn('font-medium', finished && 'line-through');
   return (
-    <div role="link" tabIndex={-1} onClick={onOpen} className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
+    // A click anywhere on the row opens the book for the mouse. Keyboard and screen-reader users have the
+    // "open" buttons (the cover, and the row's own button), so this isn't a link of its own: a `role="link"`
+    // that can't be focused would be announced and then be unreachable.
+    <div onClick={onOpen} className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
       {view !== 'compact' && (
         <button
           type="button"
@@ -160,13 +163,20 @@ export function BookRating({ entry }: { entry: LibraryEntry }) {
     // A refused write is rolled back by the store; nothing more to show here.
     void appData.patchEntry(id, { rating: value }, () => window.tankobon.library.updateRating(id, value)).catch(() => undefined);
   return (
-    <div className="flex shrink-0 items-center gap-0.5" title={rating > 0 ? t('rating', { rating }) : t('notRated')}>
+    <div
+      role="group"
+      aria-label={t('ratingLabel')}
+      className="flex shrink-0 items-center gap-0.5"
+      title={rating > 0 ? t('rating', { rating }) : t('notRated')}
+    >
       {[1, 2, 3, 4, 5].map((value) => (
         <button
           key={value}
           type="button"
           onClick={() => rate(value === rating ? 0 : value)}
           aria-label={t('rate', { count: value })}
+          // Clicking the star that is set clears the rating, so only that one is "pressed".
+          aria-pressed={value === rating}
           className="text-muted-foreground hover:text-yellow-500"
         >
           <Star className={cn('size-4', value <= rating && 'fill-yellow-400 text-yellow-500')} />
@@ -235,6 +245,7 @@ export function BookTags({ entry }: { entry: LibraryEntry }) {
           }
         }}
         placeholder={t('newTag')}
+        aria-label={t('addTagLabel')}
         className="w-24 rounded-full border border-dashed bg-transparent px-2 py-0.5 text-xs outline-none focus:border-solid focus:border-primary"
       />
     </div>
