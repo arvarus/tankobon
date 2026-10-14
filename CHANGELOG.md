@@ -2,6 +2,39 @@
 
 All notable changes to this project are documented here. This file is maintained by [release-please](https://github.com/googleapis/release-please) from the [Conventional Commits](https://www.conventionalcommits.org/) merged into `master`: don't edit released entries by hand. New versions are inserted above the previous ones.
 
+## [0.8.0](https://github.com/pprb/tankobon/compare/v0.7.0...v0.8.0) (2026-10-14)
+
+
+### Features
+
+* **decoder:** time out hung file opens, close a window's archives with it ([#129](https://github.com/pprb/tankobon/issues/129)) ([c04d1c4](https://github.com/pprb/tankobon/commit/c04d1c4d5e1c23217a5cc561bc75d8454ddd72d0))
+
+
+### Bug Fixes
+
+* **a11y:** drop the link role on book rows, label the tag field and the stars ([#126](https://github.com/pprb/tankobon/issues/126)) ([a57b83c](https://github.com/pprb/tankobon/commit/a57b83cd4aa9ce2630473506be8b5e4cd214d46b))
+* **app:** allow a single instance and wait for the database lock ([#112](https://github.com/pprb/tankobon/issues/112)) ([923d5a0](https://github.com/pprb/tankobon/commit/923d5a0b93e235548ae6cd111bb43b69d5fd3428))
+* **cbr:** refuse pages that unpack above the entry size limit ([#111](https://github.com/pprb/tankobon/issues/111)) ([d0628de](https://github.com/pprb/tankobon/commit/d0628de333befcf040d60e1d8b8852351ac074e8))
+* **comic:** close the decoder archive when comic:open fails after opening it ([#110](https://github.com/pprb/tankobon/issues/110)) ([77ed34f](https://github.com/pprb/tankobon/commit/77ed34f099210eb21c28378252c8138ff6bc36b3))
+* **data:** roll back optimistic writes that the main process refuses ([#115](https://github.com/pprb/tankobon/issues/115)) ([0ca40c7](https://github.com/pprb/tankobon/commit/0ca40c7d0715631aed1adb904d0364e27259beaf))
+* **db:** make clear() and metadata updates atomic, tolerate bad settings rows ([#116](https://github.com/pprb/tankobon/issues/116)) ([92e2099](https://github.com/pprb/tankobon/commit/92e2099b6c561bef639ef7995a059a86762a0da7))
+* **import:** only accept absolute paths of supported comics ([#117](https://github.com/pprb/tankobon/issues/117)) ([67f916c](https://github.com/pprb/tankobon/commit/67f916c31b191e7d914bf18c6e04d4a89f0c15fe))
+* **library:** treat names starting with two dots as inside their folder ([#113](https://github.com/pprb/tankobon/issues/113)) ([530319a](https://github.com/pprb/tankobon/commit/530319a54b31ee3b51d43d959bee550a37fd8c67))
+* **metadata:** cap response sizes and refuse redirects to another site ([#119](https://github.com/pprb/tankobon/issues/119)) ([3964b82](https://github.com/pprb/tankobon/commit/3964b826d7c207f5069f21609745c8aab1eff0e8))
+* **reader:** flush the continuous reader's pending progress when it closes ([#114](https://github.com/pprb/tankobon/issues/114)) ([3593d47](https://github.com/pprb/tankobon/commit/3593d47edccc6f54e0eeb28d3ffcdf04be246920))
+* **reader:** key the upscaler cache by page, not by blob URL ([#124](https://github.com/pprb/tankobon/issues/124)) ([edae8d7](https://github.com/pprb/tankobon/commit/edae8d737a5e64c0be26e83719fd77335b5ba1dc))
+* **reader:** release continuous-mode pages that are far from the viewport ([#123](https://github.com/pprb/tankobon/issues/123)) ([523f56d](https://github.com/pprb/tankobon/commit/523f56d8c1eac3826a1a9e61bc8c5847bda10c5b))
+
+
+### Performance Improvements
+
+* **achievements:** stop recounting at every page turn ([#125](https://github.com/pprb/tankobon/issues/125)) ([897102b](https://github.com/pprb/tankobon/commit/897102b5f28864ad83cc8635b3bf7e03f9e452a3))
+
+
+### Documentation
+
+* update the dependency audit section ([#121](https://github.com/pprb/tankobon/issues/121)) ([bfedb20](https://github.com/pprb/tankobon/commit/bfedb20f41634cb4475ddbffca901af6e633e3c8))
+
 ## [0.7.0](https://github.com/pprb/tankobon/compare/v0.6.0...v0.7.0) (2026-10-12)
 
 
