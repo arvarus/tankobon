@@ -36,6 +36,13 @@ if (started) {
   app.quit();
 }
 
+// One instance at a time: a second one would open the same database file and its decoder process on
+// the same library. Launching the app again brings the running window forward instead.
+const isFirstInstance = app.requestSingleInstanceLock();
+if (!isFirstInstance) {
+  app.quit();
+}
+
 // Development mode (`npm run dev`, see forge.config.ts): only there are DevTools opened.
 const isDevMode = !app.isPackaged && process.env.TANKOBON_DEV === '1';
 
@@ -85,6 +92,7 @@ const createWindow = () => {
 };
 
 app.whenReady().then(() => {
+  if (!isFirstInstance) return;
   const db = openDatabase();
   const libraryRepo = new LibraryRepository(db);
   const folderRepo = new LibraryFolderRepository(db);
@@ -142,6 +150,13 @@ app.whenReady().then(() => {
   app.on('will-quit', () => {
     decoder.dispose();
     db.close();
+  });
+
+  app.on('second-instance', () => {
+    const [window] = BrowserWindow.getAllWindows();
+    if (!window) return;
+    if (window.isMinimized()) window.restore();
+    window.focus();
   });
 
   createWindow();
