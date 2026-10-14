@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 
 import { useLibrary } from '@/hooks/use-library';
+import { useSettledValue } from '@/hooks/use-settled-value';
 import { useReadingLists } from '@/hooks/use-reading-lists';
 import { useSettings } from '@/hooks/use-settings';
 import { appData } from '@/lib/app-data';
@@ -18,9 +19,17 @@ export function useAchievements(): UnlockedAchievement[] | null {
   return useSyncExternalStore(subscribe, appData.getAchievements);
 }
 
-/** What the rules count right now, or `null` while the library, the reading lists or the folders are loading. */
+/**
+ * How long the library has to stay unchanged before the rules count it again. Every page turned in
+ * the reader saves the progress and so replaces the library; counting 20 000 books (about 25 ms) and
+ * asking the main process for the folders at each of them would cost a hiccup per page for nothing,
+ * since no achievement is time-critical.
+ */
+const SETTLE_MS = 1000;
+
+/** What the rules count, or `null` while the library, the reading lists or the folders are loading. */
 export function useAchievementStats(): AchievementStats | null {
-  const library = useLibrary();
+  const library = useSettledValue(useLibrary(), SETTLE_MS);
   const lists = useReadingLists();
   const [folders, setFolders] = useState<number | null>(null);
 
