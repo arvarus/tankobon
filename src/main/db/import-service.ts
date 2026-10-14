@@ -3,8 +3,10 @@
  * @module
  */
 import { randomUUID } from 'node:crypto';
+import path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 
+import { isSupportedComicFile } from '../../shared/comic';
 import { t } from '../../shared/i18n';
 import { CREDIT_ROLES, type CreditInput, type CreditRole, type LibraryEntry } from '../../shared/library';
 import { DEFAULT_SETTINGS, isValidSetting, type AppSettings } from '../../shared/settings';
@@ -54,8 +56,17 @@ function toPageSize(width: unknown, height: unknown): Pick<LibraryEntry, 'avgPag
   return w > 0 && h > 0 ? { avgPageWidth: w, avgPageHeight: h } : { avgPageWidth: null, avgPageHeight: null };
 }
 
+/**
+ * Whether `filePath` can be a comic's place: absolute (on either family of systems, since an export
+ * travels between machines) and with an extension the app opens. An export is a file anyone can edit:
+ * its paths later get opened, measured and, by the library organization, moved.
+ */
+function isComicPath(filePath: string): boolean {
+  return (path.posix.isAbsolute(filePath) || path.win32.isAbsolute(filePath)) && isSupportedComicFile(filePath);
+}
+
 function toEntry(value: unknown): LibraryEntry | null {
-  if (!isRecord(value) || typeof value.path !== 'string' || value.path === '') {
+  if (!isRecord(value) || typeof value.path !== 'string' || !isComicPath(value.path)) {
     return null;
   }
   const pageCount = Math.max(0, Math.trunc(toNumber(value.pageCount, 0)));
