@@ -123,6 +123,19 @@ describe('organizeEntries', () => {
     expect(await exists(path.join(source, 'Série'))).toBe(true);
   });
 
+  it('never moves a file that is not a comic, and does not offer it for organizing', async () => {
+    const source = await tree(['notes.txt']);
+    const target = await tree([]);
+    const repo = repository();
+    const from = path.join(source, 'notes.txt');
+    repo.register(from, 'notes', 1, 1, 1);
+    const id = repo.idOfPath(from)!;
+
+    expect(unorganizedIds(repo, flat(target))).toEqual([]);
+    expect(await organizeEntries(repo, flat(target), [id])).toEqual({ moved: [], failed: 1 });
+    expect(await exists(from)).toBe(true);
+  });
+
   it('skips a comic already in place and counts a missing file as failed', async () => {
     const target = await tree([]);
     const repo = repository();

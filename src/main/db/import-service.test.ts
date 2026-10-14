@@ -42,6 +42,23 @@ describe('parseExport', () => {
     expect(parsed.settings).toEqual(DEFAULT_SETTINGS);
   });
 
+  it('only keeps entries whose path is an absolute path of a supported comic', () => {
+    const parsed = parseExport(
+      JSON.stringify({
+        version: 1,
+        library: [
+          { path: '/comics/ok.cbz' },
+          { path: 'C:\\Comics\\windows.PDF' },
+          { path: 'relative/one.cbz' },
+          { path: '/home/me/.ssh/id_rsa' },
+          { path: '/comics/notes.txt' },
+        ],
+      }),
+    );
+
+    expect(parsed.library.map((entry) => entry.path)).toEqual(['/comics/ok.cbz', 'C:\\Comics\\windows.PDF']);
+  });
+
   it('drops unusable entries, fills in missing fields and clamps the current page', () => {
     const parsed = parseExport(
       JSON.stringify({
