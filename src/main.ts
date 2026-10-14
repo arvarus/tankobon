@@ -1,5 +1,6 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import started from 'electron-squirrel-startup';
 
 import { applyAppMenu } from './main/app-menu';
@@ -13,26 +14,30 @@ import { ReadingListRepository } from './main/db/reading-list-repository';
 import { StatsRepository } from './main/db/stats-repository';
 import { SettingsRepository } from './main/db/settings-repository';
 import { broadcastDataChange } from './main/ipc/data-changes';
+import { setAppUrl } from './main/ipc/trusted-sender';
 import { registerAchievementsIpc } from './main/ipc/achievements';
 import { registerAppIpc } from './main/ipc/app';
 import { registerComicIpc } from './main/ipc/comic';
 import { registerDatabaseIpc } from './main/ipc/database';
 import { registerDataIpc } from './main/ipc/data';
-import {
-  broadcastImageScanProgress,
-  createLibraryOrganizer,
-  createResynchronizer,
-  registerLibraryIpc,
-} from './main/ipc/library';
+import { broadcastImageScanProgress, registerLibraryIpc } from './main/ipc/library';
 import { registerMetadataIpc } from './main/ipc/metadata';
 import { registerReadingListIpc } from './main/ipc/reading-lists';
 import { registerStatsIpc } from './main/ipc/stats';
 import { registerSettingsIpc } from './main/ipc/settings';
 import { applyMainLanguage, onMainLanguageApplied } from './main/language';
 import { createImageStatsScanner } from './main/services/image-stats-scanner';
+import { createLibraryOrganizer, createResynchronizer } from './main/services/library-organization';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
+  app.quit();
+}
+
+// One instance at a time: a second one would open the same database file and its decoder process on
+// the same library. Launching the app again brings the running window forward instead.
+const isFirstInstance = app.requestSingleInstanceLock();
+if (!isFirstInstance) {
   app.quit();
 }
 
@@ -85,6 +90,12 @@ const createWindow = () => {
 };
 
 app.whenReady().then(() => {
+  if (!isFirstInstance) return;
+  // Only the application's own page may call the IPC handlers.
+  setAppUrl(
+    MAIN_WINDOW_VITE_DEV_SERVER_URL ??
+      pathToFileURL(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`)).href,
+  );
   const db = openDatabase();
   const libraryRepo = new LibraryRepository(db);
   const folderRepo = new LibraryFolderRepository(db);
@@ -142,6 +153,13 @@ app.whenReady().then(() => {
   app.on('will-quit', () => {
     decoder.dispose();
     db.close();
+  });
+
+  app.on('second-instance', () => {
+    const [window] = BrowserWindow.getAllWindows();
+    if (!window) return;
+    if (window.isMinimized()) window.restore();
+    window.focus();
   });
 
   createWindow();

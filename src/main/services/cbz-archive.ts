@@ -7,10 +7,7 @@ import StreamZip from 'node-stream-zip';
 import type { ComicPage } from '../../shared/comic';
 import { t } from '../../shared/i18n';
 import { checkedPage } from './image-size';
-import { imageMimeType, isPageEntry, sortPages, type ComicArchive } from './comic-archive';
-
-/** Largest page entry read into memory (200 MB, uncompressed size declared by the archive). */
-export const MAX_ENTRY_SIZE = 200 * 1024 * 1024;
+import { imageMimeType, isPageEntry, MAX_ENTRY_SIZE, sortPages, type ComicArchive } from './comic-archive';
 
 /** A `.cbz` (ZIP) comic, read entry by entry with node-stream-zip (the file stays open until `close()`). */
 export class CbzArchive implements ComicArchive {

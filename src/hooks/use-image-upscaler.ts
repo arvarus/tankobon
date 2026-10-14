@@ -5,6 +5,8 @@
 import { useEffect, useState } from 'react';
 import type Upscaler from 'upscaler';
 
+import { createLruCache } from '@/lib/lru-cache';
+
 // TensorFlow.js and the model are only pulled in (as a separate chunk) the first time
 // upscaling actually runs, so opening the reader never pays for this unless it's used.
 // A single instance is then reused for the app's lifetime — loading it is the slow part.
@@ -20,17 +22,10 @@ function getUpscaler() {
   return sharedUpscaler;
 }
 
-// Small LRU-ish cache so flipping zoom on/off or revisiting a page doesn't re-run inference.
+// Small cache so flipping zoom on/off or going back to a page doesn't re-run inference. Entries are
+// data URLs of upscaled pages (tens of megabytes each), hence the small capacity.
 const MAX_CACHE_ENTRIES = 4;
-const cache = new Map<string, string>();
-
-function cachePut(src: string, dataUrl: string): void {
-  if (cache.size >= MAX_CACHE_ENTRIES) {
-    const oldest = cache.keys().next().value;
-    if (oldest !== undefined) cache.delete(oldest);
-  }
-  cache.set(src, dataUrl);
-}
+const cache = createLruCache<string>(MAX_CACHE_ENTRIES);
 
 /** State returned by {@link useImageUpscaler}. */
 export interface ImageUpscalerResult {
@@ -42,8 +37,13 @@ export interface ImageUpscalerResult {
   error: string | null;
 }
 
-/** Runs `src` through a local super-resolution model (ESRGAN via TensorFlow.js) when `enabled`. */
-export function useImageUpscaler(src: string | null, enabled: boolean): ImageUpscalerResult {
+/**
+ * Runs `src` through a local super-resolution model (ESRGAN via TensorFlow.js) when `enabled`.
+ * `pageKey` names the page `src` shows (`<archive id>:<page index>`): a page's blob URL is made again
+ * each time it is loaded, so only the page identifies a result worth keeping when the reader comes
+ * back to it. Without one, the URL itself is the key.
+ */
+export function useImageUpscaler(src: string | null, enabled: boolean, pageKey: string | null = null): ImageUpscalerResult {
   const [upscaledUrl, setUpscaledUrl] = useState<string | null>(null);
   const [isUpscaling, setIsUpscaling] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +56,8 @@ export function useImageUpscaler(src: string | null, enabled: boolean): ImageUps
       return;
     }
 
-    const cached = cache.get(src);
+    const cacheKey = pageKey ?? src;
+    const cached = cache.get(cacheKey);
     if (cached) {
       setUpscaledUrl(cached);
       setError(null);
@@ -87,7 +88,7 @@ export function useImageUpscaler(src: string | null, enabled: boolean): ImageUps
       )
       .then((dataUrl) => {
         if (cancelled) return;
-        cachePut(src, dataUrl);
+        cache.put(cacheKey, dataUrl);
         setUpscaledUrl(dataUrl);
       })
       .catch((err: unknown) => {
@@ -103,7 +104,7 @@ export function useImageUpscaler(src: string | null, enabled: boolean): ImageUps
       cancelled = true;
       controller.abort();
     };
-  }, [src, enabled]);
+  }, [src, enabled, pageKey]);
 
   return { upscaledUrl, isUpscaling, error };
 }

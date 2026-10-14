@@ -38,7 +38,7 @@ function ReaderPage() {
   const library = useLibrary();
   const navigate = useNavigate();
   const { confirm, dialog: confirmDialog } = useConfirm();
-  const { comic, page, pageUrl, error, loading, pickAndOpen, openFile, close, next, prev } = useComic({
+  const { comic, page, pageUrl, pageKey, error, loading, pickAndOpen, openFile, close, next, prev } = useComic({
     loadPages: settings.readingMode !== 'continuous',
   });
   const { fullscreen, toggle: toggleFullscreen } = useReaderFullscreen(comic !== null);
@@ -118,6 +118,7 @@ function ReaderPage() {
       comic={comic}
       page={page}
       pageUrl={pageUrl}
+      pageKey={pageKey}
       error={error}
       loading={loading}
       pickAndOpen={pickAndOpen}

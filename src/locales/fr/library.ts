@@ -66,6 +66,8 @@ const library: Translation<typeof en> = {
   removeTag: "Retirer l'étiquette {{tag}}",
   toggleTag: 'Étiquette {{tag}}',
   newTag: '+ étiquette',
+  addTagLabel: 'Ajouter une étiquette',
+  ratingLabel: 'Note',
   searchPlaceholder: 'Rechercher un album, une série, un auteur…',
   searchLabel: 'Rechercher un album',
   reset: 'Réinitialiser',

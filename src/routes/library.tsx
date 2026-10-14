@@ -1,35 +1,31 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { ArrowUpDown, ChevronDown, ChevronRight, FolderOpen, FolderTree, GripVertical, Layers, ListPlus, Pencil, ScanSearch, Search, Star, Trash2, X } from 'lucide-react';
+import { FolderOpen, FolderTree, GripVertical, ListPlus, Pencil, ScanSearch, Trash2 } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AddToListDialog } from '@/components/add-to-list-dialog';
-import { BookDetails, BookRating, BookTags, ViewModePicker } from '@/components/book-row';
+import { BookDetails, BookRating, BookTags } from '@/components/book-row';
 import { BookEditDialog } from '@/components/book-edit-dialog';
 import { useConfirm } from '@/components/confirm-dialog';
+import { LibraryToolbar } from '@/components/library/library-toolbar';
+import { ScanProgressBar } from '@/components/library/scan-progress-bar';
+import { SelectionBar } from '@/components/library/selection-bar';
+import { SeriesHeader } from '@/components/library/series-header';
 import { MetadataDialog } from '@/components/metadata-dialog';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { useLibrary } from '@/hooks/use-library';
 import { useOrganizationOffer } from '@/hooks/use-organization-offer';
 import { useSettings } from '@/hooks/use-settings';
 import { appData } from '@/lib/app-data';
-import {
-  availableTags,
-  EMPTY_FILTERS,
-  filterEntries,
-  hasActiveFilters,
-  type LibraryFilters,
-  type RatingFilter,
-} from '@/lib/library-filter';
-import { groupBySeries, ungroupedRows, type SeriesHeaderRow } from '@/lib/library-groups';
+import { availableTags, EMPTY_FILTERS, filterEntries, type LibraryFilters } from '@/lib/library-filter';
+import { groupBySeries, ungroupedRows } from '@/lib/library-groups';
 import { sortEntries } from '@/lib/library-sort';
 import { draggedEntries, selectedEntries, toggleSelection } from '@/lib/library-selection';
-import { encodeDraggedEntries, LIBRARY_ENTRY_DRAG_TYPE, QUICK_TAGS, tagLabel } from '@/lib/reading-list';
+import { encodeDraggedEntries, LIBRARY_ENTRY_DRAG_TYPE, QUICK_TAGS } from '@/lib/reading-list';
 import { cn } from '@/lib/utils';
 import type { LibraryEntry, ScanProgress } from '@/shared/library';
-import { LIBRARY_SORTS, type BookRowView, type LibrarySort } from '@/shared/settings';
+import type { BookRowView } from '@/shared/settings';
 
 export const Route = createFileRoute('/library')({
   component: LibraryPage,
@@ -348,49 +344,6 @@ function LibraryPage() {
   );
 }
 
-/** A series heading of the grouped view: folds or unfolds its books on click. */
-function SeriesHeader({
-  row,
-  ref,
-  index,
-  start,
-  onToggle,
-}: {
-  row: SeriesHeaderRow;
-  ref: (element: HTMLLIElement | null) => void;
-  index: number;
-  start: number;
-  onToggle: () => void;
-}) {
-  const { t } = useTranslation('library');
-  const name = row.series ?? t('noSeries');
-  const Chevron = row.collapsed ? ChevronRight : ChevronDown;
-  return (
-    <li
-      ref={ref}
-      data-index={index}
-      style={{ transform: `translateY(${start}px)` }}
-      className="absolute top-0 left-0 w-full border-b bg-muted/50"
-    >
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={!row.collapsed}
-        aria-label={t(row.collapsed ? 'expandSeries' : 'collapseSeries', { series: name })}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-accent"
-      >
-        <Chevron className="size-4 shrink-0 text-muted-foreground" />
-        <span className={cn('min-w-0 truncate font-semibold', row.series === null && 'text-muted-foreground italic')}>
-          {name}
-        </span>
-        <span className="ml-auto shrink-0 text-xs text-muted-foreground">
-          {t('seriesProgress', { finished: row.finished, count: row.count })}
-        </span>
-      </button>
-    </li>
-  );
-}
-
 /**
  * Shows `label` (e.g. "3 books") under the pointer while several books are dragged: a row alone
  * would look like one book. The element only has to exist when the browser snapshots it, at the
@@ -403,262 +356,4 @@ function setCountDragImage(dataTransfer: DataTransfer, label: string): void {
   document.body.append(badge);
   dataTransfer.setDragImage(badge, 0, 0);
   setTimeout(() => badge.remove());
-}
-
-function ScanProgressBar({ progress, onClose }: { progress: ScanProgress; onClose: () => void }) {
-  // The walk reports no total yet, so the bar stays empty until the first file is opened.
-  const scanning = progress.phase === 'scanning';
-  const done = progress.phase === 'done';
-  const { t } = useTranslation('library');
-
-  return (
-    <div className="flex flex-col gap-1 rounded-md border p-3">
-      <div className="flex items-center justify-between gap-3 text-sm">
-        <span>{scanning ? t('scanning') : `${progress.processed} / ${progress.total}`}</span>
-        <span className="min-w-0 truncate text-xs text-muted-foreground" title={progress.currentFile}>
-          {progress.currentFile}
-        </span>
-        {done && (
-          <Button variant="ghost" size="icon" aria-label={t('scanClose')} title={t('scanClose')} onClick={onClose}>
-            <X />
-          </Button>
-        )}
-      </div>
-      <Progress value={progress.processed} max={progress.total} label={t('scanProgress')} />
-    </div>
-  );
-}
-
-function LibraryToolbar({
-  filters,
-  onChange,
-  tags,
-  shown,
-  total,
-  view,
-  onViewChange,
-  grouped,
-  onGroupedChange,
-  sort,
-  onSortChange,
-}: {
-  filters: LibraryFilters;
-  onChange: (filters: LibraryFilters) => void;
-  tags: string[];
-  shown: number;
-  total: number;
-  view: BookRowView;
-  onViewChange: (view: BookRowView) => void;
-  grouped: boolean;
-  onGroupedChange: (grouped: boolean) => void;
-  sort: LibrarySort;
-  onSortChange: (sort: LibrarySort) => void;
-}) {
-  const { t } = useTranslation('library');
-  const active = hasActiveFilters(filters);
-
-  const toggleTag = (tag: string) =>
-    onChange({
-      ...filters,
-      tags: filters.tags.includes(tag) ? filters.tags.filter((t) => t !== tag) : [...filters.tags, tag],
-    });
-
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-52 flex-1">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={filters.search}
-            onChange={(event) => onChange({ ...filters, search: event.target.value })}
-            type="search"
-            placeholder={t('searchPlaceholder')}
-            aria-label={t('searchLabel')}
-            className="h-9 w-full rounded-md border bg-background pr-3 pl-8 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-          />
-        </div>
-
-        <RatingFilterPicker
-          rating={filters.rating}
-          onChange={(rating) => onChange({ ...filters, rating })}
-        />
-
-        <SortPicker sort={sort} onChange={onSortChange} disabled={grouped} />
-
-        <ViewModePicker view={view} onChange={onViewChange} />
-
-        <Button
-          variant={grouped ? 'secondary' : 'outline'}
-          size="icon"
-          onClick={() => onGroupedChange(!grouped)}
-          aria-pressed={grouped}
-          title={t('groupBySeries')}
-          aria-label={t('groupBySeries')}
-        >
-          <Layers />
-        </Button>
-
-        {active && (
-          <Button variant="ghost" size="sm" onClick={() => onChange(EMPTY_FILTERS)}>
-            <X />
-            {t('reset')}
-          </Button>
-        )}
-      </div>
-
-      {tags.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {tags.map((tag) => {
-            const selected = filters.tags.includes(tag);
-            return (
-              <button
-                key={tag}
-                type="button"
-                onClick={() => toggleTag(tag)}
-                aria-pressed={selected}
-                className={cn(
-                  'rounded-full border px-2 py-0.5 text-xs',
-                  selected
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:bg-accent',
-                )}
-              >
-                {tagLabel(tag)}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {active && (
-        <p className="text-xs text-muted-foreground">{t('shownOf', { shown, total })}</p>
-      )}
-    </div>
-  );
-}
-
-/**
- * Picks the order of the books. Disabled while grouped by series, whose order is fixed (series
- * alphabetically, books by volume).
- */
-function SortPicker({
-  sort,
-  onChange,
-  disabled,
-}: {
-  sort: LibrarySort;
-  onChange: (sort: LibrarySort) => void;
-  disabled: boolean;
-}) {
-  const { t } = useTranslation('library');
-  return (
-    <label
-      className={cn(
-        'flex h-9 items-center gap-1.5 rounded-md border px-2',
-        disabled && 'cursor-not-allowed bg-muted text-muted-foreground',
-      )}
-      title={disabled ? t('sortDisabledGrouped') : t('sortLabel')}
-    >
-      <ArrowUpDown className="size-4 text-muted-foreground" />
-      <span className="sr-only">{t('sortLabel')}</span>
-      <select
-        value={sort}
-        disabled={disabled}
-        onChange={(event) => onChange(event.target.value as LibrarySort)}
-        className="bg-transparent text-sm outline-none disabled:cursor-not-allowed"
-      >
-        {disabled ? (
-          // The grouped view has its own order: say so instead of showing a setting that doesn't apply.
-          <option value={sort}>{t('sortGrouped')}</option>
-        ) : (
-          LIBRARY_SORTS.map((value) => (
-            <option key={value} value={value} className="bg-background text-foreground">
-              {t(`sorts.${value}`)}
-            </option>
-          ))
-        )}
-      </select>
-    </label>
-  );
-}
-
-/**
- * Above the list: a checkbox ticking every book shown (or none), and, once books are selected,
- * their count and the group actions (add them to a reading list, clear the selection).
- */
-function SelectionBar({
-  selectedCount,
-  shownSelected,
-  shown,
-  onToggleAll,
-  onClear,
-  onAddToList,
-}: {
-  selectedCount: number;
-  shownSelected: number;
-  shown: number;
-  onToggleAll: () => void;
-  onClear: () => void;
-  onAddToList: () => void;
-}) {
-  const { t } = useTranslation('library');
-  const all = shownSelected === shown;
-  return (
-    <div className="flex min-h-8 flex-wrap items-center gap-2 px-3 text-sm">
-      <label className="flex cursor-pointer items-center gap-2 text-muted-foreground">
-        <input
-          type="checkbox"
-          checked={all}
-          ref={(input) => {
-            if (input) input.indeterminate = shownSelected > 0 && !all;
-          }}
-          onChange={onToggleAll}
-          className="size-4"
-        />
-        {selectedCount === 0 ? t('selectAllShown', { count: shown }) : t('selectedCount', { count: selectedCount })}
-      </label>
-      {selectedCount > 0 && (
-        <>
-          <Button variant="outline" size="sm" onClick={onAddToList}>
-            <ListPlus />
-            {t('addSelectionToList')}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={onClear}>
-            <X />
-            {t('clearSelection')}
-          </Button>
-        </>
-      )}
-    </div>
-  );
-}
-
-/** Picks a *minimum* rating: clicking the 3rd star keeps everything rated 3 and above. */
-function RatingFilterPicker({
-  rating,
-  onChange,
-}: {
-  rating: RatingFilter;
-  onChange: (rating: RatingFilter) => void;
-}) {
-  const { t } = useTranslation('library');
-  return (
-    <div className="flex h-9 items-center gap-1 rounded-md border px-2">
-      <span className="text-xs text-muted-foreground">{t('ratingFilter')}</span>
-      {[1, 2, 3, 4, 5].map((value) => (
-        <button
-          key={value}
-          type="button"
-          // Clicking the star that already sets the current minimum clears the filter.
-          onClick={() => onChange(value === rating ? 'all' : value)}
-          aria-pressed={rating !== 'all' && value <= rating}
-          title={t('atLeast', { count: value })}
-          aria-label={t('atLeast', { count: value })}
-          className="text-muted-foreground hover:text-yellow-500"
-        >
-          <Star className={cn('size-4', rating !== 'all' && value <= rating && 'fill-yellow-400 text-yellow-500')} />
-        </button>
-      ))}
-    </div>
-  );
 }

@@ -7,6 +7,7 @@ import { constants } from 'node:fs';
 import { copyFile, mkdir, rename, rmdir, stat, unlink } from 'node:fs/promises';
 import path from 'node:path';
 
+import { isSupportedComicFile } from '../../shared/comic';
 import { fillFileNameTemplate } from '../../shared/file-name-template';
 import { t } from '../../shared/i18n';
 import type { LibraryEntry } from '../../shared/library';
@@ -293,6 +294,11 @@ export async function organizeEntries(
     const entry = repo.get(id);
     if (entry) onProgress(index, ids.length, entry.path);
     if (!entry || isInPlace(target, entry)) continue;
+    // Only comics are moved: an entry from an edited export could name any file.
+    if (!isSupportedComicFile(entry.path)) {
+      summary.failed += 1;
+      continue;
+    }
     const to = await moveToFirstFree(repo, entry.path, organizedPaths(target, entry));
     if (to === null) {
       summary.failed += 1;
@@ -314,7 +320,7 @@ export async function organizeEntries(
 export function unorganizedIds(repo: LibraryRepository, target: OrganizationTarget): string[] {
   return repo
     .list()
-    .filter((entry) => !isInPlace(target, entry))
+    .filter((entry) => isSupportedComicFile(entry.path) && !isInPlace(target, entry))
     .map((entry) => entry.id);
 }
 

@@ -341,7 +341,10 @@ export class LibraryRepository {
    * the book's first completion date (`finished_at`), for the reading statistics.
    */
   updateProgress(id: string, currentPage: number): void {
-    this.db.prepare('UPDATE library SET current_page = ? WHERE id = ?').run(currentPage, id);
+    // Never past the last page, whatever the caller sent: `resumePage` would point at nothing.
+    this.db
+      .prepare('UPDATE library SET current_page = MAX(0, MIN(?, page_count - 1)) WHERE id = ?')
+      .run(currentPage, id);
     this.db
       .prepare(
         'UPDATE library SET finished_at = ? WHERE id = ? AND finished_at IS NULL AND page_count > 0 AND current_page >= page_count - 1',
@@ -383,6 +386,10 @@ export class LibraryRepository {
    * put the file name back. Returns the updated entry, or null if the id is unknown.
    */
   updateMetadata(id: string, update: MetadataUpdate): LibraryEntry | null {
+    return withTransaction(this.db, () => this.writeMetadata(id, update));
+  }
+
+  private writeMetadata(id: string, update: MetadataUpdate): LibraryEntry | null {
     if (!this.get(id)) {
       return null;
     }
@@ -446,13 +453,16 @@ export class LibraryRepository {
    */
   clear(): number {
     const { count } = this.db.prepare('SELECT COUNT(*) AS count FROM library').get() as { count: number };
-    this.db.exec(`
-      DELETE FROM reading_list_items;
-      DELETE FROM credits;
-      DELETE FROM people;
-      DELETE FROM library;
-      DELETE FROM reading_sessions;
-    `);
+    // One transaction: a failure midway must not leave a library without its credits.
+    withTransaction(this.db, () =>
+      this.db.exec(`
+        DELETE FROM reading_list_items;
+        DELETE FROM credits;
+        DELETE FROM people;
+        DELETE FROM library;
+        DELETE FROM reading_sessions;
+      `),
+    );
     return count;
   }
 }

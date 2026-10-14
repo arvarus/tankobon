@@ -60,7 +60,8 @@ export function useSettings() {
   const settings = useSyncExternalStore(subscribe, appData.getSettings);
 
   const update = useCallback(<K extends keyof PublicSettings>(key: K, value: AppSettings[K] & PublicSettings[K]) => {
-    void appData.updateSetting(key, value, () => window.tankobon.settings.set(key, value));
+    // A refused write is rolled back by the store; nothing more to show here.
+    void appData.updateSetting(key, value, () => window.tankobon.settings.set(key, value)).catch(() => undefined);
   }, []);
 
   return {

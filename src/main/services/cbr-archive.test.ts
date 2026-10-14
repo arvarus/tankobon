@@ -5,6 +5,7 @@ import { crc32 } from 'node:zlib';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CbrArchive } from './cbr-archive';
+import { MAX_ENTRY_SIZE } from './comic-archive';
 
 // cbr-archive.ts loads unrar.wasm from next to the bundled main.js; under Vitest, serve the
 // package's own copy instead.
@@ -19,7 +20,7 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 });
 
 /** Builds a minimal RAR 4 archive (stored entries only), since no tool here can write RAR. */
-function buildRar(entries: Record<string, Buffer>): Buffer {
+function buildRar(entries: Record<string, Buffer>, declaredSizes: Record<string, number> = {}): Buffer {
   // A header's CRC is the low 16 bits of the CRC32 of everything after the CRC field itself.
   const withCrc = (body: Buffer): Buffer => {
     const crc = Buffer.alloc(2);
@@ -38,7 +39,7 @@ function buildRar(entries: Record<string, Buffer>): Buffer {
     header.writeUInt16LE(0x8000, 1); // LONG_BLOCK: data follows the header
     header.writeUInt16LE(32 + nameBuf.length, 3); // HEAD_SIZE
     header.writeUInt32LE(data.length, 5); // PACK_SIZE
-    header.writeUInt32LE(data.length, 9); // UNP_SIZE
+    header.writeUInt32LE(declaredSizes[name] ?? data.length, 9); // UNP_SIZE
     header.writeUInt8(2, 13); // HOST_OS: Windows
     header.writeUInt32LE(crc32(data), 14); // FILE_CRC
     header.writeUInt32LE(0x21, 18); // FTIME (DOS date 1980-01-01)
@@ -108,6 +109,15 @@ describe('CbrArchive', () => {
     const pages = await Promise.all(archives.flatMap((archive) => [archive.readPage(0), archive.readPage(1)]));
 
     expect(pages.map((page) => Buffer.from(page.data).toString())).toEqual(['x1', 'x2', 'y1', 'y2', 'z1', 'z2']);
+  });
+
+  it('refuses a page whose declared unpacked size is above the limit, without extracting it', async () => {
+    const file = join(dir, 'bomb.cbr');
+    await writeFile(file, buildRar({ 'big.png': Buffer.from('tiny'), 'ok.png': Buffer.from('ok') }, { 'big.png': MAX_ENTRY_SIZE + 1 }));
+    const archive = await CbrArchive.open(file);
+
+    await expect(archive.readPage(0)).rejects.toThrow(/big\.png/);
+    expect(Buffer.from((await archive.readPage(1)).data).toString()).toBe('ok');
   });
 
   it('rejects an out-of-range page', async () => {

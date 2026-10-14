@@ -143,6 +143,17 @@ const MIGRATIONS: Migration[] = [
   },
 ];
 
+/** How long a statement waits for another connection's lock before failing with "database is locked", in milliseconds. */
+export const BUSY_TIMEOUT_MS = 5000;
+
+/**
+ * Makes `db` wait for a lock held by another connection (a second instance of the app, a sync tool
+ * reading the file) instead of failing at once, which is what SQLite does by default.
+ */
+export function configureConnection(db: DatabaseSync): void {
+  db.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
+}
+
 /**
  * Brings `db` up to the current schema by applying, in order, the migrations newer than its
  * `PRAGMA user_version`. Each runs in its own transaction together with the version bump, so a
