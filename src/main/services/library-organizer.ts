@@ -184,11 +184,6 @@ export function organizedPaths(target: OrganizationTarget, entry: OrganizedEntry
   return [path.join(folder, `${stem}${extension}`), path.join(folder, `${short}${suffix}${extension}`)];
 }
 
-/** Where the organization puts a comic when nothing else is there: the first of {@link organizedPaths}. */
-export function organizedPath(target: OrganizationTarget, entry: OrganizedEntry): string {
-  return organizedPaths(target, entry)[0];
-}
-
 /** Whether `entry`'s file is at one of its {@link organizedPaths}. */
 function isInPlace(target: OrganizationTarget, entry: OrganizedEntry): boolean {
   return organizedPaths(target, entry).includes(entry.path);
