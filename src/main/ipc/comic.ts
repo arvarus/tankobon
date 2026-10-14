@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { stat } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
-import { SUPPORTED_COMIC_EXTENSIONS, type OpenComicResult } from '../../shared/comic';
+import { SUPPORTED_COMIC_EXTENSIONS, type ArchiveInfo, type OpenComicResult } from '../../shared/comic';
 import { t } from '../../shared/i18n';
 import type { LibraryRepository } from '../db/library-repository';
 import type { SettingsRepository } from '../db/settings-repository';
@@ -22,6 +22,9 @@ export const COMIC_CHANNELS = {
   close: 'comic:close',
 } as const;
 
+/** How many file-dialog picks `comic:open` remembers; an older token expires. */
+const MAX_PICKED_PATHS = 20;
+
 /** Directory of the last comic opened, so the file dialogs pick up where the user left off. */
 export function lastOpenedDirectory(libraryRepo: LibraryRepository): Promise<string | undefined> {
   const lastPath = libraryRepo.lastOpenedPath();
@@ -39,6 +42,7 @@ export function registerComicIpc(
   // with whether the pick came from the library's "add a file" (such a book is always added).
   // With the library's books (by id), they are the only things `comic:open` accepts: the renderer
   // never names a path, so it can't have the main process read an arbitrary file.
+  // Only the most recent picks are kept: a token is used right after the dialog, never much later.
   const pickedPaths = new Map<string, { path: string; addToLibrary: boolean }>();
 
   handle(COMIC_CHANNELS.pickFile, args(booleanArg), async (event, addToLibrary) => {
@@ -54,6 +58,10 @@ export function registerComicIpc(
     }
     const token = randomUUID();
     pickedPaths.set(token, { path: filePaths[0], addToLibrary });
+    for (const oldest of pickedPaths.keys()) {
+      if (pickedPaths.size <= MAX_PICKED_PATHS) break;
+      pickedPaths.delete(oldest);
+    }
     return token;
   });
 
@@ -64,8 +72,9 @@ export function registerComicIpc(
     if (!filePath) {
       return { status: 'error', message: t('errors:archive.unknownBook') };
     }
+    let comic: ArchiveInfo | undefined;
     try {
-      const comic = await decoder.open(filePath);
+      comic = await decoder.open(filePath);
       // Anonymous read: with the option off, a book the library doesn't know is not added (unless it was
       // picked from the library page's "add a file"), so nothing is saved for it (no entry, no progress, no cover) and it reopens from its first page.
       const anonymous =
@@ -89,6 +98,8 @@ export function registerComicIpc(
         comic: { ...comic, title: entry.title, libraryId: entry.id, resumePage: entry.currentPage },
       };
     } catch (error) {
+      // The archive is open in the decoder process but nobody will ever read it: release it.
+      if (comic) void decoder.close(comic.id).catch(() => undefined);
       return { status: 'error', message: openErrorMessage(error) };
     }
   });
