@@ -48,7 +48,17 @@ describe('comic:open', () => {
     );
   });
 
-  const open = (ref: string) => handlers.get(COMIC_CHANNELS.open)!({}, ref) as Promise<OpenComicResult>;
+  /** A window (`webContents`) that can be destroyed, with the `destroyed` listeners it was given. */
+  function fakeWindow(id = 1) {
+    const listeners: Array<() => void> = [];
+    return {
+      sender: { id, once: (_event: string, listener: () => void) => listeners.push(listener) },
+      destroy: () => listeners.forEach((listener) => listener()),
+    };
+  }
+  const openFrom = (window: ReturnType<typeof fakeWindow>, ref: string) =>
+    handlers.get(COMIC_CHANNELS.open)!({ sender: window.sender }, ref) as Promise<OpenComicResult>;
+  const open = (ref: string) => openFrom(fakeWindow(), ref);
 
   it('keeps the archive open when the book opens', async () => {
     expect((await open(entryId)).status).toBe('ok');
@@ -67,6 +77,25 @@ describe('comic:open', () => {
   it('does not close anything when the archive itself cannot be opened', async () => {
     decoder.open.mockRejectedValueOnce(new Error('unreadable'));
     expect((await open(entryId)).status).toBe('error');
+    expect(decoder.close).not.toHaveBeenCalled();
+  });
+
+  it('closes the archives a window left open when it is destroyed', async () => {
+    const window = fakeWindow();
+    await openFrom(window, entryId);
+    expect(decoder.close).not.toHaveBeenCalled();
+
+    window.destroy();
+    expect(decoder.close).toHaveBeenCalledWith('archive-1');
+  });
+
+  it('does not close an archive the reader already closed when its window is destroyed', async () => {
+    const window = fakeWindow();
+    await openFrom(window, entryId);
+    await handlers.get(COMIC_CHANNELS.close)!({ sender: window.sender }, 'archive-1');
+    decoder.close.mockClear();
+
+    window.destroy();
     expect(decoder.close).not.toHaveBeenCalled();
   });
 });

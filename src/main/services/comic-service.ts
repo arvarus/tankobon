@@ -33,6 +33,13 @@ export async function openArchive(filePath: string): Promise<ComicArchive> {
 }
 
 /**
+ * Most archives kept open at once. Past it, the one opened longest ago is closed to make room: a
+ * reader that is gone without closing its book (a crashed renderer) can't pile archives up (a CBR
+ * keeps its whole file in memory), and no reader has eight books open at once.
+ */
+export const MAX_OPEN_ARCHIVES = 8;
+
+/**
  * Registry of the archives currently open in the reader. Each gets a `randomUUID()` handle, distinct
  * from the persistent library id stored in the database.
  */
@@ -44,6 +51,10 @@ export class ComicService {
     const archive = await openArchive(filePath);
     const id = randomUUID();
     this.archives.set(id, archive);
+    // A Map iterates in insertion order: the first key is the oldest.
+    while (this.archives.size > MAX_OPEN_ARCHIVES) {
+      await this.close(this.archives.keys().next().value as string);
+    }
     return {
       id,
       path: filePath,

@@ -29,13 +29,24 @@ export interface DecoderChannel {
 interface Pending {
   resolve: (result: never) => void;
   reject: (error: Error) => void;
+  timer?: ReturnType<typeof setTimeout>;
 }
+
+/** How long the calls that open a file may take before the decoder process is abandoned (ADR 0018). */
+export const OPEN_TIMEOUT_MS = 60_000;
+
+/** The calls bounded by a timeout: the ones that parse a whole file on untrusted input. */
+const TIMED_METHODS: ReadonlySet<DecoderMethod> = new Set<DecoderMethod>(['open', 'inspect', 'measure']);
 
 /**
  * Calls into the decoder process, started on the first call. When it dies (a native crash, an
  * out-of-memory kill on a booby-trapped file) every call waiting for it rejects with a "could not
  * be decoded" error, and the next call starts a fresh process: the app, the database and the
  * window are untouched. Archives opened in the dead process are gone with it.
+ *
+ * A call that opens a file (`open`, `inspect`, `measure`) that is still unanswered after `timeoutMs`
+ * counts as a hang (a file that makes a decoder loop): the process is killed like after a crash,
+ * the call rejects with a "took too long" error, the others with the crash error.
  */
 export class DecoderClient {
   private channel: DecoderChannel | undefined;
@@ -47,6 +58,7 @@ export class DecoderClient {
   constructor(
     private readonly spawn: () => DecoderChannel,
     private readonly thumbnailsDirectory: string,
+    private readonly timeoutMs: number = OPEN_TIMEOUT_MS,
   ) {}
 
   /** Opens a comic in the decoder process; see `DecoderMethods.open`. */
@@ -112,7 +124,11 @@ export class DecoderClient {
     const channel = this.ensureChannel();
     const id = this.nextId++;
     return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve: resolve as Pending['resolve'], reject });
+      const pending: Pending = { resolve: resolve as Pending['resolve'], reject };
+      if (TIMED_METHODS.has(method)) {
+        pending.timer = setTimeout(() => this.abandon(channel, id), this.timeoutMs);
+      }
+      this.pending.set(id, pending);
       channel.post({ type: 'request', id, method, args } as DecoderRequest);
     });
   }
@@ -135,6 +151,7 @@ export class DecoderClient {
       return;
     }
     this.pending.delete(response.id);
+    clearTimeout(pending.timer);
     if (response.ok) {
       pending.resolve(response.result as never);
     } else {
@@ -147,10 +164,29 @@ export class DecoderClient {
       return;
     }
     this.channel = undefined;
+    this.rejectAll(t('errors:decoder.crashed'));
+  }
+
+  /** The call `id` hung: kills the process (its other calls fail like in a crash) and starts afresh next time. */
+  private abandon(channel: DecoderChannel, id: number): void {
+    if (this.channel !== channel || !this.pending.has(id)) {
+      return;
+    }
+    this.channel = undefined;
+    const hung = this.pending.get(id);
+    this.pending.delete(id);
+    clearTimeout(hung?.timer);
+    hung?.reject(new Error(t('errors:decoder.timeout')));
+    this.rejectAll(t('errors:decoder.crashed'));
+    channel.kill();
+  }
+
+  private rejectAll(message: string): void {
     const pending = [...this.pending.values()];
     this.pending.clear();
-    for (const { reject } of pending) {
-      reject(new Error(t('errors:decoder.crashed')));
+    for (const { reject, timer } of pending) {
+      clearTimeout(timer);
+      reject(new Error(message));
     }
   }
 }
