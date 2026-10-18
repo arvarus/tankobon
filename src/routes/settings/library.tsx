@@ -166,6 +166,21 @@ function LibrarySettingsPage() {
         </div>
       </SettingsSection>
 
+      <SettingsSection title={t('askUser')}>
+        <div className="flex items-center gap-2">
+          <input
+            id="ask-user-on-startup"
+            type="checkbox"
+            checked={settings.askUserOnStartup}
+            onChange={(event) => update('askUserOnStartup', event.target.checked)}
+          />
+          <label htmlFor="ask-user-on-startup" className="text-sm">
+            {t('askUserOnStartup')}
+          </label>
+        </div>
+        <p className="text-sm text-muted-foreground">{t('askUserHint')}</p>
+      </SettingsSection>
+
       <SettingsSection title={t('organization')}>
         <p className="text-sm text-muted-foreground">{t('organizationHint')}</p>
         <div className="flex items-center gap-2">

@@ -185,6 +185,11 @@ export interface AppSettings {
   googleBooksApiKey: string;
   /** Whether the library is resynchronized with its folders in the background at every start. */
   resyncOnStartup: boolean;
+  /**
+   * Whether the app starts on a screen where the user picks who is reading. Shared, since it is read
+   * before anyone is chosen; the screen's "don't ask again" box turns it off.
+   */
+  askUserOnStartup: boolean;
   /** Whether the app asks GitHub at every start if a newer release exists, and offers to download it. */
   checkUpdatesOnStartup: boolean;
   /** When the last resynchronization finished (ISO 8601); empty when there has been none. */
@@ -245,6 +250,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   googleBooksApiKey: '',
   resyncOnStartup: false,
   checkUpdatesOnStartup: true,
+  askUserOnStartup: false,
   lastResyncAt: '',
   lastScanFolder: '',
   libraryOrganization: 'off',
@@ -266,6 +272,7 @@ export const SHARED_SETTINGS: readonly (keyof AppSettings)[] = [
   'googleBooksApiKey',
   'resyncOnStartup',
   'checkUpdatesOnStartup',
+  'askUserOnStartup',
   'lastResyncAt',
   'lastScanFolder',
   'libraryOrganization',
@@ -335,6 +342,7 @@ export const SETTING_VALIDATORS: SettingValidators = {
   googleBooksApiKey: isString,
   resyncOnStartup: isBoolean,
   checkUpdatesOnStartup: isBoolean,
+  askUserOnStartup: isBoolean,
   lastResyncAt: (value): value is string => isString(value) && (value === '' || !Number.isNaN(Date.parse(value))),
   lastScanFolder: isString,
   libraryOrganization: (value): value is LibraryOrganization => value === 'off' || value === 'ask' || value === 'always',
