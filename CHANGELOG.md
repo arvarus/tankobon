@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented here. This file is maintained by [release-please](https://github.com/googleapis/release-please) from the [Conventional Commits](https://www.conventionalcommits.org/) merged into `master`: don't edit released entries by hand. New versions are inserted above the previous ones.
 
+## [0.9.0](https://github.com/pprb/tankobon/compare/v0.8.1...v0.9.0) (2026-10-18)
+
+
+### Features
+
+* **profile:** show and clear the reading history ([#137](https://github.com/pprb/tankobon/issues/137)) ([e784873](https://github.com/pprb/tankobon/commit/e784873887c1f4fb7035caf734aae4ee2354c823))
+* **settings:** add light/dark/system theme choice ([#131](https://github.com/pprb/tankobon/issues/131)) ([daf4f78](https://github.com/pprb/tankobon/commit/daf4f78d02066809f5d93f6b11826ca0aa1c0110))
+* **users:** delete a user while another one remains ([#136](https://github.com/pprb/tankobon/issues/136)) ([4b0ef13](https://github.com/pprb/tankobon/commit/4b0ef13fa5dccb64e6300b920cbe83ba9687a05e))
+* **users:** manage several users sharing one library ([#134](https://github.com/pprb/tankobon/issues/134)) ([8a9a4d8](https://github.com/pprb/tankobon/commit/8a9a4d80471e5c4d4599f639453064c42bd5d4b5))
+* **users:** offer a user choice screen at startup ([#138](https://github.com/pprb/tankobon/issues/138)) ([dc68081](https://github.com/pprb/tankobon/commit/dc68081a1a8e2e35ea9608718d8bd37178a4c3a6))
+
 ## [0.8.1](https://github.com/pprb/tankobon/compare/v0.8.0...v0.8.1) (2026-10-18)
 
 
