@@ -21,3 +21,18 @@ export interface ReadingStats {
   /** Reading time per day, oldest first. */
   days: ReadingDay[];
 }
+
+/** One line of the profile's reading history: the time spent on a book during one local day. */
+export interface ReadingHistoryEntry {
+  /** Local date, `YYYY-MM-DD`. */
+  day: string;
+  /** Library id of the book; it may no longer be in the library. */
+  libraryId: string;
+  /** The book's title, `null` once it was removed from the library. */
+  title: string | null;
+  /** Seconds spent reading it that day. */
+  seconds: number;
+}
+
+/** How many lines `stats:history` returns at most (the most recent ones). */
+export const READING_HISTORY_LIMIT = 200;
