@@ -83,7 +83,7 @@ export function ContinuousReader({
     el.scrollLeft = ratio.left * el.scrollWidth;
   }, [zoom]);
 
-  useResumeScroll(scrollRef, columnRef, comic.resumePage);
+  const pinnedRef = useResumeScroll(scrollRef, columnRef, comic.resumePage);
 
   const handleActive = useCallback(
     (index: number) => {
@@ -133,7 +133,7 @@ export function ContinuousReader({
       <div ref={scrollRef} role="region" aria-label={t('pages')} className="min-h-0 flex-1 overflow-auto [overflow-anchor:none]">
         <div ref={columnRef} className="mx-auto flex flex-col items-center" style={{ rowGap: spacing, width: `${zoom * 100}%` }}>
           {Array.from({ length: comic.pageCount }, (_, index) => (
-            <ContinuousPage key={index} comicId={comic.id} index={index} onActive={handleActive} scrollRef={scrollRef} />
+            <ContinuousPage key={index} comicId={comic.id} index={index} onActive={handleActive} scrollRef={scrollRef} pinnedRef={pinnedRef} />
           ))}
         </div>
       </div>

@@ -17,9 +17,11 @@ interface ContinuousPageProps {
   onActive: (index: number) => void;
   /** The scroll container holding the pages, whose position follows the height changes above the viewport. */
   scrollRef: RefObject<HTMLDivElement | null>;
+  /** True while the resumed page is pinned, which already corrects the scroll position itself. */
+  pinnedRef: RefObject<boolean>;
 }
 
-export function ContinuousPage({ comicId, index, onActive, scrollRef }: ContinuousPageProps) {
+export function ContinuousPage({ comicId, index, onActive, scrollRef, pinnedRef }: ContinuousPageProps) {
   const { t } = useTranslation('reader');
   const ref = useRef<HTMLDivElement>(null);
   const [shouldLoad, setShouldLoad] = useState(false);
@@ -28,6 +30,9 @@ export function ContinuousPage({ comicId, index, onActive, scrollRef }: Continuo
   // The height a released page had, kept for its placeholder: collapsing it to the generic one would
   // shift everything below, and the pages above the reader's position would move the page under their eyes.
   const [releasedHeight, setReleasedHeight] = useState<number | null>(null);
+  // The image is shown once decoded: until then the placeholder stays, so the page changes height in one step
+  // (an image without a size would collapse the page to nothing first).
+  const [loaded, setLoaded] = useState(false);
   const hasImage = useRef(false);
 
   // Three observers: one fetches the page before it is visible, one releases it once it is far away,
@@ -50,6 +55,7 @@ export function ContinuousPage({ comicId, index, onActive, scrollRef }: Continuo
         setReleasedHeight(el.offsetHeight > 0 ? el.offsetHeight : null);
         setShouldLoad(false);
         setUrl(null);
+        setLoaded(false);
       },
       { rootMargin: KEEP_MARGIN },
     );
@@ -81,12 +87,12 @@ export function ContinuousPage({ comicId, index, onActive, scrollRef }: Continuo
       const container = scrollRef.current;
       const delta = el.offsetHeight - lastHeight;
       lastHeight = el.offsetHeight;
-      if (!container || delta === 0) return;
+      if (!container || delta === 0 || pinnedRef.current) return;
       if (el.getBoundingClientRect().top < container.getBoundingClientRect().top) container.scrollTop += delta;
     });
     observer.observe(el);
     return () => observer.disconnect();
-  }, [scrollRef]);
+  }, [scrollRef, pinnedRef]);
 
   useEffect(() => {
     if (!shouldLoad) return;
@@ -99,7 +105,6 @@ export function ContinuousPage({ comicId, index, onActive, scrollRef }: Continuo
         objectUrl = URL.createObjectURL(new Blob([data], { type: mimeType }));
         hasImage.current = true;
         setFailed(false);
-        setReleasedHeight(null);
         setUrl(objectUrl);
       })
       .catch(() => {
@@ -113,9 +118,19 @@ export function ContinuousPage({ comicId, index, onActive, scrollRef }: Continuo
 
   return (
     <div ref={ref} className="w-full max-w-full">
-      {url ? (
-        <img src={url} alt={t('pageAlt', { page: index + 1 })} draggable={false} className="block w-full" />
-      ) : (
+      {url && (
+        <img
+          src={url}
+          alt={t('pageAlt', { page: index + 1 })}
+          draggable={false}
+          onLoad={() => {
+            setReleasedHeight(null);
+            setLoaded(true);
+          }}
+          className={loaded ? 'block w-full' : 'hidden'}
+        />
+      )}
+      {url && loaded ? null : (
         <div
           className={releasedHeight === null ? 'flex h-[60vh] w-full items-center justify-center text-neutral-500' : 'flex w-full items-center justify-center text-neutral-500'}
           style={releasedHeight === null ? undefined : { height: releasedHeight }}
