@@ -40,6 +40,11 @@ const users: Translation<typeof en> = {
     },
     sharedSettings:
       'Les réglages de la bibliothèque (dossiers, organisation, sources de métadonnées, mises à jour) sont communs à tous les utilisateurs.',
+    deleteButton: 'Supprimer cet utilisateur…',
+    deleteTitle: 'Supprimer {{nickname}} ?',
+    deleteMessage: 'Ses notes, étiquettes, progression, listes de lecture, statistiques, succès et réglages seront supprimés définitivement. La bibliothèque et les autres utilisateurs ne sont pas touchés.',
+    deleteAction: 'Supprimer',
+    deleteOnlyUser: 'Le dernier utilisateur ne peut pas être supprimé.',
   },
 };
 

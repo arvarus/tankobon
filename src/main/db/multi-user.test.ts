@@ -8,6 +8,7 @@ import { ReadingListRepository } from './reading-list-repository';
 import { migrate } from './schema';
 import { SettingsRepository } from './settings-repository';
 import { StatsRepository } from './stats-repository';
+import { UserRepository } from './user-repository';
 
 // Two users on one database: what is personal is told apart, what belongs to the library is common.
 let current = 'alice';
@@ -189,5 +190,32 @@ describe('statistics and achievements, per user', () => {
     as('bob');
     expect(achievements.list()).toEqual([]);
     expect(achievements.unlock(['nightOwl'])).toHaveLength(1);
+  });
+});
+
+describe('deleting a user', () => {
+  it('deletes their personal data and leaves the library and the others alone', () => {
+    const users = new UserRepository(db);
+    const bobCreated = users.create('Bob');
+    if (bobCreated.status !== 'ok') throw new Error('create failed');
+    const bob = bobCreated.user.id;
+    current = bob;
+    const entry = library.touch('/a.cbz', 'A', 20, 20, 100);
+    library.updateRating(entry.id, 4);
+    const list = lists.create('Mine');
+    if (list.status !== 'ok') throw new Error('create failed');
+    lists.addEntry(list.list.id, entry.id);
+    stats.addReadingTime(entry.id, 30, new Date(2026, 0, 5));
+    achievements.unlock(['nightOwl']);
+    settings.set('readingMode', 'continuous');
+
+    expect(users.remove(bob)).toMatchObject({ status: 'ok' });
+
+    for (const table of ['user_books', 'reading_lists', 'reading_sessions', 'user_achievements', 'user_settings']) {
+      expect(db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE user_id = ?`).get(bob)).toEqual({ n: 0 });
+    }
+    expect(db.prepare('SELECT COUNT(*) AS n FROM reading_list_items').get()).toEqual({ n: 0 });
+    as('alice');
+    expect(library.list()).toHaveLength(1);
   });
 });

@@ -198,6 +198,8 @@ export interface UsersApi {
   setAvatar(bytes: Uint8Array): Promise<UserResult>;
   /** Puts the active user's default picture back. */
   removeAvatar(): Promise<UserResult>;
+  /** Deletes the active user and all their personal data (progress, ratings, tags, lists, statistics, achievements, settings); the library is untouched. Refused for the last remaining user. On success the result is the user the app switched to. */
+  remove(): Promise<UserResult>;
 }
 
 /** Where the database file lives, as `window.tankobon.database`. */
@@ -346,6 +348,7 @@ const api: TankobonApi = {
     pickAvatar: () => ipcRenderer.invoke('users:pick-avatar'),
     setAvatar: (bytes) => ipcRenderer.invoke('users:set-avatar', bytes),
     removeAvatar: () => ipcRenderer.invoke('users:remove-avatar'),
+    remove: () => ipcRenderer.invoke('users:remove'),
   },
 };
 

@@ -86,4 +86,32 @@ describe('UserRepository', () => {
 
     expect(repo.setAvatar(DEFAULT_USER_ID, null)).toMatchObject({ status: 'ok', user: { avatar: null, avatarType: null } });
   });
+
+  it('refuses to delete the last user', () => {
+    expect(repo.remove(DEFAULT_USER_ID)).toMatchObject({ status: 'error' });
+    expect(repo.list()).toHaveLength(1);
+  });
+
+  it('refuses to delete an unknown user', () => {
+    repo.create('Alice');
+    expect(repo.remove('nope')).toMatchObject({ status: 'error' });
+    expect(repo.list()).toHaveLength(2);
+  });
+
+  it('deletes the active user and moves to the one active before', () => {
+    const alice = repo.create('Alice');
+    if (alice.status !== 'ok') throw new Error('create failed');
+    repo.switchTo(alice.user.id);
+    const result = repo.remove(alice.user.id);
+    expect(result).toMatchObject({ status: 'ok', user: { id: DEFAULT_USER_ID } });
+    expect(repo.activeId()).toBe(DEFAULT_USER_ID);
+    expect(repo.list().map((user) => user.id)).toEqual([DEFAULT_USER_ID]);
+  });
+
+  it('keeps the active user when another one is deleted', () => {
+    const alice = repo.create('Alice');
+    if (alice.status !== 'ok') throw new Error('create failed');
+    expect(repo.remove(alice.user.id)).toMatchObject({ status: 'ok', user: { id: DEFAULT_USER_ID } });
+    expect(repo.activeId()).toBe(DEFAULT_USER_ID);
+  });
 });

@@ -35,5 +35,10 @@ export default {
       confirmAction: 'Clear',
     },
     sharedSettings: 'The settings of the library (folders, organization, metadata sources, updates) are shared by every user.',
+    deleteButton: 'Delete this user…',
+    deleteTitle: 'Delete {{nickname}}?',
+    deleteMessage: 'Their ratings, tags, progress, reading lists, statistics, achievements and settings will be deleted for good. The library and the other users are not affected.',
+    deleteAction: 'Delete',
+    deleteOnlyUser: 'The last remaining user can’t be deleted.',
   },
 };
