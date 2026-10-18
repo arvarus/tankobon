@@ -55,6 +55,7 @@ const errors: Translation<typeof en> = {
     avatarFormat: 'Cette image est inutilisable : choisis une image PNG, JPEG ou WebP.',
     avatarTooLarge: 'Cette image est trop volumineuse.',
     avatarUnreadable: 'Impossible de lire cette image : {{message}}',
+    lastUser: 'Le dernier utilisateur ne peut pas être supprimé.',
   },
   metadata: {
     emptyQuery: 'Saisis un titre ou une série à rechercher.',

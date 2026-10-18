@@ -27,6 +27,7 @@ export const USER_CHANNELS = {
   pickAvatar: 'users:pick-avatar',
   setAvatar: 'users:set-avatar',
   removeAvatar: 'users:remove-avatar',
+  remove: 'users:remove',
 } as const;
 
 const nicknameArg = (value: unknown) => expectString(value, 'nickname', MAX_NICKNAME_LENGTH * 4);
@@ -91,5 +92,12 @@ export function registerUserIpc(users: UserRepository, settings: SettingsReposit
   );
 
   handle(USER_CHANNELS.removeAvatar, args(), () => written(users.setAvatar(users.activeId(), null)));
-}
 
+  // Only the active user can be deleted (like the other profile edits); the app then moves to
+  // another user, so the language follows as for a switch.
+  handle(USER_CHANNELS.remove, args(), (): UserResult => {
+    const result = users.remove(users.activeId());
+    if (result.status === 'ok') applyMainLanguage(settings.getAll().language);
+    return written(result);
+  });
+}

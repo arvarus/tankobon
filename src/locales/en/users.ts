@@ -26,5 +26,10 @@ export default {
     imageError: 'This image can’t be used.',
     shared: 'The library, its metadata and its organization are shared with the other users. Your ratings, tags, progress, reading lists, statistics, achievements and settings (reading, display, language, home page…) are yours alone.',
     sharedSettings: 'The settings of the library (folders, organization, metadata sources, updates) are shared by every user.',
+    deleteButton: 'Delete this user…',
+    deleteTitle: 'Delete {{nickname}}?',
+    deleteMessage: 'Their ratings, tags, progress, reading lists, statistics, achievements and settings will be deleted for good. The library and the other users are not affected.',
+    deleteAction: 'Delete',
+    deleteOnlyUser: 'The last remaining user can’t be deleted.',
   },
 };

@@ -16,6 +16,7 @@ import {
   type UserProfile,
   type UserResult,
 } from '../../shared/users';
+import { withTransaction } from './transaction';
 
 interface UserRow {
   id: string;
@@ -133,5 +134,30 @@ export class UserRepository {
     if (bytes.length > MAX_AVATAR_BYTES) return { status: 'error', message: t('errors:users.avatarTooLarge') };
     this.db.prepare('UPDATE users SET avatar = ?, avatar_type = ? WHERE id = ?').run(bytes, type, id);
     return this.ok(id);
+  }
+
+  /**
+   * Deletes a user and everything personal they own (progress, ratings and tags, lists, reading time,
+   * achievements, settings); the library and the other users are untouched. Refused for the last
+   * remaining user. When the removed user was the active one, the app moves to the user active before
+   * them, and the result is that user.
+   */
+  remove(id: string): UserResult {
+    if (!this.get(id)) return { status: 'error', message: t('errors:users.notFound') };
+    if (this.list().length < 2) return { status: 'error', message: t('errors:users.lastUser') };
+    const wasActive = this.activeId() === id;
+    withTransaction(this.db, () => {
+      // Lists first: their items are found through the list's owner.
+      this.db
+        .prepare('DELETE FROM reading_list_items WHERE list_id IN (SELECT id FROM reading_lists WHERE user_id = ?)')
+        .run(id);
+      for (const table of ['reading_lists', 'reading_sessions', 'user_books', 'user_settings', 'user_achievements']) {
+        this.db.prepare(`DELETE FROM ${table} WHERE user_id = ?`).run(id);
+      }
+      this.db.prepare('DELETE FROM users WHERE id = ?').run(id);
+    });
+    if (!wasActive) return this.ok(this.activeId());
+    this.active = null;
+    return this.ok(this.activeId());
   }
 }
