@@ -10,9 +10,10 @@ import type { DataChange, LibraryChange } from '@/shared/data-changes';
 import type { LibraryEntry } from '@/shared/library';
 import type { ReadingList } from '@/shared/reading-list';
 import { DEFAULT_SETTINGS, toPublicSettings, type PublicSettings } from '@/shared/settings';
+import type { UsersState } from '@/shared/users';
 
 /** The slices of the store, each with its own subscribers: a progress update doesn't wake the settings' readers. */
-export type DataSlice = 'library' | 'readingLists' | 'settings' | 'achievements';
+export type DataSlice = 'library' | 'readingLists' | 'settings' | 'achievements' | 'users';
 
 /** The part of `window.tankobon` the store reads from; a fake in tests. */
 export interface DataSource {
@@ -35,6 +36,11 @@ export interface DataSource {
   settings: {
     /** Every setting. */
     getAll(): Promise<PublicSettings>;
+  };
+  /** The users of the app. */
+  users: {
+    /** Every user and the active one's id. */
+    list(): Promise<UsersState>;
   };
   /** The main process's change notifications. */
   data: {
@@ -79,12 +85,14 @@ export class DataStore {
   private library: LibraryEntry[] | null = null;
   private readingLists: ReadingList[] | null = null;
   private achievements: UnlockedAchievement[] | null = null;
+  private users: UsersState | null = null;
   private settings: PublicSettings = toPublicSettings(DEFAULT_SETTINGS);
   private readonly listeners: Record<DataSlice, Set<() => void>> = {
     library: new Set(),
     readingLists: new Set(),
     settings: new Set(),
     achievements: new Set(),
+    users: new Set(),
   };
   /**
    * Writes this renderer made that the main process hasn't answered yet, by key (`entry:<id>`,
@@ -94,6 +102,8 @@ export class DataStore {
    */
   private readonly pending = new Map<string, number>();
   private started = false;
+  /** Counts the switches of user: an answer that was requested before one belongs to the previous user and is dropped. */
+  private epoch = 0;
 
   constructor(private readonly source: DataSource) {}
 
@@ -109,6 +119,7 @@ export class DataStore {
     void this.reloadLibrary();
     void this.reloadReadingLists();
     void this.reloadAchievements();
+    void this.reloadUsers();
   }
 
   /** The library, most recently opened first; `null` until loaded. The array is replaced, never mutated. */
@@ -119,6 +130,8 @@ export class DataStore {
   getAchievements = (): UnlockedAchievement[] | null => this.achievements;
   /** The settings. */
   getSettings = (): PublicSettings => this.settings;
+  /** The users and the active one; `null` until loaded. */
+  getUsers = (): UsersState | null => this.users;
 
   /** Calls `listener` after each change of `slice`; returns the unsubscribe function. */
   subscribe(slice: DataSlice, listener: () => void): () => void {
@@ -132,25 +145,62 @@ export class DataStore {
 
   /** Fetches the whole library again. */
   async reloadLibrary(): Promise<void> {
-    this.library = await this.source.library.list();
+    const epoch = this.epoch;
+    const loaded = await this.source.library.list();
+    if (epoch !== this.epoch) return;
+    this.library = loaded;
     this.emit('library');
   }
 
   /** Fetches the reading lists again. */
   async reloadReadingLists(): Promise<void> {
-    this.readingLists = await this.source.readingLists.list();
+    const epoch = this.epoch;
+    const loaded = await this.source.readingLists.list();
+    if (epoch !== this.epoch) return;
+    this.readingLists = loaded;
     this.emit('readingLists');
   }
 
   /** Fetches the earned achievements again. */
   async reloadAchievements(): Promise<void> {
-    this.achievements = await this.source.achievements.list();
+    const epoch = this.epoch;
+    const loaded = await this.source.achievements.list();
+    if (epoch !== this.epoch) return;
+    this.achievements = loaded;
     this.emit('achievements');
+  }
+
+  /**
+   * Fetches the users again. When the active user is not the one the store holds the data of, that
+   * data (library progress, lists, achievements, settings) is dropped at once, so no view shows or
+   * counts another user's, and loaded again.
+   */
+  async reloadUsers(): Promise<void> {
+    const state = await this.source.users.list();
+    const switched = this.users !== null && this.users.activeId !== state.activeId;
+    this.users = state;
+    if (switched) {
+      this.epoch += 1;
+      this.library = null;
+      this.readingLists = null;
+      this.achievements = null;
+      this.emit('library');
+      this.emit('readingLists');
+      this.emit('achievements');
+      void this.reloadLibrary();
+      void this.reloadReadingLists();
+      void this.reloadAchievements();
+      await this.reloadSettings().catch(() => undefined);
+    }
+    this.emit('users');
   }
 
   /** Fetches the settings again. */
   async reloadSettings(): Promise<void> {
-    this.settings = await this.source.settings.getAll();
+    const epoch = this.epoch;
+    const loaded = await this.source.settings.getAll();
+    if (epoch !== this.epoch) return;
+    this.settings = loaded;
     this.emit('settings');
   }
 
@@ -170,6 +220,9 @@ export class DataStore {
       }
       case 'readingLists':
         void this.reloadReadingLists();
+        return;
+      case 'users':
+        void this.reloadUsers();
         return;
       case 'achievements': {
         if (!this.achievements) return; // The first load will bring the final state.

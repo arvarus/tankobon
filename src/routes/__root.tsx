@@ -17,12 +17,14 @@ import { useTranslation } from 'react-i18next';
 
 import { AchievementToasts } from '@/components/achievement-toasts';
 import { UpdateToast } from '@/components/update-toast';
+import { UserMenu } from '@/components/user-menu';
 import { Button } from '@/components/ui/button';
 import { useAchievementTracker } from '@/hooks/use-achievements';
 import { useFullscreen } from '@/hooks/use-fullscreen';
 import { useImageScan } from '@/hooks/use-image-scan';
 import { useReadingLists } from '@/hooks/use-reading-lists';
 import { useSettings } from '@/hooks/use-settings';
+import { useUsers } from '@/hooks/use-users';
 import {
   bulkAddFeedback,
   bulkAddRequest,
@@ -69,7 +71,7 @@ function RootLayout() {
   // Fullscreen reading (toggled from the reader) hides the sidebar entirely; the
   // collapsed/expanded preference is untouched and comes back on exit.
   const { fullscreen } = useFullscreen();
-  useAchievementTracker();
+  const activeUserId = useUsers()?.activeId;
 
   return (
     <div className="flex h-full flex-col">
@@ -110,19 +112,29 @@ function RootLayout() {
           ),
         )}
         <SettingsNav collapsed={collapsed} />
+        <div className="mt-auto pt-2">
+          <UserMenu collapsed={collapsed} />
+        </div>
       </aside>
       <main className="flex-1 overflow-auto">
         <Outlet />
       </main>
       </div>
       {!fullscreen && <ImageScanBar />}
-      <AchievementToasts />
+      {/* Remounted for each user, so the tracker never counts one user's library for another's achievements. */}
+      <AchievementTracker key={activeUserId} />
+      <AchievementToasts key={activeUserId} />
       <UpdateToast />
     </div>
   );
 }
 
 /** The bar at the bottom of the window while the pages of the books are being measured in the background. */
+function AchievementTracker() {
+  useAchievementTracker();
+  return null;
+}
+
 function ImageScanBar() {
   const { t } = useTranslation('library');
   const progress = useImageScan();

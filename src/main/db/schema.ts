@@ -4,9 +4,13 @@
  * same `migrate()` the app runs at startup instead of a hand-maintained copy of the tables.
  * @module
  */
+import { userInfo } from 'node:os';
 import type { DatabaseSync } from 'node:sqlite';
 
 import { withTransaction } from './transaction';
+
+/** The user migration 7 creates and hands the existing data to; the same value as `DEFAULT_USER_ID`, frozen here. */
+const FIRST_USER_ID = 'default';
 
 /** One step of the schema's history, applied at most once per database. */
 interface Migration {
@@ -141,7 +145,90 @@ const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    // Several users on one library: the books, their metadata and the library's organization stay
+    // common; what is personal (rating, tags, progress, reading lists, reading history, achievements,
+    // settings) moves to per-user tables or gets a `user_id`. Everything that exists becomes the first
+    // user's. The columns of `library` that used to hold the personal values (`current_page`, `rating`,
+    // `tags`, `finished_at`) are no longer read (SQLite can't drop them without rebuilding the table).
+    version: 7,
+    run: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS users (
+          id TEXT PRIMARY KEY,
+          nickname TEXT NOT NULL,
+          avatar BLOB,
+          avatar_type TEXT,
+          created_at TEXT NOT NULL,
+          last_active_at TEXT NOT NULL DEFAULT ''
+        );
+
+        CREATE TABLE IF NOT EXISTS user_books (
+          user_id TEXT NOT NULL,
+          library_id TEXT NOT NULL,
+          current_page INTEGER NOT NULL DEFAULT 0,
+          rating INTEGER NOT NULL DEFAULT 0,
+          tags TEXT NOT NULL DEFAULT '[]',
+          finished_at TEXT,
+          last_opened_at TEXT NOT NULL,
+          PRIMARY KEY (user_id, library_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_user_books_library_id ON user_books (library_id);
+
+        CREATE TABLE IF NOT EXISTS user_settings (
+          user_id TEXT NOT NULL,
+          key TEXT NOT NULL,
+          value TEXT NOT NULL,
+          PRIMARY KEY (user_id, key)
+        );
+
+        CREATE TABLE IF NOT EXISTS user_achievements (
+          user_id TEXT NOT NULL,
+          id TEXT NOT NULL,
+          unlocked_at TEXT NOT NULL,
+          PRIMARY KEY (user_id, id)
+        );
+      `);
+      // Frozen like the rest of the migration: the first user's id, whatever `DEFAULT_USER_ID` becomes.
+      addColumnIfMissing(db, 'reading_lists', 'user_id', "TEXT NOT NULL DEFAULT 'default'");
+      addColumnIfMissing(db, 'reading_sessions', 'user_id', "TEXT NOT NULL DEFAULT 'default'");
+      db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_reading_lists_user_id ON reading_lists (user_id);
+        CREATE INDEX IF NOT EXISTS idx_reading_sessions_user_day ON reading_sessions (user_id, day);
+      `);
+
+      const now = new Date().toISOString();
+      db.prepare('INSERT OR IGNORE INTO users (id, nickname, created_at, last_active_at) VALUES (?, ?, ?, ?)').run(
+        FIRST_USER_ID,
+        osNickname(),
+        now,
+        now,
+      );
+      db.prepare(
+        `INSERT OR IGNORE INTO user_books (user_id, library_id, current_page, rating, tags, finished_at, last_opened_at)
+         SELECT ?, id, current_page, rating, tags, finished_at, last_opened_at FROM library`,
+      ).run(FIRST_USER_ID);
+      // Every stored setting is copied: the ones that stay shared are simply read from `settings` from now on.
+      db.prepare('INSERT OR IGNORE INTO user_settings (user_id, key, value) SELECT ?, key, value FROM settings').run(
+        FIRST_USER_ID,
+      );
+      db.prepare(
+        'INSERT OR IGNORE INTO user_achievements (user_id, id, unlocked_at) SELECT ?, id, unlocked_at FROM achievements',
+      ).run(FIRST_USER_ID);
+    },
+  },
 ];
+
+/** The name of the OS session, which makes the first user's nickname; a generic one when it can't be read. */
+function osNickname(): string {
+  try {
+    const name = userInfo().username.trim();
+    if (name !== '') return name.slice(0, 40);
+  } catch {
+    // No such information (a restricted environment): the generic nickname below.
+  }
+  return 'Utilisateur';
+}
 
 /** How long a statement waits for another connection's lock before failing with "database is locked", in milliseconds. */
 export const BUSY_TIMEOUT_MS = 5000;

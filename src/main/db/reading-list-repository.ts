@@ -13,6 +13,7 @@ import {
   type ReadingListOrderResult,
   type ReadingListResult,
 } from '../../shared/reading-list';
+import { DEFAULT_USER_ID } from '../../shared/users';
 import { withTransaction } from './transaction';
 
 /** Whether `ids` holds exactly the members of `current`: same size, no duplicate, nothing foreign. */
@@ -34,17 +35,24 @@ const notFound = (): ReadingListResult => ({ status: 'error', message: t('errors
  * refused (full list, empty name, unknown list) resolve to a `ReadingListResult` error.
  */
 export class ReadingListRepository {
-  constructor(private readonly db: DatabaseSync) {}
+  /** `userId` says whose lists these are (the active user, in the app): each user has their own. */
+  constructor(
+    private readonly db: DatabaseSync,
+    private readonly userId: () => string = () => DEFAULT_USER_ID,
+  ) {}
 
-  /** Every list, in the order the user gave them (new lists last). */
+  /** Every list of the user, in the order they gave them (new lists last). */
   list(): ReadingList[] {
     const rows = this.db
-      .prepare('SELECT * FROM reading_lists ORDER BY position, created_at, name')
-      .all() as unknown as ReadingListRow[];
+      .prepare('SELECT * FROM reading_lists WHERE user_id = ? ORDER BY position, created_at, name')
+      .all(this.userId()) as unknown as ReadingListRow[];
     const items = new Map<string, string[]>();
     const itemRows = this.db
-      .prepare('SELECT list_id, library_id FROM reading_list_items ORDER BY list_id, position')
-      .all() as unknown as { list_id: string; library_id: string }[];
+      .prepare(
+        `SELECT i.list_id, i.library_id FROM reading_list_items i
+         JOIN reading_lists r ON r.id = i.list_id WHERE r.user_id = ? ORDER BY i.list_id, i.position`,
+      )
+      .all(this.userId()) as unknown as { list_id: string; library_id: string }[];
     for (const row of itemRows) {
       const ids = items.get(row.list_id) ?? [];
       ids.push(row.library_id);
@@ -53,9 +61,18 @@ export class ReadingListRepository {
     return rows.map((row) => ({ id: row.id, name: row.name, createdAt: row.created_at, entryIds: items.get(row.id) ?? [] }));
   }
 
+  /** Whether a list with this id exists but belongs to another user (an imported list must then get a new id). */
+  isForeign(id: string): boolean {
+    return (
+      this.db.prepare('SELECT 1 FROM reading_lists WHERE id = ? AND user_id <> ?').get(id, this.userId()) !== undefined
+    );
+  }
+
   /** One list by id, or null if it doesn't exist (anymore). */
   get(id: string): ReadingList | null {
-    const row = this.db.prepare('SELECT * FROM reading_lists WHERE id = ?').get(id) as ReadingListRow | undefined;
+    const row = this.db.prepare('SELECT * FROM reading_lists WHERE id = ? AND user_id = ?').get(id, this.userId()) as
+      | ReadingListRow
+      | undefined;
     return row ? { id: row.id, name: row.name, createdAt: row.created_at, entryIds: this.entryIdsOf(id) } : null;
   }
 
@@ -88,7 +105,7 @@ export class ReadingListRepository {
     if (trimmed === '') {
       return { status: 'error', message: t('errors:readingLists.emptyName') };
     }
-    this.db.prepare('UPDATE reading_lists SET name = ? WHERE id = ?').run(trimmed, id);
+    this.db.prepare('UPDATE reading_lists SET name = ? WHERE id = ? AND user_id = ?').run(trimmed, id, this.userId());
     return this.ok(id);
   }
 
@@ -109,17 +126,18 @@ export class ReadingListRepository {
 
   /** Deletes a list; the books it held stay in the library. */
   remove(id: string): void {
+    if (!this.get(id)) return;
     withTransaction(this.db, () => {
       this.db.prepare('DELETE FROM reading_list_items WHERE list_id = ?').run(id);
       this.db.prepare('DELETE FROM reading_lists WHERE id = ?').run(id);
     });
   }
 
-  /** Deletes every list; the books they held stay in the library. Returns how many were deleted. */
+  /** Deletes every list of the user; the books they held stay in the library. Returns how many were deleted. */
   clear(): number {
-    const { count } = this.db.prepare('SELECT COUNT(*) AS count FROM reading_lists').get() as { count: number };
-    withTransaction(this.db, () => this.db.exec('DELETE FROM reading_list_items; DELETE FROM reading_lists;'));
-    return count;
+    const lists = this.list();
+    withTransaction(this.db, () => lists.forEach((list) => this.remove(list.id)));
+    return lists.length;
   }
 
   /**
@@ -225,9 +243,11 @@ export class ReadingListRepository {
   }
 
   private writeList(list: ReadingList): 'created' | 'updated' {
-    const exists = this.db.prepare('SELECT 1 FROM reading_lists WHERE id = ?').get(list.id) !== undefined;
+    const exists = this.get(list.id) !== null;
     if (exists) {
-      this.db.prepare('UPDATE reading_lists SET name = ?, created_at = ? WHERE id = ?').run(list.name, list.createdAt, list.id);
+      this.db
+        .prepare('UPDATE reading_lists SET name = ?, created_at = ? WHERE id = ? AND user_id = ?')
+        .run(list.name, list.createdAt, list.id, this.userId());
     } else {
       this.insert(list.id, list.name, list.createdAt);
     }
@@ -239,10 +259,10 @@ export class ReadingListRepository {
   private insert(id: string, name: string, createdAt: string): void {
     this.db
       .prepare(
-        `INSERT INTO reading_lists (id, name, created_at, position)
-         SELECT ?, ?, ?, COALESCE(MAX(position) + 1, 0) FROM reading_lists`,
+        `INSERT INTO reading_lists (id, name, created_at, position, user_id)
+         SELECT ?, ?, ?, COALESCE(MAX(position) + 1, 0), ? FROM reading_lists WHERE user_id = ?`,
       )
-      .run(id, name, createdAt);
+      .run(id, name, createdAt, this.userId(), this.userId());
   }
 
   private writePositions(id: string, entryIds: string[]): void {

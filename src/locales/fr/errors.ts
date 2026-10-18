@@ -47,6 +47,15 @@ const errors: Translation<typeof en> = {
     full: 'La liste « {{name}} » est pleine ({{max}} livres au maximum).',
     entryGone: "Ce livre n'est plus dans la bibliothèque.",
   },
+  users: {
+    notFound: 'Cet utilisateur n’existe plus.',
+    emptyNickname: 'Le pseudo ne peut pas être vide.',
+    nicknameTooLong: 'Le pseudo ne peut pas dépasser {{max}} caractères.',
+    nicknameTaken: 'Quelqu’un s’appelle déjà « {{nickname}} ».',
+    avatarFormat: 'Cette image est inutilisable : choisis une image PNG, JPEG ou WebP.',
+    avatarTooLarge: 'Cette image est trop volumineuse.',
+    avatarUnreadable: 'Impossible de lire cette image : {{message}}',
+  },
   metadata: {
     emptyQuery: 'Saisis un titre ou une série à rechercher.',
     noSource: "Aucune source de métadonnées n'est configurée : active-en une dans Paramètres › Métadonnées.",

@@ -37,10 +37,20 @@ function generateSchema() {
 
   const db = new DatabaseSync(':memory:');
   try {
-    for (const sql of execBlocks) db.exec(sql);
+    // A block that fails may be waiting for a column `addColumnIfMissing()` adds (an index on it):
+    // it is run again once the columns are there.
+    const deferred = [];
+    for (const sql of execBlocks) {
+      try {
+        db.exec(sql);
+      } catch {
+        deferred.push(sql);
+      }
+    }
     for (const { table, column, definition } of addedColumns) {
       db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
     }
+    for (const sql of deferred) db.exec(sql);
   } catch (error) {
     errors.push(`${file}: the schema SQL doesn't run: ${error.message}`);
     return;

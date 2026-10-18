@@ -198,16 +198,18 @@ function mergeSnapshot(
     }
   }
   const idByPath = new Map(libraryRepo.list().map((entry) => [entry.path, entry.id]));
-  for (const list of data.readingLists) {
+  // Another user may already own a list with the snapshot's id (the same backup imported by two users): this one gets a new id.
+  const listIds = data.readingLists.map((list) => (readingListRepo.isForeign(list.id) ? randomUUID() : list.id));
+  for (const [index, list] of data.readingLists.entries()) {
     readingListRepo.upsert({
-      id: list.id,
+      id: listIds[index],
       name: list.name,
       createdAt: list.createdAt,
       entryIds: list.paths.flatMap((p) => idByPath.get(p) ?? []),
     });
   }
   // The snapshot's lists in its order, then the ones only present locally, in theirs.
-  const imported = new Set(data.readingLists.map((list) => list.id));
+  const imported = new Set(listIds);
   readingListRepo.reorderLists([
     ...imported,
     ...readingListRepo.list().flatMap((list) => (imported.has(list.id) ? [] : [list.id])),

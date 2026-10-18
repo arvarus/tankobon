@@ -75,10 +75,12 @@ describe('applyLibraryChange', () => {
 
 function fakeSource(overrides: Partial<{ library: LibraryEntry[]; lists: ReadingList[] }> = {}) {
   let listener: (change: DataChange) => void = () => undefined;
+  let activeId = 'u1';
   const source = {
     library: { list: vi.fn(async () => overrides.library ?? []) },
     readingLists: { list: vi.fn(async () => overrides.lists ?? []) },
     achievements: { list: vi.fn(async () => []) },
+    users: { list: vi.fn(async () => ({ users: [], activeId })) },
     settings: { getAll: vi.fn(async () => ({ ...toPublicSettings(DEFAULT_SETTINGS), pageSpacing: 7 })) },
     data: {
       onChanged: (l: (change: DataChange) => void) => {
@@ -87,7 +89,13 @@ function fakeSource(overrides: Partial<{ library: LibraryEntry[]; lists: Reading
       },
     },
   } satisfies DataSource;
-  return { source, emit: (change: DataChange) => listener(change) };
+  return {
+    source,
+    emit: (change: DataChange) => listener(change),
+    switchTo: (id: string) => {
+      activeId = id;
+    },
+  };
 }
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -220,5 +228,57 @@ describe('DataStore', () => {
     emit({ scope: 'achievements', unlocked: [firstBook] });
     expect(store.getAchievements()).toEqual([firstBook]);
     expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it('drops what is personal and reloads it when the active user changes', async () => {
+    const { source, emit, switchTo } = fakeSource({ library: [entry('a', '2026-01')] });
+    const store = new DataStore(source);
+    store.start();
+    await flush();
+    expect(store.getUsers()?.activeId).toBe('u1');
+
+    const seen: (LibraryEntry[] | null)[] = [];
+    store.subscribe('library', () => seen.push(store.getLibrary()));
+    switchTo('u2');
+    emit({ scope: 'users' });
+    await flush();
+    // Not loaded for a moment: no view shows (or counts) the previous user's data meanwhile.
+    expect(seen[0]).toBeNull();
+    expect(seen.at(-1)).toHaveLength(1);
+
+    expect(store.getUsers()?.activeId).toBe('u2');
+    expect(source.library.list).toHaveBeenCalledTimes(2);
+    expect(source.settings.getAll).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the data when a user is only added or edited', async () => {
+    const { source, emit } = fakeSource({ library: [entry('a', '2026-01')] });
+    const store = new DataStore(source);
+    store.start();
+    await flush();
+
+    emit({ scope: 'users' });
+    await flush();
+
+    expect(source.users.list).toHaveBeenCalledTimes(2);
+    expect(source.library.list).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores an answer requested for the previous user', async () => {
+    const { source, emit, switchTo } = fakeSource();
+    let resolveStale: (entries: LibraryEntry[]) => void = () => undefined;
+    const store = new DataStore(source);
+    store.start();
+    await flush();
+    source.library.list.mockImplementationOnce(() => new Promise<LibraryEntry[]>((resolve) => (resolveStale = resolve)));
+    void store.reloadLibrary();
+
+    switchTo('u2');
+    emit({ scope: 'users' });
+    await flush();
+    resolveStale([entry('old-user-book', '2026-01')]);
+    await flush();
+
+    expect(store.getLibrary()).toEqual([]);
   });
 });

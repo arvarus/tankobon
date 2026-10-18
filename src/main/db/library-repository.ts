@@ -13,6 +13,7 @@ import {
   type LibraryEntry,
   type MetadataUpdate,
 } from '../../shared/library';
+import { DEFAULT_USER_ID } from '../../shared/users';
 import { PeopleRepository } from './people-repository';
 import { withTransaction } from './transaction';
 
@@ -73,23 +74,60 @@ function creditFromRow(row: CreditRow): Credit {
   return { personId: row.person_id, firstName: row.first_name, lastName: row.last_name, role: row.role as CreditRole };
 }
 
+/**
+ * The columns of an entry as one user sees it: the library's own, plus that user's progress, rating,
+ * tags and last opening (`user_books`; a book they never touched has none: unrated, untagged,
+ * page 0, "last opened" when it was added). The one `?` is the user's id.
+ */
+const ENTRY_SELECT = `
+  SELECT l.id, l.path, l.title, l.page_count, l.added_at, l.file_count, l.file_size, l.title_locked,
+         l.series, l.volume, l.release_date, l.language, l.avg_page_width, l.avg_page_height,
+         MIN(COALESCE(ub.current_page, 0), MAX(l.page_count - 1, 0)) AS current_page,
+         COALESCE(ub.rating, 0) AS rating,
+         COALESCE(ub.tags, '[]') AS tags,
+         COALESCE(ub.last_opened_at, l.added_at) AS last_opened_at
+  FROM library l
+  LEFT JOIN user_books ub ON ub.library_id = l.id AND ub.user_id = ?`;
+
 const CREDITS_QUERY = `
   SELECT c.library_id, c.person_id, p.first_name, p.last_name, c.role
   FROM credits c JOIN people p ON p.id = c.person_id`;
 
-/** Persists the comic library (one row per known file) to the local database. */
+/** Persists the comic library (one row per known file) to the local database, as the active user sees it. */
 export class LibraryRepository {
   private readonly people: PeopleRepository;
 
-  constructor(private readonly db: DatabaseSync) {
+  /**
+   * `userId` says whose rating, tags and progress the reads and writes are about (the active user, in
+   * the app); the books and their metadata are the library's, common to everyone.
+   */
+  constructor(
+    private readonly db: DatabaseSync,
+    private readonly userId: () => string = () => DEFAULT_USER_ID,
+  ) {
     this.people = new PeopleRepository(db);
+  }
+
+  /** Gives the active user a `user_books` row for the book, unless they have one; false when the book isn't in the library. */
+  private ensureUserBook(id: string): boolean {
+    this.db
+      .prepare(
+        `INSERT OR IGNORE INTO user_books (user_id, library_id, last_opened_at)
+         SELECT ?, id, added_at FROM library WHERE id = ?`,
+      )
+      .run(this.userId(), id);
+    return this.hasId(id);
+  }
+
+  private hasId(id: string): boolean {
+    return this.db.prepare('SELECT 1 FROM library WHERE id = ?').get(id) !== undefined;
   }
 
   /** Every entry, most recently opened first. */
   list(): LibraryEntry[] {
     const rows = this.db
-      .prepare('SELECT * FROM library ORDER BY last_opened_at DESC')
-      .all() as unknown as LibraryRow[];
+      .prepare(`${ENTRY_SELECT} ORDER BY last_opened_at DESC`)
+      .all(this.userId()) as unknown as LibraryRow[];
     const credits = new Map<string, Credit[]>();
     const creditRows = this.db
       .prepare(`${CREDITS_QUERY} ORDER BY c.library_id, c.position`)
@@ -104,7 +142,7 @@ export class LibraryRepository {
 
   /** One entry by id, or null if it isn't (or no longer) in the library. */
   get(id: string): LibraryEntry | null {
-    const row = this.db.prepare('SELECT * FROM library WHERE id = ?').get(id) as LibraryRow | undefined;
+    const row = this.db.prepare(`${ENTRY_SELECT} WHERE l.id = ?`).get(this.userId(), id) as LibraryRow | undefined;
     return row ? fromRow(row, this.creditsOf(id)) : null;
   }
 
@@ -121,75 +159,39 @@ export class LibraryRepository {
    * ever set by the user, and keeps a locked title instead of the file-name-derived `title`.
    */
   touch(filePath: string, title: string, pageCount: number, fileCount: number, fileSize: number): LibraryEntry {
-    const now = new Date().toISOString();
-    const existing = this.db.prepare('SELECT * FROM library WHERE path = ?').get(filePath) as
-      | LibraryRow
-      | undefined;
+    return withTransaction(this.db, () => {
+      const now = new Date().toISOString();
+      const existing = this.db.prepare('SELECT id, title, title_locked FROM library WHERE path = ?').get(filePath) as
+        | { id: string; title: string; title_locked: number }
+        | undefined;
+      let id: string;
 
-    if (existing) {
-      const currentPage = Math.min(existing.current_page, pageCount - 1);
-      const newTitle = existing.title_locked !== 0 ? existing.title : title;
+      if (existing) {
+        id = existing.id;
+        const newTitle = existing.title_locked !== 0 ? existing.title : title;
+        this.db
+          .prepare('UPDATE library SET title = ?, page_count = ?, file_count = ?, file_size = ? WHERE id = ?')
+          .run(newTitle, pageCount, fileCount, fileSize, id);
+      } else {
+        id = randomUUID();
+        // The personal columns of `library` are no longer read (see migration 7): they keep their defaults.
+        this.db
+          .prepare(
+            `INSERT INTO library (id, path, title, page_count, added_at, last_opened_at, file_count, file_size)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          )
+          .run(id, filePath, title, pageCount, now, now, fileCount, fileSize);
+      }
+      // The opening is the active user's: it bumps their last opening and clamps their page if the page count shrank.
+      this.ensureUserBook(id);
       this.db
         .prepare(
-          `UPDATE library
-           SET title = ?, page_count = ?, current_page = ?, file_count = ?, file_size = ?, last_opened_at = ?
-           WHERE id = ?`,
+          `UPDATE user_books SET last_opened_at = ?, current_page = MIN(current_page, MAX(? - 1, 0))
+           WHERE user_id = ? AND library_id = ?`,
         )
-        .run(newTitle, pageCount, currentPage, fileCount, fileSize, now, existing.id);
-      return fromRow(
-        {
-          ...existing,
-          title: newTitle,
-          page_count: pageCount,
-          current_page: currentPage,
-          file_count: fileCount,
-          file_size: fileSize,
-          last_opened_at: now,
-        },
-        this.creditsOf(existing.id),
-      );
-    }
-
-    const row: LibraryRow = {
-      id: randomUUID(),
-      path: filePath,
-      title,
-      page_count: pageCount,
-      current_page: 0,
-      added_at: now,
-      last_opened_at: now,
-      file_count: fileCount,
-      file_size: fileSize,
-      rating: 0,
-      tags: '[]',
-      title_locked: 0,
-      series: null,
-      volume: null,
-      release_date: null,
-      language: null,
-      avg_page_width: null,
-      avg_page_height: null,
-    };
-    this.db
-      .prepare(
-        `INSERT INTO library
-           (id, path, title, page_count, current_page, added_at, last_opened_at, file_count, file_size, rating, tags)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        row.id,
-        row.path,
-        row.title,
-        row.page_count,
-        row.current_page,
-        row.added_at,
-        row.last_opened_at,
-        row.file_count,
-        row.file_size,
-        row.rating,
-        row.tags,
-      );
-    return fromRow(row, []);
+        .run(now, pageCount, this.userId(), id);
+      return this.get(id) as LibraryEntry;
+    });
   }
 
   /** Whether a file is already in the library, so a folder scan can skip it without opening it. */
@@ -233,8 +235,8 @@ export class LibraryRepository {
     this.db
       .prepare(
         `INSERT INTO library
-           (id, path, title, page_count, current_page, added_at, last_opened_at, file_count, file_size, rating, tags)
-         VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, 0, '[]')`,
+           (id, path, title, page_count, added_at, last_opened_at, file_count, file_size)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(randomUUID(), filePath, title, pageCount, now, now, fileCount, fileSize);
     return 'created';
@@ -259,8 +261,7 @@ export class LibraryRepository {
       this.db
         .prepare(
           `UPDATE library
-           SET title = ?, page_count = ?, current_page = ?, added_at = ?, last_opened_at = ?,
-               file_count = ?, file_size = ?, rating = ?, tags = ?,
+           SET title = ?, page_count = ?, added_at = ?, file_count = ?, file_size = ?,
                title_locked = ?, series = ?, volume = ?, release_date = ?, language = ?,
                avg_page_width = ?, avg_page_height = ?
            WHERE id = ?`,
@@ -268,13 +269,9 @@ export class LibraryRepository {
         .run(
           entry.title,
           entry.pageCount,
-          entry.currentPage,
           entry.addedAt,
-          entry.lastOpenedAt,
           entry.fileCount,
           entry.fileSize,
-          entry.rating,
-          JSON.stringify(entry.tags),
           entry.titleLocked ? 1 : 0,
           entry.series,
           entry.volume,
@@ -285,6 +282,7 @@ export class LibraryRepository {
           existing.id,
         );
       this.setCredits(existing.id, entry.credits);
+      this.writeUserBook(existing.id, entry);
       return 'updated';
     }
 
@@ -293,22 +291,19 @@ export class LibraryRepository {
     this.db
       .prepare(
         `INSERT INTO library
-           (id, path, title, page_count, current_page, added_at, last_opened_at, file_count, file_size, rating, tags,
+           (id, path, title, page_count, added_at, last_opened_at, file_count, file_size,
             title_locked, series, volume, release_date, language, avg_page_width, avg_page_height)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
         entry.path,
         entry.title,
         entry.pageCount,
-        entry.currentPage,
         entry.addedAt,
-        entry.lastOpenedAt,
+        entry.addedAt,
         entry.fileCount,
         entry.fileSize,
-        entry.rating,
-        JSON.stringify(entry.tags),
         entry.titleLocked ? 1 : 0,
         entry.series,
         entry.volume,
@@ -318,7 +313,21 @@ export class LibraryRepository {
         entry.avgPageHeight,
       );
     this.setCredits(id, entry.credits);
+    this.writeUserBook(id, entry);
     return 'created';
+  }
+
+  /** Writes the active user's part of an imported entry: progress, rating, tags and last opening. */
+  private writeUserBook(id: string, entry: LibraryEntry): void {
+    this.db
+      .prepare(
+        `INSERT INTO user_books (user_id, library_id, current_page, rating, tags, last_opened_at)
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON CONFLICT (user_id, library_id) DO UPDATE SET
+           current_page = excluded.current_page, rating = excluded.rating, tags = excluded.tags,
+           last_opened_at = excluded.last_opened_at`,
+      )
+      .run(this.userId(), id, entry.currentPage, entry.rating, JSON.stringify(entry.tags), entry.lastOpenedAt);
   }
 
   private idIsTaken(id: string): boolean {
@@ -331,8 +340,8 @@ export class LibraryRepository {
    */
   lastOpenedPath(): string | null {
     const row = this.db
-      .prepare('SELECT path FROM library ORDER BY last_opened_at DESC LIMIT 1')
-      .get() as { path: string } | undefined;
+      .prepare(`SELECT path FROM (${ENTRY_SELECT}) ORDER BY last_opened_at DESC LIMIT 1`)
+      .get(this.userId()) as { path: string } | undefined;
     return row?.path ?? null;
   }
 
@@ -341,20 +350,29 @@ export class LibraryRepository {
    * the book's first completion date (`finished_at`), for the reading statistics.
    */
   updateProgress(id: string, currentPage: number): void {
+    if (!this.ensureUserBook(id)) return;
     // Never past the last page, whatever the caller sent: `resumePage` would point at nothing.
     this.db
-      .prepare('UPDATE library SET current_page = MAX(0, MIN(?, page_count - 1)) WHERE id = ?')
-      .run(currentPage, id);
+      .prepare(
+        `UPDATE user_books
+         SET current_page = MAX(0, MIN(?, (SELECT page_count FROM library WHERE id = ?) - 1))
+         WHERE user_id = ? AND library_id = ?`,
+      )
+      .run(currentPage, id, this.userId(), id);
     this.db
       .prepare(
-        'UPDATE library SET finished_at = ? WHERE id = ? AND finished_at IS NULL AND page_count > 0 AND current_page >= page_count - 1',
+        `UPDATE user_books SET finished_at = ?
+         WHERE user_id = ? AND library_id = ? AND finished_at IS NULL
+           AND (SELECT page_count FROM library WHERE id = ?) > 0
+           AND current_page >= (SELECT page_count FROM library WHERE id = ?) - 1`,
       )
-      .run(new Date().toISOString(), id);
+      .run(new Date().toISOString(), this.userId(), id, id, id);
   }
 
   /** Sets the user rating: 0 (unrated) to 5. The value is stored as given, not clamped. */
   updateRating(id: string, rating: number): void {
-    this.db.prepare('UPDATE library SET rating = ? WHERE id = ?').run(rating, id);
+    if (!this.ensureUserBook(id)) return;
+    this.db.prepare('UPDATE user_books SET rating = ? WHERE user_id = ? AND library_id = ?').run(rating, this.userId(), id);
   }
 
   /** Stores the average page size measured by the background scan; returns the updated entry, or null if the id is unknown. */
@@ -366,17 +384,22 @@ export class LibraryRepository {
   /** The entries the background scan has yet to measure (id and path), most recently opened first. */
   unmeasured(): { id: string; path: string }[] {
     return this.db
-      .prepare('SELECT id, path FROM library WHERE avg_page_width IS NULL ORDER BY last_opened_at DESC')
+      .prepare('SELECT id, path FROM library WHERE avg_page_width IS NULL ORDER BY added_at DESC')
       .all() as unknown as { id: string; path: string }[];
   }
 
   /** Replaces the entry's tags. Tagging a book `Lu` also records its first completion date, like reaching its last page. */
   updateTags(id: string, tags: string[]): void {
-    this.db.prepare('UPDATE library SET tags = ? WHERE id = ?').run(JSON.stringify(tags), id);
+    if (!this.ensureUserBook(id)) return;
+    this.db
+      .prepare('UPDATE user_books SET tags = ? WHERE user_id = ? AND library_id = ?')
+      .run(JSON.stringify(tags), this.userId(), id);
     if (tags.includes(READ_TAG)) {
       this.db
-        .prepare('UPDATE library SET finished_at = ? WHERE id = ? AND finished_at IS NULL')
-        .run(new Date().toISOString(), id);
+        .prepare(
+          'UPDATE user_books SET finished_at = ? WHERE user_id = ? AND library_id = ? AND finished_at IS NULL',
+        )
+        .run(new Date().toISOString(), this.userId(), id);
     }
   }
 
@@ -442,6 +465,7 @@ export class LibraryRepository {
     withTransaction(this.db, () => {
       this.db.prepare('DELETE FROM credits WHERE library_id = ?').run(id);
       this.db.prepare('DELETE FROM reading_list_items WHERE library_id = ?').run(id);
+      this.db.prepare('DELETE FROM user_books WHERE library_id = ?').run(id);
       this.db.prepare('DELETE FROM library WHERE id = ?').run(id);
     });
   }
@@ -459,6 +483,7 @@ export class LibraryRepository {
         DELETE FROM reading_list_items;
         DELETE FROM credits;
         DELETE FROM people;
+        DELETE FROM user_books;
         DELETE FROM library;
         DELETE FROM reading_sessions;
       `),
