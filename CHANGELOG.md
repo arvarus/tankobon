@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. This file is maintained by [release-please](https://github.com/googleapis/release-please) from the [Conventional Commits](https://www.conventionalcommits.org/) merged into `master`: don't edit released entries by hand. New versions are inserted above the previous ones.
 
+## [0.8.1](https://github.com/pprb/tankobon/compare/v0.8.0...v0.8.1) (2026-10-18)
+
+
+### Bug Fixes
+
+* **reader:** keep the scroll position when a page above the viewport changes height ([#132](https://github.com/pprb/tankobon/issues/132)) ([0ad9a24](https://github.com/pprb/tankobon/commit/0ad9a24f17913a2bd2994caceba85975c92dd92a))
+
 ## [0.8.0](https://github.com/pprb/tankobon/compare/v0.7.0...v0.8.0) (2026-10-14)
 
 

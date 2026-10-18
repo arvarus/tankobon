@@ -128,7 +128,10 @@ export const THEME_SETTINGS = ['system', 'light', 'dark'] as const;
 /** Color scheme of the interface: one forced by the user, or `system` to follow the OS. */
 export type ThemeSetting = (typeof THEME_SETTINGS)[number];
 
-/** User preferences, persisted key by key in the `settings` table (see `SettingsRepository`). */
+/**
+ * Preferences, persisted key by key (see `SettingsRepository`): per user in the `user_settings` table,
+ * except the {@link SHARED_SETTINGS}, which every user shares in the `settings` table.
+ */
 export interface AppSettings {
   /** Interface language: one forced by the user, or `system` to follow the OS (English when it isn't supported). */
   language: LanguageSetting;
@@ -249,6 +252,32 @@ export const DEFAULT_SETTINGS: AppSettings = {
   libraryStructure: [],
   libraryFileName: '',
 };
+
+/**
+ * The settings every user shares: they describe the library (where it lives, how it is laid out,
+ * how it is kept up to date) and the app's technical side, which the users' common library depends
+ * on. All the others (reading, appearance, language, home, library views…) belong to each user.
+ */
+export const SHARED_SETTINGS: readonly (keyof AppSettings)[] = [
+  'addOpenedBooksToLibrary',
+  'comicVineEnabled',
+  'comicVineApiKey',
+  'googleBooksEnabled',
+  'googleBooksApiKey',
+  'resyncOnStartup',
+  'checkUpdatesOnStartup',
+  'lastResyncAt',
+  'lastScanFolder',
+  'libraryOrganization',
+  'libraryOrganizationFolder',
+  'libraryStructure',
+  'libraryFileName',
+];
+
+/** Whether `key` is shared by every user (see {@link SHARED_SETTINGS}) rather than set per user. */
+export function isSharedSetting(key: keyof AppSettings): boolean {
+  return SHARED_SETTINGS.includes(key);
+}
 
 /** A reader background preset; its label is the `settings:appearance.backgrounds.<name>` translation. */
 export interface ReaderBackgroundPreset {

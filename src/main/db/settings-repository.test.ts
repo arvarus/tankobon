@@ -44,4 +44,16 @@ describe('SettingsRepository', () => {
 
     expect(repo.getAll()).toEqual({ ...DEFAULT_SETTINGS, readingDirection: 'rtl' });
   });
+
+  it('keeps the theme per user', () => {
+    let active = 'user-a';
+    const perUser = new SettingsRepository(db, () => active);
+    perUser.set('theme', 'dark');
+    active = 'user-b';
+    expect(perUser.getAll().theme).toBe('system');
+    perUser.set('theme', 'light');
+    expect(perUser.getAll().theme).toBe('light');
+    active = 'user-a';
+    expect(perUser.getAll().theme).toBe('dark');
+  });
 });

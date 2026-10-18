@@ -33,6 +33,7 @@ import type { MetadataPageResult, MetadataQuery, MetadataSearchResult } from './
 import type { ReadingList, ReadingListAddResult, ReadingListOrderResult, ReadingListResult } from './shared/reading-list';
 import type { ApiKeys, AppSettings, PublicSettings } from './shared/settings';
 import type { ReadingStats } from './shared/stats';
+import type { PickAvatarResult, UserResult, UsersState } from './shared/users';
 
 /** The app itself (versions, OS languages, project links), as `window.tankobon.app`. */
 export interface AppApi {
@@ -173,6 +174,28 @@ export interface DataApi {
   onChanged(listener: (change: DataChange) => void): () => void;
 }
 
+/**
+ * The people sharing the app, as `window.tankobon.users`. Each has a nickname and a picture (no
+ * password); ratings, tags, progress, reading lists, history, achievements and most settings are
+ * personal, the library and its organization are common. Edits always concern the active user.
+ */
+export interface UsersApi {
+  /** Every user and the active one's id. */
+  list(): Promise<UsersState>;
+  /** Adds a user (nickname trimmed, not empty, unique ignoring case) with the default picture; it doesn't switch to them. */
+  create(nickname: string): Promise<UserResult>;
+  /** Makes another user the active one: everything personal, and the interface language, follow. `data:changed` announces it to every window. */
+  switch(id: string): Promise<UserResult>;
+  /** Changes the active user's nickname. */
+  rename(nickname: string): Promise<UserResult>;
+  /** Opens a native picker for the active user's picture and returns the picked file's bytes (a PNG, JPEG or WebP), for the renderer to shrink before `setAvatar()`. */
+  pickAvatar(): Promise<PickAvatarResult>;
+  /** Stores the active user's picture (PNG, JPEG or WebP of at most 256 KiB). */
+  setAvatar(bytes: Uint8Array): Promise<UserResult>;
+  /** Puts the active user's default picture back. */
+  removeAvatar(): Promise<UserResult>;
+}
+
 /** Where the database file lives, as `window.tankobon.database`. */
 export interface DatabaseApi {
   /** Where the database file currently lives. */
@@ -211,6 +234,8 @@ export interface TankobonApi {
   metadata: MetadataApi;
   /** Achievements earned. */
   achievements: AchievementsApi;
+  /** The users of the app. */
+  users: UsersApi;
 }
 
 // Mirror of the CHANNELS constants in main/ipc/*.ts (preload cannot import main code). The method
@@ -306,6 +331,15 @@ const api: TankobonApi = {
   achievements: {
     list: () => ipcRenderer.invoke('achievements:list'),
     unlock: (ids) => ipcRenderer.invoke('achievements:unlock', ids),
+  },
+  users: {
+    list: () => ipcRenderer.invoke('users:list'),
+    create: (nickname) => ipcRenderer.invoke('users:create', nickname),
+    switch: (id) => ipcRenderer.invoke('users:switch', id),
+    rename: (nickname) => ipcRenderer.invoke('users:rename', nickname),
+    pickAvatar: () => ipcRenderer.invoke('users:pick-avatar'),
+    setAvatar: (bytes) => ipcRenderer.invoke('users:set-avatar', bytes),
+    removeAvatar: () => ipcRenderer.invoke('users:remove-avatar'),
   },
 };
 

@@ -13,6 +13,7 @@ import { LibraryRepository } from './main/db/library-repository';
 import { ReadingListRepository } from './main/db/reading-list-repository';
 import { StatsRepository } from './main/db/stats-repository';
 import { SettingsRepository } from './main/db/settings-repository';
+import { UserRepository } from './main/db/user-repository';
 import { broadcastDataChange } from './main/ipc/data-changes';
 import { setAppUrl } from './main/ipc/trusted-sender';
 import { registerAchievementsIpc } from './main/ipc/achievements';
@@ -25,6 +26,7 @@ import { registerMetadataIpc } from './main/ipc/metadata';
 import { registerReadingListIpc } from './main/ipc/reading-lists';
 import { registerStatsIpc } from './main/ipc/stats';
 import { registerSettingsIpc } from './main/ipc/settings';
+import { registerUserIpc } from './main/ipc/users';
 import { applyMainLanguage, onMainLanguageApplied } from './main/language';
 import { createImageStatsScanner } from './main/services/image-stats-scanner';
 import { createLibraryOrganizer, createResynchronizer } from './main/services/library-organization';
@@ -97,12 +99,16 @@ app.whenReady().then(() => {
       pathToFileURL(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`)).href,
   );
   const db = openDatabase();
-  const libraryRepo = new LibraryRepository(db);
+  // Several people share the library; what is personal (ratings, tags, progress, lists, history,
+  // achievements, settings) is read and written for the user the app is currently switched to.
+  const userRepo = new UserRepository(db);
+  const activeUser = () => userRepo.activeId();
+  const libraryRepo = new LibraryRepository(db, activeUser);
   const folderRepo = new LibraryFolderRepository(db);
-  const settingsRepo = new SettingsRepository(db);
-  const readingListRepo = new ReadingListRepository(db);
-  const achievementRepo = new AchievementRepository(db);
-  const statsRepo = new StatsRepository(db);
+  const settingsRepo = new SettingsRepository(db, activeUser);
+  const readingListRepo = new ReadingListRepository(db, activeUser);
+  const achievementRepo = new AchievementRepository(db, activeUser);
+  const statsRepo = new StatsRepository(db, activeUser);
   // Archives and covers are decoded in their own process: a booby-trapped file can only take that one down.
   // The thumbnails are a cache, so they stay in userData even when the database lives elsewhere.
   const decoder = new DecoderClient(spawnDecoderProcess, path.join(app.getPath('userData'), 'thumbnails'));
@@ -143,6 +149,7 @@ app.whenReady().then(() => {
   registerReadingListIpc(readingListRepo, broadcastDataChange);
   registerStatsIpc(statsRepo);
   registerSettingsIpc(settingsRepo, broadcastDataChange);
+  registerUserIpc(userRepo, settingsRepo, broadcastDataChange);
   registerDataIpc(db, libraryRepo, settingsRepo, readingListRepo, decoder, broadcastDataChange, imageScanner);
   registerComicIpc(libraryRepo, settingsRepo, decoder, broadcastDataChange, imageScanner);
   registerDatabaseIpc();

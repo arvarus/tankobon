@@ -1,5 +1,5 @@
 import { Loader2 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 
 /** A page within this distance of the viewport (above or below) is fetched. */
@@ -15,9 +15,13 @@ interface ContinuousPageProps {
   comicId: string;
   index: number;
   onActive: (index: number) => void;
+  /** The scroll container holding the pages, whose position follows the height changes above the viewport. */
+  scrollRef: RefObject<HTMLDivElement | null>;
+  /** True while the resumed page is pinned, which already corrects the scroll position itself. */
+  pinnedRef: RefObject<boolean>;
 }
 
-export function ContinuousPage({ comicId, index, onActive }: ContinuousPageProps) {
+export function ContinuousPage({ comicId, index, onActive, scrollRef, pinnedRef }: ContinuousPageProps) {
   const { t } = useTranslation('reader');
   const ref = useRef<HTMLDivElement>(null);
   const [shouldLoad, setShouldLoad] = useState(false);
@@ -26,6 +30,9 @@ export function ContinuousPage({ comicId, index, onActive }: ContinuousPageProps
   // The height a released page had, kept for its placeholder: collapsing it to the generic one would
   // shift everything below, and the pages above the reader's position would move the page under their eyes.
   const [releasedHeight, setReleasedHeight] = useState<number | null>(null);
+  // The image is shown once decoded: until then the placeholder stays, so the page changes height in one step
+  // (an image without a size would collapse the page to nothing first).
+  const [loaded, setLoaded] = useState(false);
   const hasImage = useRef(false);
 
   // Three observers: one fetches the page before it is visible, one releases it once it is far away,
@@ -48,6 +55,7 @@ export function ContinuousPage({ comicId, index, onActive }: ContinuousPageProps
         setReleasedHeight(el.offsetHeight > 0 ? el.offsetHeight : null);
         setShouldLoad(false);
         setUrl(null);
+        setLoaded(false);
       },
       { rootMargin: KEEP_MARGIN },
     );
@@ -67,6 +75,25 @@ export function ContinuousPage({ comicId, index, onActive }: ContinuousPageProps
     };
   }, [index, onActive]);
 
+  // A placeholder is replaced by an image of another height. When the page starts above the top of the
+  // viewport, the reader is looking at its lower part (scrolling up into it): add the difference to the
+  // scroll position so that part stays in view instead of the page growing under it. The browser's own
+  // scroll anchoring may pick an element of this very page and drift, hence `overflow-anchor: none` on the container.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let lastHeight = el.offsetHeight;
+    const observer = new ResizeObserver(() => {
+      const container = scrollRef.current;
+      const delta = el.offsetHeight - lastHeight;
+      lastHeight = el.offsetHeight;
+      if (!container || delta === 0 || pinnedRef.current) return;
+      if (el.getBoundingClientRect().top < container.getBoundingClientRect().top) container.scrollTop += delta;
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [scrollRef, pinnedRef]);
+
   useEffect(() => {
     if (!shouldLoad) return;
     let cancelled = false;
@@ -78,7 +105,6 @@ export function ContinuousPage({ comicId, index, onActive }: ContinuousPageProps
         objectUrl = URL.createObjectURL(new Blob([data], { type: mimeType }));
         hasImage.current = true;
         setFailed(false);
-        setReleasedHeight(null);
         setUrl(objectUrl);
       })
       .catch(() => {
@@ -92,9 +118,19 @@ export function ContinuousPage({ comicId, index, onActive }: ContinuousPageProps
 
   return (
     <div ref={ref} className="w-full max-w-full">
-      {url ? (
-        <img src={url} alt={t('pageAlt', { page: index + 1 })} draggable={false} className="block w-full" />
-      ) : (
+      {url && (
+        <img
+          src={url}
+          alt={t('pageAlt', { page: index + 1 })}
+          draggable={false}
+          onLoad={() => {
+            setReleasedHeight(null);
+            setLoaded(true);
+          }}
+          className={loaded ? 'block w-full' : 'hidden'}
+        />
+      )}
+      {url && loaded ? null : (
         <div
           className={releasedHeight === null ? 'flex h-[60vh] w-full items-center justify-center text-neutral-500' : 'flex w-full items-center justify-center text-neutral-500'}
           style={releasedHeight === null ? undefined : { height: releasedHeight }}
