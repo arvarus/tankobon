@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. This file is maintained by [release-please](https://github.com/googleapis/release-please) from the [Conventional Commits](https://www.conventionalcommits.org/) merged into `master`: don't edit released entries by hand. New versions are inserted above the previous ones.
 
+## [0.9.1](https://github.com/pprb/tankobon/compare/v0.9.0...v0.9.1) (2026-10-18)
+
+
+### Bug Fixes
+
+* **library:** store book paths relative to their library folder ([#139](https://github.com/pprb/tankobon/issues/139)) ([dee19f2](https://github.com/pprb/tankobon/commit/dee19f24a6b467625e7cefa99ccf329b6d32811c))
+
 ## [0.9.0](https://github.com/pprb/tankobon/compare/v0.8.1...v0.9.0) (2026-10-18)
 
 
