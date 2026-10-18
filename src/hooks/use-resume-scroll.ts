@@ -2,7 +2,7 @@
  * Scroll restoration of the continuous reader.
  * @module
  */
-import { useLayoutEffect, type RefObject } from 'react';
+import { useLayoutEffect, useRef, type RefObject } from 'react';
 
 /**
  * Scrolls the continuous reader to `resumePage` when a comic opens, and keeps that page
@@ -14,12 +14,16 @@ import { useLayoutEffect, type RefObject } from 'react';
  * Runs as a layout effect so the first scroll happens before the page observers' first
  * (asynchronous) callbacks: page 0 is never reported as active, so the saved progress
  * isn't overwritten with the start of the book.
+ *
+ * Returns a ref that is true while the page is pinned, for whoever else adjusts the scroll position
+ * when a page changes height (the pinning already does it, and both together would shift twice).
  */
 export function useResumeScroll(
   scrollRef: RefObject<HTMLDivElement | null>,
   columnRef: RefObject<HTMLDivElement | null>,
   resumePage: number,
-) {
+): RefObject<boolean> {
+  const pinned = useRef(false);
   useLayoutEffect(() => {
     const container = scrollRef.current;
     const column = columnRef.current;
@@ -30,11 +34,13 @@ export function useResumeScroll(
       container.scrollTop += target.getBoundingClientRect().top - container.getBoundingClientRect().top;
     };
     pin();
+    pinned.current = true;
 
     const resizeObserver = new ResizeObserver(pin);
     resizeObserver.observe(column);
 
     const stop = () => {
+      pinned.current = false;
       resizeObserver.disconnect();
       container.removeEventListener('wheel', stop);
       container.removeEventListener('pointerdown', stop);
@@ -47,4 +53,5 @@ export function useResumeScroll(
     window.addEventListener('keydown', stop);
     return stop;
   }, [scrollRef, columnRef, resumePage]);
+  return pinned;
 }
