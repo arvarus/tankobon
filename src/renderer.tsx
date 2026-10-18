@@ -5,7 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider, createRouter, createMemoryHistory } from '@tanstack/react-router';
 import { I18nextProvider } from 'react-i18next';
 
-import { applyInterfaceLanguage, keepInterfaceLanguageInSync, loadSystemLanguages } from './hooks/use-settings';
+import { applyInterfaceLanguage, keepInterfaceLanguageInSync, keepThemeInSync, loadSystemLanguages } from './hooks/use-settings';
 import { appData } from './lib/app-data';
 import './index.css';
 import { routeTree } from './routeTree.gen';
@@ -54,5 +54,6 @@ Promise.all([appData.ready, loadSystemLanguages()])
   .catch(() => applyInterfaceLanguage('system'))
   .finally(() => {
     keepInterfaceLanguageInSync();
+    keepThemeInSync();
     render();
   });

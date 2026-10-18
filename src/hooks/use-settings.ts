@@ -5,6 +5,7 @@
 import { useCallback, useSyncExternalStore } from 'react';
 
 import { appData } from '@/lib/app-data';
+import { isDarkTheme } from '@/lib/theme';
 import { applyLanguage, type Language, type LanguageSetting, resolveLanguage } from '@/shared/i18n';
 import type { AppSettings, PublicSettings } from '@/shared/settings';
 
@@ -51,6 +52,23 @@ export function keepInterfaceLanguageInSync(): void {
     applied = language;
     applyInterfaceLanguage(language);
   });
+}
+
+/**
+ * Applies the `theme` setting from now on: toggles the `dark` class of `<html>` (the design tokens
+ * of `index.css`) and follows the OS scheme while the setting is `system`. Call it before the first
+ * render so the UI never shows up in the wrong scheme.
+ */
+export function keepThemeInSync(): void {
+  const media = window.matchMedia('(prefers-color-scheme: dark)');
+  const apply = () => {
+    const dark = isDarkTheme(appData.getSettings().theme, media.matches);
+    document.documentElement.classList.toggle('dark', dark);
+    document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+  };
+  apply();
+  media.addEventListener('change', apply);
+  appData.subscribe('settings', apply);
 }
 
 const subscribe = (listener: () => void) => appData.subscribe('settings', listener);

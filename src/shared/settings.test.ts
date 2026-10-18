@@ -21,6 +21,8 @@ describe('SETTING_VALIDATORS', () => {
   it('refuses values outside a setting’s domain', () => {
     expect(isValidSetting('readingMode', 'webtoon')).toBe(false);
     expect(isValidSetting('readingDirection', 'up')).toBe(false);
+    expect(isValidSetting('theme', 'dark')).toBe(true);
+    expect(isValidSetting('theme', 'blue')).toBe(false);
     expect(isValidSetting('pageSpacing', -400)).toBe(false);
     expect(isValidSetting('pageSpacing', MAX_PAGE_SPACING + 1)).toBe(false);
     expect(isValidSetting('pageSpacing', Number.NaN)).toBe(false);

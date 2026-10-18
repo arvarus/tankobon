@@ -6,7 +6,9 @@ import { SETTINGS_SELECT_CLASS, SettingsSection } from '@/components/settings-se
 import { systemLanguage, useSettings } from '@/hooks/use-settings';
 import { cn } from '@/lib/utils';
 import { LANGUAGE_NAMES, SUPPORTED_LANGUAGES, type LanguageSetting } from '@/shared/i18n';
-import { READER_BACKGROUND_PRESETS } from '@/shared/settings';
+import { READER_BACKGROUND_PRESETS, THEME_SETTINGS, type ThemeSetting } from '@/shared/settings';
+
+const THEME_LABELS = { system: 'themeSystem', light: 'themeLight', dark: 'themeDark' } as const;
 
 export const Route = createFileRoute('/settings/appearance')({
   component: AppearanceSettingsPage,
@@ -36,6 +38,21 @@ function AppearanceSettingsPage() {
       </select>
       </div>
       <p className="text-sm text-muted-foreground">{t('languageHint')}</p>
+    </SettingsSection>
+
+    <SettingsSection title={t('theme')} htmlFor="theme">
+      <select
+        id="theme"
+        className={SETTINGS_SELECT_CLASS}
+        value={settings.theme}
+        onChange={(event) => update('theme', event.target.value as ThemeSetting)}
+      >
+        {THEME_SETTINGS.map((theme) => (
+          <option key={theme} value={theme}>
+            {t(THEME_LABELS[theme])}
+          </option>
+        ))}
+      </select>
     </SettingsSection>
 
     <SettingsSection title={t('readerBackground')} htmlFor="reader-background">
