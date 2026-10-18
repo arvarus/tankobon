@@ -8,6 +8,12 @@ export default {
     add: 'Add a user…',
     heading: 'Users',
   },
+  chooser: {
+    title: 'Who is reading?',
+    description: 'Pick your profile to open your library.',
+    dontAskAgain: 'Don’t ask again at startup',
+    dontAskAgainHint: 'You can turn it back on in Settings › Library.',
+  },
   newUser: {
     title: 'New user',
     description: 'The new user shares the library but starts with their own ratings, lists, history and settings.',

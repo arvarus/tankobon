@@ -10,6 +10,12 @@ const users: Translation<typeof en> = {
     add: 'Ajouter un utilisateur…',
     heading: 'Utilisateurs',
   },
+  chooser: {
+    title: 'Qui lit ?',
+    description: 'Choisissez votre profil pour ouvrir votre bibliothèque.',
+    dontAskAgain: 'Ne plus proposer ce choix au démarrage',
+    dontAskAgainHint: 'Vous pouvez le réactiver dans Paramètres › Bibliothèque.',
+  },
   newUser: {
     title: 'Nouvel utilisateur',
     description:

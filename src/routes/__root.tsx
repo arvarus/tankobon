@@ -16,6 +16,7 @@ import { type DragEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AchievementToasts } from '@/components/achievement-toasts';
+import { UserChooser } from '@/components/user-chooser';
 import { UpdateToast } from '@/components/update-toast';
 import { UserMenu } from '@/components/user-menu';
 import { Button } from '@/components/ui/button';
@@ -125,6 +126,7 @@ function RootLayout() {
       <AchievementTracker key={activeUserId} />
       <AchievementToasts key={activeUserId} />
       <UpdateToast />
+      <UserChooser />
     </div>
   );
 }
