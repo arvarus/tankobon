@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { FolderOpen, FolderTree, FolderX, RefreshCw } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useConfirm } from '@/components/confirm-dialog';
@@ -12,7 +12,7 @@ import { useSettings } from '@/hooks/use-settings';
 import { fileNameExample, levelChoices, setLevel, structureExample } from '@/lib/library-structure';
 import { cn } from '@/lib/utils';
 import { FILE_NAME_FIELDS, MAX_FILE_NAME_TEMPLATE_LENGTH, fileNameTemplateError } from '@/shared/file-name-template';
-import type { ScanProgress } from '@/shared/library';
+import type { ScanProgress, UnlinkedFolder } from '@/shared/library';
 import {
   MAX_LIBRARY_LEVELS,
   isLibraryStructure,
@@ -30,6 +30,7 @@ function LibrarySettingsPage() {
   const { confirm, dialog: confirmDialog } = useConfirm();
   const offerOrganization = useOrganizationOffer(confirm);
   const [folders, setFolders] = useState<string[] | null>(null);
+  const [unlinked, setUnlinked] = useState<UnlinkedFolder[]>([]);
   const [progress, setProgress] = useState<ScanProgress | null>(null);
   const [status, setStatus] = useState<{ message: string; error?: boolean } | null>(null);
   // Which run this page started, to show its progress in its own section (null: one started elsewhere, at launch).
@@ -48,6 +49,21 @@ function LibrarySettingsPage() {
       cancelled = true;
     };
   }, [settings.libraryOrganizationFolder]);
+
+  // The folders of a library made on another computer, which have no path here yet.
+  const loadUnlinked = useCallback(() => {
+    void window.tankobon.library.listUnlinkedFolders().then(setUnlinked);
+  }, []);
+  useEffect(loadUnlinked, [loadUnlinked]);
+
+  const relinkFolder = async (id: string) => {
+    const result = await window.tankobon.library.relinkFolder(id);
+    if (result.status === 'error') setStatus({ message: result.message, error: true });
+    if (result.status === 'ok') {
+      loadUnlinked();
+      setFolders(await window.tankobon.library.listFolders());
+    }
+  };
 
   // Also shows a resynchronization started at launch, or one started from another window.
   useEffect(() => window.tankobon.library.onScanProgress((p) => setProgress(p.phase === 'done' ? null : p)), []);
@@ -137,6 +153,22 @@ function LibrarySettingsPage() {
           ))}
         </ul>
       </SettingsSection>
+
+      {unlinked.length > 0 && (
+        <SettingsSection title={t('unlinkedFolders')}>
+          <p className="text-sm text-muted-foreground">{t('unlinkedHint')}</p>
+          <ul className="flex flex-col gap-1">
+            {unlinked.map((folder) => (
+              <li key={folder.id} className="flex items-center gap-2">
+                <span className="font-mono text-sm break-all">{folder.path}</span>
+                <Button variant="outline" size="sm" onClick={() => void relinkFolder(folder.id)}>
+                  {t('relinkFolder')}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </SettingsSection>
+      )}
 
       <SettingsSection title={t('resync')}>
         <p className="text-sm text-muted-foreground">{t('resyncHint')}</p>

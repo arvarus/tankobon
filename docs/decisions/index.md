@@ -23,6 +23,7 @@ An ADR records one structural decision: the context, what was decided, and what 
 | [0017](./0017-library-file-name-template.md) | Library file names: a template of metadata fields | Accepted |
 | [0018](./0018-decoder-timeouts-and-archive-ownership.md) | Decoder calls bounded by a timeout, archives tied to their window | Accepted |
 | [0019](./0019-multiple-users.md) | Several users on one library, without passwords | Accepted |
+| [0020](./0020-library-paths-relative-to-folders.md) | Library paths relative to the library folders | Accepted |
 
 These first four ADRs were written after the fact, from the code and its comments, then checked by the maintainer.
 

@@ -30,6 +30,7 @@ const errors: Translation<typeof en> = {
   },
   library: {
     resyncRunning: 'Une resynchronisation est déjà en cours.',
+    unknownFolder: 'Ce dossier ne fait pas partie de la bibliothèque.',
     organizationOff: "L'organisation de la bibliothèque est désactivée, ou n'a pas de dossier.",
     organizationFolderUnreachable: 'Le dossier organisé est inaccessible : {{folder}}',
     organizationExpired: 'Ces BD ne peuvent plus être déplacées d’ici : ajoutez-les à nouveau ou resynchronisez.',

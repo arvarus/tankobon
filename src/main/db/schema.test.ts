@@ -39,7 +39,7 @@ describe('migrate', () => {
     expect(columnNames(db, 'credits')).toEqual(['library_id', 'person_id', 'role', 'position']);
     expect(columnNames(db, 'reading_lists')).toEqual(['id', 'name', 'created_at', 'position', 'user_id']);
     expect(columnNames(db, 'reading_list_items')).toEqual(['list_id', 'library_id', 'position']);
-    expect(columnNames(db, 'library_folders')).toEqual(['path', 'added_at']);
+    expect(columnNames(db, 'library_folders')).toEqual(['id', 'path', 'added_at', 'watched']);
     expect(columnNames(db, 'users')).toEqual(['id', 'nickname', 'avatar', 'avatar_type', 'created_at', 'last_active_at']);
     expect(columnNames(db, 'user_books')).toEqual([
       'user_id',
@@ -115,7 +115,7 @@ describe('versioned migrations', () => {
     const db = new DatabaseSync(':memory:');
     migrate(db);
 
-    expect(userVersion(db)).toBe(7);
+    expect(userVersion(db)).toBe(8);
     expect(indexNames(db)).toEqual(INDEXES);
   });
 
@@ -127,7 +127,7 @@ describe('versioned migrations', () => {
 
     migrate(db);
 
-    expect(userVersion(db)).toBe(7);
+    expect(userVersion(db)).toBe(8);
     expect(indexNames(db)).toEqual(INDEXES);
     expect(db.prepare('SELECT value FROM settings').get()).toEqual({ value: '"dark"' });
   });
@@ -139,7 +139,7 @@ describe('versioned migrations', () => {
 
     migrate(db);
 
-    expect(userVersion(db)).toBe(7);
+    expect(userVersion(db)).toBe(8);
     expect(columnNames(db, 'library')).toContain('finished_at');
     expect(columnNames(db, 'reading_sessions')).toEqual(['id', 'library_id', 'day', 'seconds', 'user_id']);
   });
@@ -151,7 +151,7 @@ describe('versioned migrations', () => {
 
     migrate(db);
 
-    expect(userVersion(db)).toBe(7);
+    expect(userVersion(db)).toBe(8);
     expect(columnNames(db, 'achievements')).toEqual(['id', 'unlocked_at']);
   });
 
@@ -194,6 +194,30 @@ describe('versioned migrations', () => {
     expect(db.prepare('SELECT user_id, id FROM user_achievements').all()).toEqual([{ user_id: 'default', id: 'nightOwl' }]);
     expect(db.prepare('SELECT user_id FROM reading_lists').get()).toEqual({ user_id: 'default' });
     expect(db.prepare('SELECT user_id FROM reading_sessions').get()).toEqual({ user_id: 'default' });
+  });
+
+  it('gives the library folders an id and keeps them (version 8)', () => {
+    const db = new DatabaseSync(':memory:');
+    migrate(db);
+    db.exec(`
+      DROP TABLE library_folders;
+      CREATE TABLE library_folders (path TEXT PRIMARY KEY, added_at TEXT NOT NULL);
+      INSERT INTO library_folders (path, added_at) VALUES ('/a', '2024-01-01'), ('/b', '2024-01-02');
+      PRAGMA user_version = 7;
+    `);
+
+    migrate(db);
+
+    const rows = db.prepare('SELECT id, path, watched FROM library_folders ORDER BY path').all() as {
+      id: string;
+      path: string;
+      watched: number;
+    }[];
+    expect(rows.map((row) => [row.path, row.watched])).toEqual([
+      ['/a', 1],
+      ['/b', 1],
+    ]);
+    expect(new Set(rows.map((row) => row.id)).size).toBe(2);
   });
 
   it('leaves a database from a newer release alone', () => {

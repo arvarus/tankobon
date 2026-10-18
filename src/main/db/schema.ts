@@ -217,6 +217,26 @@ const MIGRATIONS: Migration[] = [
       ).run(FIRST_USER_ID);
     },
   },
+  {
+    // Library folders get an id and stop being keyed by their path, which is a machine's: the books
+    // under a folder are stored relative to it (`root:<id>/…`) and each machine says where the folder
+    // is (see `PathRoots`). A folder the user forgets stays, unwatched, since books refer to it.
+    version: 8,
+    run: (db) => {
+      db.exec(`
+        CREATE TABLE library_folders_v8 (
+          id TEXT PRIMARY KEY,
+          path TEXT NOT NULL,
+          added_at TEXT NOT NULL,
+          watched INTEGER NOT NULL DEFAULT 1
+        );
+        INSERT INTO library_folders_v8 (id, path, added_at)
+          SELECT lower(hex(randomblob(16))), path, added_at FROM library_folders;
+        DROP TABLE library_folders;
+        ALTER TABLE library_folders_v8 RENAME TO library_folders;
+      `);
+    },
+  },
 ];
 
 /** The name of the OS session, which makes the first user's nickname; a generic one when it can't be read. */
@@ -250,7 +270,9 @@ export function configureConnection(db: DatabaseSync): void {
  * A database whose version is ahead of this build (written by a newer release) is left untouched.
  */
 export function migrate(db: DatabaseSync): void {
-  const row = db.prepare('PRAGMA user_version').get() as { user_version: number };
+  const row = db.prepare('PRAGMA user_version').get() as {
+    user_version: number;
+  };
   for (const migration of MIGRATIONS) {
     if (migration.version <= row.user_version) continue;
     withTransaction(db, () => {
@@ -261,7 +283,9 @@ export function migrate(db: DatabaseSync): void {
 }
 
 function addColumnIfMissing(db: DatabaseSync, table: string, column: string, definition: string): void {
-  const columns = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all() as {
+    name: string;
+  }[];
   if (!columns.some((c) => c.name === column)) {
     db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
   }

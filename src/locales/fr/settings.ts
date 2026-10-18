@@ -52,6 +52,10 @@ const settings: Translation<typeof en> = {
     foldersHint: 'Les dossiers ajoutés avec « Ajouter un dossier… » dans la bibliothèque. La resynchronisation les parcourt à nouveau.',
     noFolders: 'Aucun dossier pour le moment : ajoutez-en un depuis la page Bibliothèque.',
     removeFolder: 'Oublier ce dossier',
+    unlinkedFolders: 'Dossiers à localiser',
+    unlinkedHint:
+      'La bibliothèque enregistre ses BD relativement à leur dossier, pour pouvoir s’ouvrir depuis un autre ordinateur ou un autre chemin. Ces dossiers ont été ajoutés ailleurs : indiquez où se trouve chacun sur cet ordinateur pour ouvrir ses BD.',
+    relinkFolder: 'Localiser ce dossier…',
     resync: 'Resynchronisation',
     resyncHint: 'Ajoute les nouvelles BD trouvées dans ces dossiers et retire de la bibliothèque celles dont le fichier n’existe plus, y compris les fichiers ajoutés un par un (avec leur progression, note, étiquettes et place dans les listes de lecture). Les fichiers sur le disque ne sont jamais touchés, et un dossier ou répertoire illisible (disque débranché) est ignoré.',
     resyncButton: 'Resynchroniser maintenant',

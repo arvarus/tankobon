@@ -6,6 +6,7 @@ export default {
   addFolder: 'Add a comics folder',
   chooseDatabaseFolder: 'Choose the database folder',
   chooseOrganizationFolder: 'Choose the organized library folder',
+  relinkFolder: 'Where is the folder “{{folder}}” on this computer?',
   exportData: 'Export data',
   importData: 'Import data',
   pickAvatar: 'Choose a profile picture',

@@ -1,7 +1,9 @@
+import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { LibraryRepository } from './library-repository';
+import { PathRoots } from './path-roots';
 import { migrate } from './schema';
 
 function createRepository(): LibraryRepository {
@@ -254,5 +256,49 @@ describe('LibraryRepository: failed writes and bounds', () => {
     ).toThrow('boom');
 
     expect(repo.get(entry.id)).toMatchObject({ title: 'One', titleLocked: false });
+  });
+});
+
+describe('LibraryRepository: paths relative to a library folder', () => {
+  const lib = path.resolve('/data/lib');
+
+  function setup(): { db: DatabaseSync; repo: LibraryRepository } {
+    const db = new DatabaseSync(':memory:');
+    migrate(db);
+    const roots = new PathRoots();
+    roots.set('r1', lib);
+    return { db, repo: new LibraryRepository(db, () => 'default', roots) };
+  }
+
+  it('stores a book relative to its folder and hands back the absolute path', () => {
+    const { db, repo } = setup();
+    const file = path.join(lib, 'S', 'a.cbz');
+    const entry = repo.touch(file, 'A', 10, 10, 100);
+    expect(entry.path).toBe(file);
+    expect(db.prepare('SELECT path FROM library').get()).toEqual({ path: 'root:r1/S/a.cbz' });
+    expect(repo.hasPath(file)).toBe(true);
+  });
+
+  it('opens the same database from a machine where the folder is elsewhere', () => {
+    const { db, repo } = setup();
+    repo.register(path.join(lib, 'a.cbz'), 'A', 10, 10, 100);
+    const roots = new PathRoots();
+    roots.set('r1', path.resolve('/mnt/share'));
+    const there = new LibraryRepository(db, () => 'default', roots);
+    expect(there.list()[0].path).toBe(path.join(path.resolve('/mnt/share'), 'a.cbz'));
+  });
+
+  it('makes the paths of existing books relative once their folder is known', () => {
+    const db = new DatabaseSync(':memory:');
+    migrate(db);
+    const roots = new PathRoots();
+    const repo = new LibraryRepository(db, () => 'default', roots);
+    const file = path.join(lib, 'a.cbz');
+    repo.register(file, 'A', 10, 10, 100);
+    expect(repo.adoptRoots()).toBe(0);
+    roots.set('r1', lib);
+    expect(repo.adoptRoots()).toBe(1);
+    expect(db.prepare('SELECT path FROM library').get()).toEqual({ path: 'root:r1/a.cbz' });
+    expect(repo.list()[0].path).toBe(file);
   });
 });

@@ -9,6 +9,7 @@ import { spawnDecoderProcess } from './main/decoder/spawn-decoder';
 import { AchievementRepository } from './main/db/achievement-repository';
 import { openDatabase } from './main/db/database';
 import { LibraryFolderRepository } from './main/db/library-folder-repository';
+import { PathRoots, fileRootsStore } from './main/db/path-roots';
 import { LibraryRepository } from './main/db/library-repository';
 import { ReadingListRepository } from './main/db/reading-list-repository';
 import { StatsRepository } from './main/db/stats-repository';
@@ -103,8 +104,14 @@ app.whenReady().then(() => {
   // achievements, settings) is read and written for the user the app is currently switched to.
   const userRepo = new UserRepository(db);
   const activeUser = () => userRepo.activeId();
-  const libraryRepo = new LibraryRepository(db, activeUser);
-  const folderRepo = new LibraryFolderRepository(db);
+  // The books are stored relative to their library folder; where each folder is lives on this machine only.
+  const pathRoots = new PathRoots(fileRootsStore(path.join(app.getPath('userData'), 'library-roots.json')));
+  const libraryRepo = new LibraryRepository(db, activeUser, pathRoots);
+  const folderRepo = new LibraryFolderRepository(db, pathRoots);
+  // Folders already on this machine (a database from before the roots, or the same layout elsewhere), then
+  // the books under them made relative.
+  folderRepo.syncRoots();
+  libraryRepo.adoptRoots();
   const settingsRepo = new SettingsRepository(db, activeUser);
   const readingListRepo = new ReadingListRepository(db, activeUser);
   const achievementRepo = new AchievementRepository(db, activeUser);
