@@ -4,7 +4,7 @@
  */
 import type { DatabaseSync } from 'node:sqlite';
 
-import type { ReadingStats } from '../../shared/stats';
+import { READING_HISTORY_LIMIT, type ReadingHistoryEntry, type ReadingStats } from '../../shared/stats';
 import { DEFAULT_USER_ID } from '../../shared/users';
 
 /** `YYYY-MM-DD` of `date` in the local time zone (what "that day" means to the user). */
@@ -26,6 +26,29 @@ export class StatsRepository {
     this.db
       .prepare('INSERT INTO reading_sessions (user_id, library_id, day, seconds) VALUES (?, ?, ?, ?)')
       .run(this.userId(), libraryId, localDay(now), seconds);
+  }
+
+  /**
+   * The active user's reading history, most recent first: one line per day and book, at most
+   * `limit`. The title is `null` for a book removed from the library since.
+   */
+  history(limit = READING_HISTORY_LIMIT): ReadingHistoryEntry[] {
+    const rows = this.db
+      .prepare(
+        `SELECT s.day, s.library_id, l.title, SUM(s.seconds) AS seconds
+         FROM reading_sessions s LEFT JOIN library l ON l.id = s.library_id
+         WHERE s.user_id = ?
+         GROUP BY s.day, s.library_id
+         ORDER BY s.day DESC, MAX(s.id) DESC
+         LIMIT ?`,
+      )
+      .all(this.userId(), limit) as { day: string; library_id: string; title: string | null; seconds: number }[];
+    return rows.map((row) => ({ day: row.day, libraryId: row.library_id, title: row.title, seconds: row.seconds }));
+  }
+
+  /** Deletes the active user's reading sessions; books, progress, ratings and completion dates are kept. */
+  clearHistory(): void {
+    this.db.prepare('DELETE FROM reading_sessions WHERE user_id = ?').run(this.userId());
   }
 
   /** The history: completion dates and reading time per day, oldest first. */
