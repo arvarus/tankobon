@@ -1,11 +1,14 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useConfirm } from '@/components/confirm-dialog';
 import { UserAvatar } from '@/components/user-avatar';
 import { Button } from '@/components/ui/button';
 import { useActiveUser } from '@/hooks/use-users';
 import { shrinkAvatar } from '@/lib/avatar';
+import { formatDuration } from '@/lib/reading-stats';
+import type { ReadingHistoryEntry } from '@/shared/stats';
 import { MAX_NICKNAME_LENGTH, type UserProfile } from '@/shared/users';
 
 export const Route = createFileRoute('/profile')({
@@ -126,8 +129,65 @@ function ProfileForm({ user }: { user: UserProfile }) {
         </p>
       )}
 
+      <ReadingHistory />
+
       <p className="text-sm text-muted-foreground">{t('shared')}</p>
       <p className="text-sm text-muted-foreground">{t('sharedSettings')}</p>
     </div>
+  );
+}
+
+function ReadingHistory() {
+  const { t } = useTranslation('users', { keyPrefix: 'profile.history' });
+  const { confirm, dialog } = useConfirm();
+  const [entries, setEntries] = useState<ReadingHistoryEntry[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void window.tankobon.stats.history().then((history) => {
+      if (!cancelled) setEntries(history);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const clear = async () => {
+    const confirmed = await confirm({
+      title: t('confirmTitle'),
+      message: t('confirmMessage'),
+      action: t('confirmAction'),
+    });
+    if (!confirmed) return;
+    await window.tankobon.stats.clearHistory();
+    setEntries([]);
+  };
+
+  return (
+    <section className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-medium">{t('title')}</h2>
+        {entries && entries.length > 0 && (
+          <Button variant="outline" size="sm" onClick={() => void clear()}>
+            {t('clear')}
+          </Button>
+        )}
+      </div>
+      {entries?.length === 0 && <p className="text-sm text-muted-foreground">{t('empty')}</p>}
+      {entries && entries.length > 0 && (
+        <ul className="flex max-h-96 flex-col divide-y overflow-y-auto rounded-md border text-sm">
+          {entries.map((entry) => (
+            <li key={`${entry.day}:${entry.libraryId}`} className="flex items-baseline gap-3 px-3 py-2">
+              <span className="w-24 shrink-0 text-muted-foreground">{entry.day}</span>
+              <span className={entry.title ? 'flex-1 truncate' : 'flex-1 truncate italic text-muted-foreground'}>
+                {entry.title ?? t('removedBook')}
+              </span>
+              <span className="shrink-0 text-muted-foreground">{formatDuration(entry.seconds)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {dialog}
+    </section>
   );
 }

@@ -32,7 +32,7 @@ import type {
 import type { MetadataPageResult, MetadataQuery, MetadataSearchResult } from './shared/metadata';
 import type { ReadingList, ReadingListAddResult, ReadingListOrderResult, ReadingListResult } from './shared/reading-list';
 import type { ApiKeys, AppSettings, PublicSettings } from './shared/settings';
-import type { ReadingStats } from './shared/stats';
+import type { ReadingHistoryEntry, ReadingStats } from './shared/stats';
 import type { PickAvatarResult, UserResult, UsersState } from './shared/users';
 
 /** The app itself (versions, OS languages, project links), as `window.tankobon.app`. */
@@ -160,6 +160,10 @@ export interface StatsApi {
   get(): Promise<ReadingStats>;
   /** Adds seconds (1 to 3600) of reading time on a library entry to today; the reader reports it every few minutes while a book is open. */
   addReadingTime(libraryId: string, seconds: number): Promise<void>;
+  /** The active user's reading history for the profile page: reading time per day and book, most recent first, at most 200 lines. */
+  history(): Promise<ReadingHistoryEntry[]>;
+  /** Deletes the active user's reading history (the time spent per book and day, hence the statistics' reading time too); books, progress and completion dates are kept. */
+  clearHistory(): Promise<void>;
 }
 
 /** JSON export and import of the library and settings, and clearing the library, as `window.tankobon.data`. */
@@ -300,6 +304,8 @@ const api: TankobonApi = {
   stats: {
     get: () => ipcRenderer.invoke('stats:get'),
     addReadingTime: (libraryId, seconds) => ipcRenderer.invoke('stats:add-reading-time', libraryId, seconds),
+    history: () => ipcRenderer.invoke('stats:history'),
+    clearHistory: () => ipcRenderer.invoke('stats:clear-history'),
   },
   settings: {
     getAll: () => ipcRenderer.invoke('settings:get-all'),
