@@ -68,7 +68,7 @@ describe('UserRepository', () => {
     expect(repo.rename(alice.user.id, 'Alicia')).toMatchObject({ status: 'ok', user: { nickname: 'Alicia' } });
     // Changing only the case of one's own nickname is allowed.
     expect(repo.rename(alice.user.id, 'ALICIA')).toMatchObject({ status: 'ok', user: { nickname: 'ALICIA' } });
-    const first = repo.list()[0];
+    const first = repo.get(DEFAULT_USER_ID)!;
     expect(repo.rename(alice.user.id, first.nickname.toUpperCase()).status).toBe('error');
     expect(repo.rename('nobody', 'X').status).toBe('error');
   });
