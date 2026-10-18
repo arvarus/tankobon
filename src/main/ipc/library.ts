@@ -8,6 +8,7 @@ import type {
   AddFileResult,
   ImageScanProgress,
   PickOrganizationFolderResult,
+  RelinkFolderResult,
   ScanResult,
 } from '../../shared/library';
 import type { LibraryFolderRepository } from '../db/library-folder-repository';
@@ -43,6 +44,8 @@ export const LIBRARY_CHANNELS = {
   remove: 'library:remove',
   listFolders: 'library:list-folders',
   removeFolder: 'library:remove-folder',
+  listUnlinkedFolders: 'library:list-unlinked-folders',
+  relinkFolder: 'library:relink-folder',
   resync: 'library:resync',
   updateProgress: 'library:update-progress',
   updateRating: 'library:update-rating',
@@ -145,6 +148,8 @@ export function registerLibraryIpc(
       (filePath) => decoder.inspect(filePath),
     );
     folders.add(directory);
+    // The comics already in the library under that folder are stored relative to it from now on.
+    repo.adoptRoots();
     notify({ scope: 'library' });
     const organization = await organizer.afterAdd(summary.addedEntries);
     // The files are in: their pages are measured in the background, after the import.
@@ -167,6 +172,7 @@ export function registerLibraryIpc(
     settingsRepo.set('libraryOrganizationFolder', folder);
     // Watched like the folders added from the library: a comic dropped there is found by a resynchronization.
     folders.add(folder);
+    repo.adoptRoots();
     notify({ scope: 'settings', values: { libraryOrganizationFolder: folder } });
     return { status: 'ok', folder };
   });
@@ -194,6 +200,35 @@ export function registerLibraryIpc(
     LIBRARY_CHANNELS.removeFolder,
     args((value) => expectNonEmptyString(value, 'folder', MAX_PATH_LENGTH)),
     (_event, folder) => folders.remove(folder),
+  );
+
+  handle(LIBRARY_CHANNELS.listUnlinkedFolders, args(), () => folders.unlinked());
+
+  // The renderer names the folder to find by its id and the main process asks where it is on this machine.
+  handle(
+    LIBRARY_CHANNELS.relinkFolder,
+    args((value) => expectNonEmptyString(value, 'id', 100)),
+    async (event, id): Promise<RelinkFolderResult> => {
+      const known = folders.unlinked().find((folder) => folder.id === id);
+      if (!known) {
+        return { status: 'error', message: t('errors:library.unknownFolder') };
+      }
+      const options: Electron.OpenDialogOptions = {
+        title: t('dialogs:relinkFolder', { folder: known.path }),
+        properties: ['openDirectory'],
+        defaultPath: await existingDirectory(known.path),
+      };
+      const { canceled, filePaths } = await openDialogFor(event, options);
+      if (canceled || filePaths.length === 0) {
+        return { status: 'cancelled' };
+      }
+      folders.relink(id, filePaths[0]);
+      repo.adoptRoots();
+      notify({ scope: 'library' });
+      // The comics found again may not have been measured yet.
+      void imageScanner.kick();
+      return { status: 'ok' };
+    },
   );
 
   handle(LIBRARY_CHANNELS.resync, args(), (event) =>

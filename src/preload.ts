@@ -24,6 +24,8 @@ import type {
   MetadataUpdate,
   OrganizeResult,
   PickOrganizationFolderResult,
+  RelinkFolderResult,
+  UnlinkedFolder,
   ResyncResult,
   UnorganizedCountResult,
   ScanProgress,
@@ -84,6 +86,10 @@ export interface LibraryApi {
   listFolders(): Promise<string[]>;
   /** Forgets one of those folders (a path returned by `listFolders`); its comics stay in the library. */
   removeFolder(folder: string): Promise<void>;
+  /** The library folders that have no path on this machine yet (the library was made on another one): their comics are listed but their files can't be found until `relinkFolder`. */
+  listUnlinkedFolders(): Promise<UnlinkedFolder[]>;
+  /** Opens a native directory picker to say where an unlinked folder (an `id` returned by `listUnlinkedFolders`) is on this machine; the comics stored relative to it are found again. */
+  relinkFolder(id: string): Promise<RelinkFolderResult>;
   /** Walks the remembered folders (and the organized folder, when the organization is on) again: new comics are added (then moved or offered by the organization, a comic dropped in the organized folder being moved into place), and comics whose file no longer exists are removed from the library (with their progress, rating, tags and reading-list places; the files on disk are never touched). A folder that can't be read is skipped and counted as `unreachable`. Stores the date as the `lastResyncAt` setting. Reports through `onScanProgress`; an error result when one is already running. */
   resync(): Promise<ResyncResult>;
   /** Subscribes to the progress of `addFolder`, `resync` and `organizeAll`; returns the unsubscribe function. */
@@ -284,6 +290,8 @@ const api: TankobonApi = {
     },
     listFolders: () => ipcRenderer.invoke('library:list-folders'),
     removeFolder: (folder) => ipcRenderer.invoke('library:remove-folder', folder),
+    listUnlinkedFolders: () => ipcRenderer.invoke('library:list-unlinked-folders'),
+    relinkFolder: (id) => ipcRenderer.invoke('library:relink-folder', id),
     resync: () => ipcRenderer.invoke('library:resync'),
     remove: (id) => ipcRenderer.invoke('library:remove', id),
     updateProgress: (id, currentPage) => ipcRenderer.invoke('library:update-progress', id, currentPage),

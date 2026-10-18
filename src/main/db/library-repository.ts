@@ -15,6 +15,7 @@ import {
 } from '../../shared/library';
 import { DEFAULT_USER_ID } from '../../shared/users';
 import { PeopleRepository } from './people-repository';
+import { IDENTITY_PATHS, ROOT_PREFIX, type PathCodec } from './path-roots';
 import { withTransaction } from './transaction';
 
 interface LibraryRow {
@@ -46,10 +47,10 @@ interface CreditRow {
   role: string;
 }
 
-function fromRow(row: LibraryRow, credits: Credit[]): LibraryEntry {
+function fromRow(row: LibraryRow, credits: Credit[], filePath: string): LibraryEntry {
   return {
     id: row.id,
-    path: row.path,
+    path: filePath,
     title: row.title,
     pageCount: row.page_count,
     currentPage: row.current_page,
@@ -99,11 +100,14 @@ export class LibraryRepository {
 
   /**
    * `userId` says whose rating, tags and progress the reads and writes are about (the active user, in
-   * the app); the books and their metadata are the library's, common to everyone.
+   * the app); the books and their metadata are the library's, common to everyone. `paths` converts
+   * between the paths the database stores (relative to a library folder, see `PathRoots`) and the
+   * absolute ones everything else works with: no method takes or returns a stored path.
    */
   constructor(
     private readonly db: DatabaseSync,
     private readonly userId: () => string = () => DEFAULT_USER_ID,
+    private readonly paths: PathCodec = IDENTITY_PATHS,
   ) {
     this.people = new PeopleRepository(db);
   }
@@ -137,13 +141,13 @@ export class LibraryRepository {
       list.push(creditFromRow(row));
       credits.set(row.library_id, list);
     }
-    return rows.map((row) => fromRow(row, credits.get(row.id) ?? []));
+    return rows.map((row) => fromRow(row, credits.get(row.id) ?? [], this.paths.decode(row.path)));
   }
 
   /** One entry by id, or null if it isn't (or no longer) in the library. */
   get(id: string): LibraryEntry | null {
     const row = this.db.prepare(`${ENTRY_SELECT} WHERE l.id = ?`).get(this.userId(), id) as LibraryRow | undefined;
-    return row ? fromRow(row, this.creditsOf(id)) : null;
+    return row ? fromRow(row, this.creditsOf(id), this.paths.decode(row.path)) : null;
   }
 
   private creditsOf(id: string): Credit[] {
@@ -161,7 +165,7 @@ export class LibraryRepository {
   touch(filePath: string, title: string, pageCount: number, fileCount: number, fileSize: number): LibraryEntry {
     return withTransaction(this.db, () => {
       const now = new Date().toISOString();
-      const existing = this.db.prepare('SELECT id, title, title_locked FROM library WHERE path = ?').get(filePath) as
+      const existing = this.db.prepare('SELECT id, title, title_locked FROM library WHERE path = ?').get(this.paths.encode(filePath)) as
         | { id: string; title: string; title_locked: number }
         | undefined;
       let id: string;
@@ -180,7 +184,7 @@ export class LibraryRepository {
             `INSERT INTO library (id, path, title, page_count, added_at, last_opened_at, file_count, file_size)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
           )
-          .run(id, filePath, title, pageCount, now, now, fileCount, fileSize);
+          .run(id, this.paths.encode(filePath), title, pageCount, now, now, fileCount, fileSize);
       }
       // The opening is the active user's: it bumps their last opening and clamps their page if the page count shrank.
       this.ensureUserBook(id);
@@ -196,12 +200,34 @@ export class LibraryRepository {
 
   /** Whether a file is already in the library, so a folder scan can skip it without opening it. */
   hasPath(filePath: string): boolean {
-    return this.db.prepare('SELECT 1 FROM library WHERE path = ?').get(filePath) !== undefined;
+    return this.db.prepare('SELECT 1 FROM library WHERE path = ?').get(this.paths.encode(filePath)) !== undefined;
+  }
+
+  /**
+   * Stores the entries whose file is inside a library folder relative to it, after a folder was added or
+   * found again on this machine (the paths of a database from before the roots, or of books added on their
+   * own, are absolute). Nothing moves on disk. Returns how many entries changed.
+   */
+  adoptRoots(): number {
+    return withTransaction(this.db, () => {
+      const rows = this.db
+        .prepare('SELECT id, path FROM library WHERE substr(path, 1, ?) <> ?')
+        .all(ROOT_PREFIX.length, ROOT_PREFIX) as unknown as { id: string; path: string }[];
+      const update = this.db.prepare('UPDATE library SET path = ? WHERE id = ?');
+      let changed = 0;
+      for (const row of rows) {
+        const stored = this.paths.encode(row.path);
+        if (stored === row.path) continue;
+        update.run(stored, row.id);
+        changed += 1;
+      }
+      return changed;
+    });
   }
 
   /** Id of the entry whose file is `filePath`, or null when that file isn't in the library. */
   idOfPath(filePath: string): string | null {
-    const row = this.db.prepare('SELECT id FROM library WHERE path = ?').get(filePath) as { id: string } | undefined;
+    const row = this.db.prepare('SELECT id FROM library WHERE path = ?').get(this.paths.encode(filePath)) as { id: string } | undefined;
     return row?.id ?? null;
   }
 
@@ -212,7 +238,7 @@ export class LibraryRepository {
    */
   updatePath(id: string, filePath: string): boolean {
     if (this.hasPath(filePath)) return false;
-    return Number(this.db.prepare('UPDATE library SET path = ? WHERE id = ?').run(filePath, id).changes) > 0;
+    return Number(this.db.prepare('UPDATE library SET path = ? WHERE id = ?').run(this.paths.encode(filePath), id).changes) > 0;
   }
 
   /**
@@ -238,7 +264,7 @@ export class LibraryRepository {
            (id, path, title, page_count, added_at, last_opened_at, file_count, file_size)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(randomUUID(), filePath, title, pageCount, now, now, fileCount, fileSize);
+      .run(randomUUID(), this.paths.encode(filePath), title, pageCount, now, now, fileCount, fileSize);
     return 'created';
   }
 
@@ -253,7 +279,7 @@ export class LibraryRepository {
   }
 
   private writeEntry(entry: LibraryEntry): 'created' | 'updated' {
-    const existing = this.db.prepare('SELECT id FROM library WHERE path = ?').get(entry.path) as
+    const existing = this.db.prepare('SELECT id FROM library WHERE path = ?').get(this.paths.encode(entry.path)) as
       | { id: string }
       | undefined;
 
@@ -297,7 +323,7 @@ export class LibraryRepository {
       )
       .run(
         id,
-        entry.path,
+        this.paths.encode(entry.path),
         entry.title,
         entry.pageCount,
         entry.addedAt,
@@ -342,7 +368,7 @@ export class LibraryRepository {
     const row = this.db
       .prepare(`SELECT path FROM (${ENTRY_SELECT}) ORDER BY last_opened_at DESC LIMIT 1`)
       .get(this.userId()) as { path: string } | undefined;
-    return row?.path ?? null;
+    return row ? this.paths.decode(row.path) : null;
   }
 
   /**
@@ -383,9 +409,10 @@ export class LibraryRepository {
 
   /** The entries the background scan has yet to measure (id and path), most recently opened first. */
   unmeasured(): { id: string; path: string }[] {
-    return this.db
+    const rows = this.db
       .prepare('SELECT id, path FROM library WHERE avg_page_width IS NULL ORDER BY added_at DESC')
       .all() as unknown as { id: string; path: string }[];
+    return rows.map((row) => ({ id: row.id, path: this.paths.decode(row.path) }));
   }
 
   /** Replaces the entry's tags. Tagging a book `Lu` also records its first completion date, like reaching its last page. */

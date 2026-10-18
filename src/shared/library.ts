@@ -196,5 +196,15 @@ export type OrganizeResult = { status: 'ok'; moved: number; failed: number } | {
 /** Result of `library.countUnorganized()`: how many library comics aren't in their place in the organized `folder` yet. */
 export type UnorganizedCountResult = { status: 'ok'; count: number; folder: string } | { status: 'error'; message: string };
 
+/** A library folder that has no path on this machine yet, because the library comes from another one. */
+export interface UnlinkedFolder {
+  id: string;
+  /** The path it had where it was added, to recognize it. */
+  path: string;
+}
+
+/** Result of `library.relinkFolder()`. */
+export type RelinkFolderResult = { status: 'cancelled' } | { status: 'ok' } | { status: 'error'; message: string };
+
 /** Result of `library.pickOrganizationFolder()`. */
 export type PickOrganizationFolderResult = { status: 'cancelled' } | { status: 'ok'; folder: string };

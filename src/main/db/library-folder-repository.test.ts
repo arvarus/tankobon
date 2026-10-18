@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { describe, expect, it } from 'vitest';
 
 import { LibraryFolderRepository } from './library-folder-repository';
+import { PathRoots } from './path-roots';
 import { migrate } from './schema';
 
 function repository(): LibraryFolderRepository {
@@ -28,5 +29,38 @@ describe('LibraryFolderRepository', () => {
     repo.add('/b');
     repo.remove('/a');
     expect(repo.list()).toEqual(['/b']);
+  });
+});
+
+describe('LibraryFolderRepository roots', () => {
+  function shared(): { db: DatabaseSync; a: PathRoots; b: PathRoots } {
+    const db = new DatabaseSync(':memory:');
+    migrate(db);
+    return { db, a: new PathRoots(), b: new PathRoots() };
+  }
+
+  it('keeps a forgotten folder, unwatched, and watches it again when re-added', () => {
+    const { db, a } = shared();
+    const repo = new LibraryFolderRepository(db, a);
+    repo.add('/comics');
+    expect(repo.unlinked()).toEqual([]);
+    repo.remove('/comics');
+    expect(repo.list()).toEqual([]);
+    repo.add('/comics');
+    expect(repo.list()).toEqual(['/comics']);
+    expect(db.prepare('SELECT COUNT(*) AS n FROM library_folders').get()).toEqual({ n: 1 });
+  });
+
+  it('lists as unlinked a folder another machine added, until it is relinked', () => {
+    const { db, a, b } = shared();
+    new LibraryFolderRepository(db, a).add('/home/anna/comics');
+    const other = new LibraryFolderRepository(db, b);
+    expect(other.list()).toEqual([]);
+    const [folder] = other.unlinked();
+    expect(folder.path).toBe('/home/anna/comics');
+    expect(other.relink(folder.id, '/mnt/share/comics')).toBe(true);
+    expect(other.unlinked()).toEqual([]);
+    expect(other.list()).toEqual(['/mnt/share/comics']);
+    expect(other.relink('unknown', '/x')).toBe(false);
   });
 });

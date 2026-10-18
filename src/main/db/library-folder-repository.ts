@@ -2,32 +2,117 @@
  * Persistence of the folders added to the library (the `library_folders` table).
  * @module
  */
+import { randomUUID } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
+
+import type { UnlinkedFolder } from '../../shared/library';
+import { PathRoots } from './path-roots';
+
+interface FolderRow {
+  id: string;
+  path: string;
+}
+
+function samePath(a: string, b: string): boolean {
+  return path.resolve(a) === path.resolve(b);
+}
 
 /**
  * The folders added to the library with "Ajouter un dossier…", which a resynchronization walks
- * again. Kept in the main process only: the renderer never names a path, it only lists them.
+ * again, and the roots the books' paths are stored relative to (see `PathRoots`). The database
+ * holds each folder's id and the path it had when added; where it is on *this* machine lives in
+ * `roots`. Kept in the main process only: the renderer never names a path, it only lists them.
  */
 export class LibraryFolderRepository {
-  constructor(private readonly db: DatabaseSync) {}
+  constructor(
+    private readonly db: DatabaseSync,
+    private readonly roots: PathRoots = new PathRoots(),
+  ) {}
 
-  /** Every folder, in the order they were added. */
+  private rows(): FolderRow[] {
+    return this.db
+      .prepare('SELECT id, path FROM library_folders ORDER BY added_at, path')
+      .all() as unknown as FolderRow[];
+  }
+
+  /**
+   * Finds, at start-up, the folders this machine has no path for yet but whose recorded path exists
+   * here (the first run after the roots appeared, or a second machine with the same layout).
+   * Returns true when one was found.
+   */
+  syncRoots(): boolean {
+    let found = false;
+    for (const row of this.rows()) {
+      if (this.roots.get(row.id) !== undefined) continue;
+      try {
+        if (fs.statSync(row.path).isDirectory()) {
+          this.roots.set(row.id, row.path);
+          found = true;
+        }
+      } catch {
+        // Not on this machine: it stays unlinked.
+      }
+    }
+    return found;
+  }
+
+  /** The folders a resynchronization walks, in the order they were added, as paths on this machine. */
   list(): string[] {
-    const rows = this.db.prepare('SELECT path FROM library_folders ORDER BY added_at, path').all() as {
-      path: string;
+    const watched = this.db
+      .prepare('SELECT id FROM library_folders WHERE watched = 1 ORDER BY added_at, path')
+      .all() as {
+      id: string;
     }[];
-    return rows.map((row) => row.path);
+    return watched.flatMap((row) => {
+      const folder = this.roots.get(row.id);
+      return folder === undefined ? [] : [folder];
+    });
   }
 
-  /** Remembers a folder; one that is already known is left alone. */
+  /** The folders (watched or forgotten) that books refer to and that have no path on this machine. */
+  unlinked(): UnlinkedFolder[] {
+    return this.rows().filter((row) => this.roots.get(row.id) === undefined);
+  }
+
+  /** Says where an unlinked folder is on this machine. False when `id` is not a known folder. */
+  relink(id: string, folderPath: string): boolean {
+    if (!this.rows().some((row) => row.id === id)) return false;
+    this.roots.set(id, folderPath);
+    return true;
+  }
+
+  /** Remembers a folder and watches it; one that is already known is only watched again. */
   add(folderPath: string): void {
+    const rows = this.rows();
+    const known =
+      rows.find((row) => {
+        const here = this.roots.get(row.id);
+        return here !== undefined && samePath(here, folderPath);
+      }) ?? rows.find((row) => row.path === folderPath && this.roots.get(row.id) === undefined);
+    if (known) {
+      this.roots.set(known.id, folderPath);
+      this.db.prepare('UPDATE library_folders SET watched = 1 WHERE id = ?').run(known.id);
+      return;
+    }
+    const id = randomUUID();
+    this.roots.set(id, folderPath);
     this.db
-      .prepare('INSERT OR IGNORE INTO library_folders (path, added_at) VALUES (?, ?)')
-      .run(folderPath, new Date().toISOString());
+      .prepare('INSERT INTO library_folders (id, path, added_at, watched) VALUES (?, ?, ?, 1)')
+      .run(id, folderPath, new Date().toISOString());
   }
 
-  /** Forgets a folder. Its comics stay in the library. */
+  /**
+   * Stops watching a folder. Its comics stay in the library, and the folder itself is kept (unwatched)
+   * since their stored paths are relative to it.
+   */
   remove(folderPath: string): void {
-    this.db.prepare('DELETE FROM library_folders WHERE path = ?').run(folderPath);
+    for (const row of this.rows()) {
+      const here = this.roots.get(row.id);
+      if (here !== undefined && samePath(here, folderPath)) {
+        this.db.prepare('UPDATE library_folders SET watched = 0 WHERE id = ?').run(row.id);
+      }
+    }
   }
 }
