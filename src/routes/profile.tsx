@@ -1,0 +1,133 @@
+import { createFileRoute } from '@tanstack/react-router';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+
+import { UserAvatar } from '@/components/user-avatar';
+import { Button } from '@/components/ui/button';
+import { useActiveUser } from '@/hooks/use-users';
+import { shrinkAvatar } from '@/lib/avatar';
+import { MAX_NICKNAME_LENGTH, type UserProfile } from '@/shared/users';
+
+export const Route = createFileRoute('/profile')({
+  component: ProfilePage,
+});
+
+function ProfilePage() {
+  const user = useActiveUser();
+  // Keyed by user: a switch of user starts the form again, with no leftover message.
+  return user ? <ProfileForm key={user.id} user={user} /> : null;
+}
+
+function ProfileForm({ user }: { user: UserProfile }) {
+  const { t } = useTranslation('users', { keyPrefix: 'profile' });
+  const [nickname, setNickname] = useState(user.nickname);
+  const [storedNickname, setStoredNickname] = useState(user.nickname);
+  const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  // The field follows the stored nickname when it changes elsewhere (another window).
+  if (storedNickname !== user.nickname) {
+    setStoredNickname(user.nickname);
+    setNickname(user.nickname);
+  }
+
+  const saveNickname = async () => {
+    setBusy(true);
+    try {
+      const result = await window.tankobon.users.rename(nickname);
+      setMessage(result.status === 'ok' ? { kind: 'ok', text: t('saved') } : { kind: 'error', text: result.message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const chooseImage = async () => {
+    setBusy(true);
+    try {
+      const picked = await window.tankobon.users.pickAvatar();
+      if (picked.status === 'cancelled') return;
+      if (picked.status === 'error') {
+        setMessage({ kind: 'error', text: picked.message });
+        return;
+      }
+      let small: Uint8Array;
+      try {
+        small = await shrinkAvatar(picked.bytes);
+      } catch {
+        setMessage({ kind: 'error', text: t('imageError') });
+        return;
+      }
+      const result = await window.tankobon.users.setAvatar(small);
+      setMessage(result.status === 'ok' ? { kind: 'ok', text: t('saved') } : { kind: 'error', text: result.message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeImage = async () => {
+    setBusy(true);
+    try {
+      await window.tankobon.users.removeAvatar();
+      setMessage(null);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mx-auto flex max-w-xl flex-col gap-6 p-6">
+      <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
+
+      <section className="flex items-center gap-4">
+        <UserAvatar user={user} className="size-24" />
+        <div className="flex flex-col gap-2">
+          <h2 className="text-sm font-medium">{t('picture')}</h2>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" disabled={busy} onClick={() => void chooseImage()}>
+              {t('chooseImage')}
+            </Button>
+            {user.avatar && (
+              <Button variant="ghost" size="sm" disabled={busy} onClick={() => void removeImage()}>
+                {t('removeImage')}
+              </Button>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <form
+        className="flex flex-col gap-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void saveNickname();
+        }}
+      >
+        <label htmlFor="nickname" className="text-sm font-medium">
+          {t('nickname')}
+        </label>
+        <div className="flex gap-2">
+          <input
+            id="nickname"
+            value={nickname}
+            maxLength={MAX_NICKNAME_LENGTH}
+            onChange={(event) => setNickname(event.target.value)}
+            className="h-9 flex-1 rounded-md border bg-background px-3 text-sm"
+          />
+          <Button type="submit" disabled={busy || nickname.trim() === '' || nickname.trim() === user.nickname}>
+            {t('save')}
+          </Button>
+        </div>
+        <p className="text-sm text-muted-foreground">{t('nicknameHint')}</p>
+      </form>
+
+      {message && (
+        <p role={message.kind === 'error' ? 'alert' : 'status'} className={message.kind === 'error' ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'}>
+          {message.text}
+        </p>
+      )}
+
+      <p className="text-sm text-muted-foreground">{t('shared')}</p>
+      <p className="text-sm text-muted-foreground">{t('sharedSettings')}</p>
+    </div>
+  );
+}

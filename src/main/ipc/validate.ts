@@ -143,3 +143,11 @@ export const pageIndexArg: ArgParser<number> = (value) => expectInteger(value, '
 
 /** Upper bound of a page index: no archive has more pages, and it keeps absurd numbers out of the database. */
 export const MAX_PAGE_INDEX = 1_000_000;
+
+/** Binary data (an image) of at most `max` bytes. */
+export function expectBytes(value: unknown, name: string, max: number): Uint8Array {
+  if (!(value instanceof Uint8Array) || value.length > max) {
+    throw new IpcArgumentError(name, `binary data of at most ${max} bytes`);
+  }
+  return value;
+}

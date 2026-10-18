@@ -8,4 +8,6 @@ export default {
   chooseOrganizationFolder: 'Choose the organized library folder',
   exportData: 'Export data',
   importData: 'Import data',
+  pickAvatar: 'Choose a profile picture',
+  imageFiles: 'Images',
 };

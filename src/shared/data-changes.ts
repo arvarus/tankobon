@@ -41,5 +41,14 @@ export interface AchievementsChange {
   unlocked: UnlockedAchievement[];
 }
 
+/**
+ * The users changed (one was added, edited, or the app switched to another). The renderer reloads
+ * them, and when the active user is not the one it had, everything personal (library progress,
+ * reading lists, settings, achievements) too.
+ */
+export interface UsersChange {
+  scope: 'users';
+}
+
 /** The payload of a `data:changed` event, sent to the renderer after every database write. */
-export type DataChange = LibraryChange | ReadingListsChange | SettingsChange | AchievementsChange;
+export type DataChange = LibraryChange | ReadingListsChange | SettingsChange | AchievementsChange | UsersChange;

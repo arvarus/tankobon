@@ -10,6 +10,8 @@ const dialogs: Translation<typeof en> = {
   chooseOrganizationFolder: 'Choisir le dossier de la bibliothèque organisée',
   exportData: 'Exporter les données',
   importData: 'Importer des données',
+  pickAvatar: 'Choisir une photo de profil',
+  imageFiles: 'Images',
 };
 
 export default dialogs;

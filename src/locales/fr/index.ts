@@ -15,5 +15,6 @@ import nav from './nav';
 import reader from './reader';
 import settings from './settings';
 import stats from './stats';
+import users from './users';
 
-export default { achievements, book, bookEdit, common, dialogs, errors, home, library, lists, menu, metadata, nav, reader, settings, stats };
+export default { achievements, book, bookEdit, common, dialogs, errors, home, library, lists, menu, metadata, nav, reader, settings, stats, users };

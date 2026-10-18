@@ -46,6 +46,15 @@ export default {
     full: 'The list “{{name}}” is full ({{max}} books at most).',
     entryGone: 'This book is no longer in the library.',
   },
+  users: {
+    notFound: 'This user no longer exists.',
+    emptyNickname: 'The nickname can’t be empty.',
+    nicknameTooLong: 'The nickname can’t be longer than {{max}} characters.',
+    nicknameTaken: 'Someone is already called “{{nickname}}”.',
+    avatarFormat: 'This image can’t be used: pick a PNG, JPEG or WebP picture.',
+    avatarTooLarge: 'This image is too large.',
+    avatarUnreadable: 'Could not read this image: {{message}}',
+  },
   metadata: {
     emptyQuery: 'Enter a title or a series to search for.',
     noSource: 'No metadata source is configured: enable one in Settings › Metadata.',
