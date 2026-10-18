@@ -122,10 +122,18 @@ export function isHomeSections(value: unknown): value is HomeSectionSetting[] {
   return true;
 }
 
+/** Every {@link ThemeSetting}, in the order the settings page offers them. */
+export const THEME_SETTINGS = ['system', 'light', 'dark'] as const;
+
+/** Color scheme of the interface: one forced by the user, or `system` to follow the OS. */
+export type ThemeSetting = (typeof THEME_SETTINGS)[number];
+
 /** User preferences, persisted key by key in the `settings` table (see `SettingsRepository`). */
 export interface AppSettings {
   /** Interface language: one forced by the user, or `system` to follow the OS (English when it isn't supported). */
   language: LanguageSetting;
+  /** Color scheme of the interface (the reader's background has its own setting, {@link AppSettings.readerBackground}). */
+  theme: ThemeSetting;
   /** Page-turn direction: left-to-right (BD/comics) or right-to-left (manga). */
   readingDirection: 'ltr' | 'rtl';
   /**
@@ -214,6 +222,7 @@ export interface AppSettings {
  */
 export const DEFAULT_SETTINGS: AppSettings = {
   language: 'system',
+  theme: 'system',
   readingDirection: 'ltr',
   addOpenedBooksToLibrary: true,
   libraryView: 'full',
@@ -275,6 +284,7 @@ const isBookRowView = (value: unknown): value is BookRowView =>
  */
 export const SETTING_VALIDATORS: SettingValidators = {
   language: (value): value is LanguageSetting => value === 'system' || (isString(value) && isSupportedLanguage(value)),
+  theme: (value): value is ThemeSetting => (THEME_SETTINGS as readonly unknown[]).includes(value),
   readingDirection: (value): value is AppSettings['readingDirection'] => value === 'ltr' || value === 'rtl',
   addOpenedBooksToLibrary: isBoolean,
   libraryView: isBookRowView,

@@ -33,6 +33,10 @@ const settings: Translation<typeof en> = {
     language: 'Langue',
     languageSystem: 'Langue du système ({{language}})',
     languageHint: "L'interface suit la langue du système quand elle est prise en charge, l'anglais sinon.",
+    theme: 'Thème',
+    themeSystem: 'Système',
+    themeLight: 'Clair',
+    themeDark: 'Sombre',
     readerBackground: 'Couleur de fond du lecteur',
     customColor: 'Couleur personnalisée',
     backgrounds: {

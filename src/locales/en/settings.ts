@@ -31,6 +31,10 @@ export default {
     language: 'Language',
     languageSystem: 'System language ({{language}})',
     languageHint: 'The interface follows the system language when it is supported, English otherwise.',
+    theme: 'Theme',
+    themeSystem: 'System',
+    themeLight: 'Light',
+    themeDark: 'Dark',
     readerBackground: 'Reader background color',
     customColor: 'Custom color',
     backgrounds: {
