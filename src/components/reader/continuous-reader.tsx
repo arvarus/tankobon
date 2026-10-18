@@ -130,10 +130,10 @@ export function ContinuousReader({
         </Button>
       </ReaderHeader>
 
-      <div ref={scrollRef} role="region" aria-label={t('pages')} className="min-h-0 flex-1 overflow-auto">
+      <div ref={scrollRef} role="region" aria-label={t('pages')} className="min-h-0 flex-1 overflow-auto [overflow-anchor:none]">
         <div ref={columnRef} className="mx-auto flex flex-col items-center" style={{ rowGap: spacing, width: `${zoom * 100}%` }}>
           {Array.from({ length: comic.pageCount }, (_, index) => (
-            <ContinuousPage key={index} comicId={comic.id} index={index} onActive={handleActive} />
+            <ContinuousPage key={index} comicId={comic.id} index={index} onActive={handleActive} scrollRef={scrollRef} />
           ))}
         </div>
       </div>

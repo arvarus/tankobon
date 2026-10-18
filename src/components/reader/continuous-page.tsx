@@ -1,5 +1,5 @@
 import { Loader2 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 
 /** A page within this distance of the viewport (above or below) is fetched. */
@@ -15,9 +15,11 @@ interface ContinuousPageProps {
   comicId: string;
   index: number;
   onActive: (index: number) => void;
+  /** The scroll container holding the pages, whose position follows the height changes above the viewport. */
+  scrollRef: RefObject<HTMLDivElement | null>;
 }
 
-export function ContinuousPage({ comicId, index, onActive }: ContinuousPageProps) {
+export function ContinuousPage({ comicId, index, onActive, scrollRef }: ContinuousPageProps) {
   const { t } = useTranslation('reader');
   const ref = useRef<HTMLDivElement>(null);
   const [shouldLoad, setShouldLoad] = useState(false);
@@ -66,6 +68,25 @@ export function ContinuousPage({ comicId, index, onActive }: ContinuousPageProps
       activeObserver.disconnect();
     };
   }, [index, onActive]);
+
+  // A placeholder is replaced by an image of another height. When the page starts above the top of the
+  // viewport, the reader is looking at its lower part (scrolling up into it): add the difference to the
+  // scroll position so that part stays in view instead of the page growing under it. The browser's own
+  // scroll anchoring may pick an element of this very page and drift, hence `overflow-anchor: none` on the container.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let lastHeight = el.offsetHeight;
+    const observer = new ResizeObserver(() => {
+      const container = scrollRef.current;
+      const delta = el.offsetHeight - lastHeight;
+      lastHeight = el.offsetHeight;
+      if (!container || delta === 0) return;
+      if (el.getBoundingClientRect().top < container.getBoundingClientRect().top) container.scrollTop += delta;
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [scrollRef]);
 
   useEffect(() => {
     if (!shouldLoad) return;
