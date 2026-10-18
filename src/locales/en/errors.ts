@@ -54,6 +54,7 @@ export default {
     avatarFormat: 'This image can’t be used: pick a PNG, JPEG or WebP picture.',
     avatarTooLarge: 'This image is too large.',
     avatarUnreadable: 'Could not read this image: {{message}}',
+    lastUser: 'The last remaining user can’t be deleted.',
   },
   metadata: {
     emptyQuery: 'Enter a title or a series to search for.',

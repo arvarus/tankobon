@@ -1,10 +1,11 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useConfirm } from '@/components/confirm-dialog';
 import { UserAvatar } from '@/components/user-avatar';
 import { Button } from '@/components/ui/button';
-import { useActiveUser } from '@/hooks/use-users';
+import { useActiveUser, useUsers } from '@/hooks/use-users';
 import { shrinkAvatar } from '@/lib/avatar';
 import { MAX_NICKNAME_LENGTH, type UserProfile } from '@/shared/users';
 
@@ -24,6 +25,9 @@ function ProfileForm({ user }: { user: UserProfile }) {
   const [storedNickname, setStoredNickname] = useState(user.nickname);
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const { confirm, dialog: confirmDialog } = useConfirm();
+  const navigate = useNavigate();
+  const canDelete = (useUsers()?.users.length ?? 0) > 1;
 
   // The field follows the stored nickname when it changes elsewhere (another window).
   if (storedNickname !== user.nickname) {
@@ -69,6 +73,24 @@ function ProfileForm({ user }: { user: UserProfile }) {
     try {
       await window.tankobon.users.removeAvatar();
       setMessage(null);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const deleteUser = async () => {
+    const confirmed = await confirm({
+      title: t('deleteTitle', { nickname: user.nickname }),
+      message: t('deleteMessage'),
+      action: t('deleteAction'),
+    });
+    if (!confirmed) return;
+    setBusy(true);
+    try {
+      const result = await window.tankobon.users.remove();
+      if (result.status === 'error') setMessage({ kind: 'error', text: result.message });
+      // The app is now on another user: the page shown belonged to the deleted one.
+      else void navigate({ to: '/' });
     } finally {
       setBusy(false);
     }
@@ -128,6 +150,14 @@ function ProfileForm({ user }: { user: UserProfile }) {
 
       <p className="text-sm text-muted-foreground">{t('shared')}</p>
       <p className="text-sm text-muted-foreground">{t('sharedSettings')}</p>
+
+      <section className="flex flex-col items-start gap-2 border-t pt-4">
+        <Button variant="destructive" size="sm" disabled={busy || !canDelete} onClick={() => void deleteUser()}>
+          {t('deleteButton')}
+        </Button>
+        {!canDelete && <p className="text-sm text-muted-foreground">{t('deleteOnlyUser')}</p>}
+      </section>
+      {confirmDialog}
     </div>
   );
 }
