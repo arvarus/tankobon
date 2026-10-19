@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here. This file is maintained by [release-please](https://github.com/googleapis/release-please) from the [Conventional Commits](https://www.conventionalcommits.org/) merged into `master`: don't edit released entries by hand. New versions are inserted above the previous ones.
 
+## [0.11.0](https://github.com/pprb/tankobon/compare/v0.10.0...v0.11.0) (2026-10-19)
+
+
+### Features
+
+* **library:** read a .nfo file next to a comic when it is added ([#147](https://github.com/pprb/tankobon/issues/147)) ([e4e9e57](https://github.com/pprb/tankobon/commit/e4e9e574c99c2c4a8aae389590b1fd92bc79597e))
+* **library:** skip cloud placeholders in background measure and covers ([#146](https://github.com/pprb/tankobon/issues/146)) ([cb9452d](https://github.com/pprb/tankobon/commit/cb9452d26da61eaa59ebac021d16d83617ecb894))
+
 ## [0.10.0](https://github.com/pprb/tankobon/compare/v0.9.1...v0.10.0) (2026-10-19)
 
 
