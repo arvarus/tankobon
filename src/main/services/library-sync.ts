@@ -10,6 +10,7 @@ import type { ScanProgress } from '../../shared/library';
 import type { ArchiveSummary } from '../decoder/protocol';
 import type { LibraryRepository } from '../db/library-repository';
 import { collectComicFiles, scanIntoLibrary } from './library-scanner';
+import { writeNfoIfMissing } from './nfo';
 
 /** What `resyncLibrary` did. */
 export interface ResyncSummary {
@@ -19,6 +20,8 @@ export interface ResyncSummary {
   removed: number;
   /** Files that couldn't be opened. */
   failed: number;
+  /** `.nfo` sidecars created for comics that had none. */
+  nfoWritten: number;
   /** Folders that couldn't be read (missing, unplugged drive): left alone, nothing removed from them. */
   unreachable: number;
   /** The entries added, for the library organization. */
@@ -61,7 +64,8 @@ async function isMissing(filePath: string): Promise<boolean> {
  * entry goes only when `stat` says the file is gone (`ENOENT`), not merely absent from the walk,
  * which skips the subfolders it can't read. Entries outside every folder (a file added on its own)
  * are checked one by one afterwards: they go when their file is gone and the directory that held it
- * is still readable, so a vanished drive or folder keeps them. The files on disk are never touched.
+ * is still readable, so a vanished drive or folder keeps them. Comics inside the folders that have no
+ * `.nfo` sidecar get one written from their library information; no other file on disk is touched.
  */
 export async function resyncLibrary(
   repo: LibraryRepository,
@@ -69,7 +73,7 @@ export async function resyncLibrary(
   onProgress: (progress: ScanProgress) => void,
   inspect: (filePath: string) => Promise<ArchiveSummary>,
 ): Promise<ResyncSummary> {
-  const summary: ResyncSummary = { added: 0, removed: 0, failed: 0, unreachable: 0, removedEntries: [], addedEntries: [] };
+  const summary: ResyncSummary = { added: 0, removed: 0, failed: 0, nfoWritten: 0, unreachable: 0, removedEntries: [], addedEntries: [] };
   // Each folder reports its own `done`; the caller only wants the one after the last.
   const forward = (progress: ScanProgress) => {
     if (progress.phase !== 'done') onProgress(progress);
@@ -95,6 +99,13 @@ export async function resyncLibrary(
         summary.removedEntries.push({ id: entry.id, path: entry.path });
       }
     }
+  }
+
+  // Comics inside the walked folders get the `.nfo` they lack (an existing one is never touched).
+  const inFolders = repo.list().filter((entry) => folders.some((folder) => isInside(folder, entry.path)));
+  for (const [index, entry] of inFolders.entries()) {
+    onProgress({ phase: 'importing', processed: index, total: inFolders.length, currentFile: entry.path });
+    if (await writeNfoIfMissing(entry)) summary.nfoWritten += 1;
   }
 
   for (const entry of repo.list()) {

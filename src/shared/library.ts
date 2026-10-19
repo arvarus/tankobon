@@ -167,6 +167,8 @@ export type ResyncResult =
       failed: number;
       /** Folders that couldn't be read, left untouched. */
       unreachable: number;
+      /** `.nfo` sidecars created for comics that had none. */
+      nfoWritten: number;
       /** When it finished (ISO 8601); also stored as the `lastResyncAt` setting. */
       finishedAt: string;
       /** What the library organization did with the comics added. */

@@ -6,10 +6,10 @@
  * a value that doesn't fit its field is dropped.
  * @module
  */
-import { readFile, stat } from 'node:fs/promises';
+import { readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { CREDIT_ROLES, type CreditInput, type CreditRole, type MetadataUpdate } from '../../shared/library';
+import { CREDIT_ROLES, type CreditInput, type CreditRole, type LibraryEntry, type MetadataUpdate } from '../../shared/library';
 import { splitPersonName } from '../../shared/title-parsing';
 
 /** Largest `.nfo` that is read (bytes); a bigger file is ignored. */
@@ -135,5 +135,46 @@ export async function readNfoFor(comicPath: string): Promise<MetadataUpdate | nu
     return parseNfo(await readFile(nfo, 'utf8'));
   } catch {
     return null;
+  }
+}
+
+function escapeXml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/**
+ * The `.nfo` text describing a library entry, in the shape `parseNfo()` reads back: the title, the
+ * series, volume, date and language when known, and one `<author role="…">First Last</author>` per credit.
+ */
+export function buildNfo(entry: Pick<LibraryEntry, 'title' | 'series' | 'volume' | 'releaseDate' | 'language' | 'credits'>): string {
+  const lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<book>', `  <title>${escapeXml(entry.title)}</title>`];
+  const fields: [string, string | null][] = [
+    ['series', entry.series],
+    ['volume', entry.volume],
+    ['releasedate', entry.releaseDate],
+    ['language', entry.language],
+  ];
+  for (const [name, value] of fields) {
+    if (value) lines.push(`  <${name}>${escapeXml(value)}</${name}>`);
+  }
+  for (const credit of entry.credits) {
+    const name = [credit.firstName, credit.lastName].filter(Boolean).join(' ');
+    lines.push(`  <author role="${credit.role}">${escapeXml(name)}</author>`);
+  }
+  lines.push('</book>', '');
+  return lines.join('\n');
+}
+
+/**
+ * Writes the `.nfo` of a library entry next to its comic unless one is already there (whatever it
+ * holds, it is never overwritten). Returns whether a file was created; any failure (read-only
+ * folder, file gone) is reported as `false`: a sidecar never makes a resynchronization fail.
+ */
+export async function writeNfoIfMissing(entry: Parameters<typeof buildNfo>[0] & { path: string }): Promise<boolean> {
+  try {
+    await writeFile(nfoPathFor(entry.path), buildNfo(entry), { encoding: 'utf8', flag: 'wx' });
+    return true;
+  } catch {
+    return false;
   }
 }

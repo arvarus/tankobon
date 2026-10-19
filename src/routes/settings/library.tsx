@@ -86,6 +86,7 @@ function LibrarySettingsPage() {
     }
     const parts = [t('resyncDone', { added: result.added, removed: result.removed })];
     if (result.failed > 0) parts.push(t('resyncFailed', { count: result.failed }));
+    if (result.nfoWritten > 0) parts.push(t('resyncNfoWritten', { count: result.nfoWritten }));
     if (result.unreachable > 0) parts.push(t('resyncUnreachable', { count: result.unreachable }));
     setStatus({ message: parts.join(' · ') });
     parts.push(...(await offerOrganization(result.organization)));
