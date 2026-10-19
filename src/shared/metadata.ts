@@ -6,16 +6,21 @@
 import type { CreditInput } from './library';
 
 /**
- * Where a candidate comes from: the public APIs a lookup queries, or a Bédéthèque album page whose
- * link the user pasted.
+ * Where a candidate comes from: the public APIs a lookup queries, or the page of a bookshop or
+ * database site whose link the user pasted.
  */
-export type MetadataSource = 'comicvine' | 'googlebooks' | 'bedetheque';
+export type MetadataSource = 'comicvine' | 'googlebooks' | 'bedetheque' | 'bdfugue' | 'nautiljon';
+
+/** The sources a search can query (the others are only read from a pasted page link). */
+export type MetadataApiSource = Extract<MetadataSource, 'comicvine' | 'googlebooks'>;
 
 /** Display names of the sources, for the UI. */
 export const METADATA_SOURCE_LABELS: Record<MetadataSource, string> = {
   comicvine: 'Comic Vine',
   googlebooks: 'Google Books',
   bedetheque: 'Bédéthèque',
+  bdfugue: 'BDfugue',
+  nautiljon: 'Nautiljon',
 };
 
 /**
@@ -36,11 +41,39 @@ export function isBedethequeAlbumUrl(text: string): boolean {
   );
 }
 
+/**
+ * The site whose page `text` is a link to (a Bédéthèque album, a BDfugue product or a Nautiljon
+ * volume page), or null when it isn't a link `metadata.fromPage()` can read.
+ */
+export function pageSourceOf(text: string): MetadataSource | null {
+  let url: URL;
+  try {
+    url = new URL(text.trim());
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+    return null;
+  }
+  if (isBedethequeAlbumUrl(text)) {
+    return 'bedetheque';
+  }
+  if (/^(www\.)?bdfugue\.com$/i.test(url.hostname) && url.pathname.length > 1) {
+    return 'bdfugue';
+  }
+  if (/^(www\.)?nautiljon\.com$/i.test(url.hostname) && /^\/mangas\/.+\/volume-\d+/i.test(url.pathname)) {
+    return 'nautiljon';
+  }
+  return null;
+}
+
 /** What to look for: free text (usually the series or book title) and an optional volume/issue number. */
 export interface MetadataQuery {
   text: string;
   /** Volume or issue number; narrows the Comic Vine search to that issue of the matching series. */
   volume: string | null;
+  /** The APIs to query; all the enabled ones when omitted. */
+  sources?: MetadataApiSource[];
 }
 
 /** One book found by a source, normalized to the library's fields. Any field may be unknown. */

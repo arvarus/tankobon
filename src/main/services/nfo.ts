@@ -166,6 +166,21 @@ export function buildNfo(entry: Pick<LibraryEntry, 'title' | 'series' | 'volume'
 }
 
 /**
+ * Writes the `.nfo` of a library entry next to its comic, replacing the one that is there: the
+ * user just accepted new information for it. Returns whether the file was written; any failure
+ * (read-only folder, file gone) is reported as `false`, the information being saved in the library
+ * anyway.
+ */
+export async function writeNfo(entry: Parameters<typeof buildNfo>[0] & { path: string }): Promise<boolean> {
+  try {
+    await writeFile(nfoPathFor(entry.path), buildNfo(entry), 'utf8');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Writes the `.nfo` of a library entry next to its comic unless one is already there (whatever it
  * holds, it is never overwritten). Returns whether a file was created; any failure (read-only
  * folder, file gone) is reported as `false`: a sidecar never makes a resynchronization fail.

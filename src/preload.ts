@@ -25,6 +25,7 @@ import type {
   OrganizeResult,
   PickOrganizationFolderResult,
   RelinkFolderResult,
+  RemoveEntriesResult,
   UnlinkedFolder,
   ResyncResult,
   UnorganizedCountResult,
@@ -94,7 +95,7 @@ export interface LibraryApi {
   listUnlinkedFolders(): Promise<UnlinkedFolder[]>;
   /** Opens a native directory picker to say where an unlinked folder (an `id` returned by `listUnlinkedFolders`) is on this machine; the comics stored relative to it are found again. */
   relinkFolder(id: string): Promise<RelinkFolderResult>;
-  /** Walks the remembered folders (and the organized folder, when the organization is on) again: new comics are added (then moved or offered by the organization, a comic dropped in the organized folder being moved into place), and comics whose file no longer exists are removed from the library (with their progress, rating, tags and reading-list places; the files on disk are never touched). A folder that can't be read is skipped and counted as `unreachable`. Comics of those folders without a `.nfo` get one written from their library information (an existing one is never overwritten), counted as `nfoWritten`. Stores the date as the `lastResyncAt` setting. Reports through `onScanProgress`; an error result when one is already running. */
+  /** Walks the remembered folders (and the organized folder, when the organization is on) again: new comics are added (then moved or offered by the organization, a comic dropped in the organized folder being moved into place), and comics whose file no longer exists are removed from the library (with their progress, rating, tags and reading-list places; the files on disk are never touched). A folder that can't be read is skipped and counted as `unreachable`. Comics of those folders without a `.nfo` get one written from their library information (an existing one is never overwritten), counted as `nfoWritten`, and the missing cover thumbnails of those comics are extracted, counted as `coversExtracted`. Stores the date as the `lastResyncAt` setting. Reports through `onScanProgress`; an error result when one is already running. */
   resync(): Promise<ResyncResult>;
   /** Subscribes to the progress of `addFolder`, `resync` and `organizeAll`; returns the unsubscribe function. */
   onScanProgress(listener: (progress: ScanProgress) => void): () => void;
@@ -104,6 +105,8 @@ export interface LibraryApi {
   onImageScanProgress(listener: (progress: ImageScanProgress) => void): () => void;
   /** Removes an entry from the library; the file on disk is left untouched. */
   remove(id: string): Promise<void>;
+  /** Removes several entries from the library; with `deleteFiles`, their files (and the covers beside them) are also moved to the system trash. A file that can't be trashed is counted as failed, its entry is removed anyway. */
+  removeMany(ids: string[], deleteFiles: boolean): Promise<RemoveEntriesResult>;
   /** Saves the last page read (0-based) of a library entry. */
   updateProgress(id: string, currentPage: number): Promise<void>;
   /** Sets the rating of a library entry: 0 (unrated) to 5. */
@@ -148,10 +151,12 @@ export interface AchievementsApi {
 
 /** Book information lookups in public APIs, as `window.tankobon.metadata`. */
 export interface MetadataApi {
-  /** Looks a book up in the public APIs enabled in the settings (Comic Vine, Google Books). */
+  /** Looks a book up in the public APIs enabled in the settings (Comic Vine, Google Books), or only in those named by `query.sources`. */
   search(query: MetadataQuery): Promise<MetadataSearchResult>;
-  /** Reads a book from the Bédéthèque album page at `url`, a link the user pasted. */
+  /** Reads a book from the page at `url`, a link the user pasted (Bédéthèque album, BDfugue product or Nautiljon volume). */
   fromPage(url: string): Promise<MetadataPageResult>;
+  /** Saves what the user accepted in the lookup dialog: updates the library entry, rewrites the `.nfo` beside the file and makes the cover thumbnail if it has none; resolves with the updated entry, or null if it is gone. */
+  apply(id: string, update: MetadataUpdate): Promise<LibraryEntry | null>;
 }
 
 /** The user's settings, as `window.tankobon.settings`. */
@@ -306,6 +311,7 @@ const api: TankobonApi = {
     relinkFolder: (id) => ipcRenderer.invoke('library:relink-folder', id),
     resync: () => ipcRenderer.invoke('library:resync'),
     remove: (id) => ipcRenderer.invoke('library:remove', id),
+    removeMany: (ids, deleteFiles) => ipcRenderer.invoke('library:remove-many', ids, deleteFiles),
     updateProgress: (id, currentPage) => ipcRenderer.invoke('library:update-progress', id, currentPage),
     updateRating: (id, rating) => ipcRenderer.invoke('library:update-rating', id, rating),
     updateTags: (id, tags) => ipcRenderer.invoke('library:update-tags', id, tags),
@@ -355,6 +361,7 @@ const api: TankobonApi = {
   metadata: {
     search: (query) => ipcRenderer.invoke('metadata:search', query),
     fromPage: (url) => ipcRenderer.invoke('metadata:from-page', url),
+    apply: (id, update) => ipcRenderer.invoke('metadata:apply', id, update),
   },
   achievements: {
     list: () => ipcRenderer.invoke('achievements:list'),

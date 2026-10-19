@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { applyLanguage } from '../../shared/i18n';
-import { isBedethequeAlbumUrl } from '../../shared/metadata';
+import { isBedethequeAlbumUrl, pageSourceOf } from '../../shared/metadata';
 import { fetchBedethequeAlbum, parseBedethequeAlbum } from './bedetheque';
 import type { HttpOptions } from './http-json';
 
@@ -135,5 +135,20 @@ describe('fetchBedethequeAlbum', () => {
   it('reports a missing page', async () => {
     const fetch = vi.fn(async () => new Response('Not found', { status: 404 }));
     await expect(fetchBedethequeAlbum(URL_1, http(fetch))).rejects.toThrow("Bédéthèque : cette page n'existe pas.");
+  });
+});
+
+describe('pageSourceOf', () => {
+  it('tells the supported sites by the link', () => {
+    expect(pageSourceOf(URL_1)).toBe('bedetheque');
+    expect(pageSourceOf('https://www.bdfugue.com/knights-of-sidonia-tome-15')).toBe('bdfugue');
+    expect(pageSourceOf('https://www.nautiljon.com/mangas/knights+of+sidonia/volume-1,12218.html')).toBe('nautiljon');
+  });
+
+  it('refuses anything else', () => {
+    expect(pageSourceOf('https://www.bdfugue.com/')).toBeNull();
+    expect(pageSourceOf('https://www.nautiljon.com/mangas/knights+of+sidonia/')).toBeNull();
+    expect(pageSourceOf('https://example.com/knights-of-sidonia-tome-15')).toBeNull();
+    expect(pageSourceOf('not a link')).toBeNull();
   });
 });

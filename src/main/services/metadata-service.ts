@@ -3,9 +3,16 @@
  * @module
  */
 import { t } from '../../shared/i18n';
-import type { MetadataCandidate, MetadataPageResult, MetadataQuery, MetadataSearchResult } from '../../shared/metadata';
+import {
+  type MetadataCandidate,
+  type MetadataPageResult,
+  type MetadataQuery,
+  type MetadataSearchResult,
+  pageSourceOf,
+} from '../../shared/metadata';
 import type { AppSettings } from '../../shared/settings';
 import { fetchBedethequeAlbum } from './bedetheque';
+import { fetchStructuredPage } from './structured-page';
 import { ComicVineClient } from './comic-vine';
 import { GoogleBooksClient } from './google-books';
 import type { HttpOptions } from './http-json';
@@ -50,10 +57,11 @@ export async function searchMetadata(
   const volume = query.volume?.trim() || null;
 
   const clients: MetadataClient[] = [];
-  if (settings.comicVineEnabled && settings.comicVineApiKey.trim()) {
+  const wanted = (source: 'comicvine' | 'googlebooks') => !query.sources || query.sources.includes(source);
+  if (wanted('comicvine') && settings.comicVineEnabled && settings.comicVineApiKey.trim()) {
     clients.push(new ComicVineClient(settings.comicVineApiKey.trim(), http));
   }
-  if (settings.googleBooksEnabled) {
+  if (wanted('googlebooks') && settings.googleBooksEnabled) {
     clients.push(new GoogleBooksClient(settings.googleBooksApiKey.trim(), http));
   }
   if (clients.length === 0) {
@@ -75,12 +83,13 @@ export async function searchMetadata(
 }
 
 /**
- * Reads a book from the page whose link the user pasted (a Bédéthèque album page, the only kind
- * supported). Needs no setting: pasting the link is the opt-in.
+ * Reads a book from the page whose link the user pasted (a Bédéthèque album, a BDfugue product or
+ * a Nautiljon volume page). Needs no setting: pasting the link is the opt-in.
  */
 export async function fetchMetadataPage(url: string, http: HttpOptions): Promise<MetadataPageResult> {
   try {
-    return { status: 'ok', candidate: await fetchBedethequeAlbum(url, http) };
+    const candidate = pageSourceOf(url) === 'bedetheque' ? await fetchBedethequeAlbum(url, http) : await fetchStructuredPage(url, http);
+    return { status: 'ok', candidate };
   } catch (error) {
     return { status: 'error', message: error instanceof Error ? error.message : String(error) };
   }

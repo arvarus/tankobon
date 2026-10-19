@@ -101,7 +101,17 @@ export function expectMetadataUpdate(value: unknown): MetadataUpdate {
 /** A {@link MetadataQuery}. */
 export function expectMetadataQuery(value: unknown): MetadataQuery {
   const input = expectRecord(value, 'query');
-  return { text: expectString(input.text, 'query.text'), volume: expectNullableString(input.volume, 'query.volume') };
+  const query: MetadataQuery = {
+    text: expectString(input.text, 'query.text'),
+    volume: expectNullableString(input.volume, 'query.volume'),
+  };
+  if (input.sources !== undefined) {
+    if (!Array.isArray(input.sources) || !input.sources.every((s) => s === 'comicvine' || s === 'googlebooks')) {
+      throw new IpcArgumentError('query.sources', 'a list of API sources');
+    }
+    query.sources = input.sources;
+  }
+  return query;
 }
 
 /** Parses one argument of a channel, throwing an {@link IpcArgumentError} when it is refused. */

@@ -74,6 +74,8 @@ const settings: Translation<typeof en> = {
     resyncFailed: '{{count}} illisible(s)',
     resyncNfoWritten_one: '{{count}} fichier .nfo créé',
     resyncNfoWritten_other: '{{count}} fichiers .nfo créés',
+    resyncCoversExtracted_one: '{{count}} couverture extraite',
+    resyncCoversExtracted_other: '{{count}} couvertures extraites',
     resyncUnreachable: '{{count}} dossier inaccessible, ignoré',
     organization: 'Organisation de la bibliothèque',
     organizationHint: "Déplace les BD ajoutées dans un dossier dont Tankōbon gère la structure, selon l'arborescence ci-dessous. Ce dossier est resynchronisé comme les autres, et une BD déposée dedans à la main est rangée à sa place.",

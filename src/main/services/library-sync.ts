@@ -9,6 +9,7 @@ import path from 'node:path';
 import type { ScanProgress } from '../../shared/library';
 import type { ArchiveSummary } from '../decoder/protocol';
 import type { LibraryRepository } from '../db/library-repository';
+import { isOnlineOnly } from './cloud-files';
 import { collectComicFiles, scanIntoLibrary } from './library-scanner';
 import { writeNfoIfMissing } from './nfo';
 
@@ -22,6 +23,8 @@ export interface ResyncSummary {
   failed: number;
   /** `.nfo` sidecars created for comics that had none. */
   nfoWritten: number;
+  /** Cover thumbnails created for comics that had none. */
+  coversExtracted: number;
   /** Folders that couldn't be read (missing, unplugged drive): left alone, nothing removed from them. */
   unreachable: number;
   /** The entries added, for the library organization. */
@@ -64,7 +67,9 @@ async function isMissing(filePath: string): Promise<boolean> {
  * entry goes only when `stat` says the file is gone (`ENOENT`), not merely absent from the walk,
  * which skips the subfolders it can't read. Entries outside every folder (a file added on its own)
  * are checked one by one afterwards: they go when their file is gone and the directory that held it
- * is still readable, so a vanished drive or folder keeps them. Comics inside the folders that have no
+ * is still readable, so a vanished drive or folder keeps them. Comics inside the folders whose cover
+ * is missing get it extracted (`extractCover`, which says whether it made one; a cloud placeholder is
+ * skipped, since reading it would download it). Comics inside the folders that have no
  * `.nfo` sidecar get one written from their library information; no other file on disk is touched.
  */
 export async function resyncLibrary(
@@ -72,8 +77,9 @@ export async function resyncLibrary(
   folders: string[],
   onProgress: (progress: ScanProgress) => void,
   inspect: (filePath: string) => Promise<ArchiveSummary>,
+  extractCover: (filePath: string) => Promise<boolean> = async () => false,
 ): Promise<ResyncSummary> {
-  const summary: ResyncSummary = { added: 0, removed: 0, failed: 0, nfoWritten: 0, unreachable: 0, removedEntries: [], addedEntries: [] };
+  const summary: ResyncSummary = { added: 0, removed: 0, failed: 0, nfoWritten: 0, coversExtracted: 0, unreachable: 0, removedEntries: [], addedEntries: [] };
   // Each folder reports its own `done`; the caller only wants the one after the last.
   const forward = (progress: ScanProgress) => {
     if (progress.phase !== 'done') onProgress(progress);
@@ -106,6 +112,14 @@ export async function resyncLibrary(
   for (const [index, entry] of inFolders.entries()) {
     onProgress({ phase: 'importing', processed: index, total: inFolders.length, currentFile: entry.path });
     if (await writeNfoIfMissing(entry)) summary.nfoWritten += 1;
+  }
+
+  // Same entries, after the removals above: the missing covers are extracted, one book at a time.
+  const remaining = inFolders.filter((entry) => repo.hasPath(entry.path));
+  for (const [index, entry] of remaining.entries()) {
+    onProgress({ phase: 'importing', processed: index, total: remaining.length, currentFile: entry.path });
+    if (await isOnlineOnly(entry.path)) continue;
+    if (await extractCover(entry.path).catch(() => false)) summary.coversExtracted += 1;
   }
 
   for (const entry of repo.list()) {

@@ -1,10 +1,11 @@
-import { ArrowLeft, Loader2, Search } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowLeft, Globe, Loader2, Search, Square } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
+import { useSettings } from '@/hooks/use-settings';
 import {
   buildReview,
   creditRoleLabel,
@@ -13,17 +14,28 @@ import {
   reviewFieldLabel,
   reviewToUpdate,
 } from '@/lib/metadata-review';
+import { hasFiche } from '@/lib/library-filter';
+import { initialLookupQuery, offeredRules, queryFromRule, rememberRule } from '@/lib/lookup-query';
 import { cn, formatLanguage } from '@/lib/utils';
+import { fileNameTemplateError } from '@/shared/file-name-template';
 import { CREDIT_ROLES, type CreditRole, type LibraryEntry } from '@/shared/library';
 import {
-  isBedethequeAlbumUrl,
   METADATA_SOURCE_LABELS,
+  type MetadataApiSource,
   type MetadataCandidate,
   type MetadataQuery,
+  pageSourceOf,
 } from '@/shared/metadata';
-import { formatPersonName, guessQueryFromTitle } from '@/shared/title-parsing';
+import { formatPersonName } from '@/shared/title-parsing';
+
+/** How to look the book up: in the public APIs, or from the link of a page of a supported site. */
+type Mode = 'api' | 'site';
+
+/** The APIs the user can tick, in display order. */
+const API_SOURCES: MetadataApiSource[] = ['comicvine', 'googlebooks'];
 
 type Step =
+  | { kind: 'options' }
   | { kind: 'searching' }
   | { kind: 'results'; candidates: MetadataCandidate[]; errors: string[] }
   | { kind: 'error'; message: string }
@@ -32,15 +44,12 @@ type Step =
 const INPUT_CLASS =
   'h-8 rounded-md border bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
 
-/** What to search for first: the stored series and volume if any, else a guess from the title. */
-function initialQuery(entry: LibraryEntry): MetadataQuery {
-  return entry.series ? { text: entry.series, volume: entry.volume } : guessQueryFromTitle(entry.title);
-}
-
 /**
- * Looks a library entry up in the configured public APIs, lets the user pick the right book among
- * the results, then accept, edit or refuse each proposed change before writing it. A Bédéthèque
- * album link typed in the search field skips the results and goes straight to the review.
+ * Looks a library entry up, lets the user pick the right book among the results (each shows its
+ * source), then accept, edit or refuse each proposed change before writing it. Nothing is searched
+ * on opening: the user picks how (the enabled public APIs, or the link of a page of Bédéthèque,
+ * BDfugue or Nautiljon, which skips the results and goes straight to the review), ticks the
+ * options, starts the search and can stop it. Saving also updates the `.nfo` and the cover.
  */
 export function MetadataDialog({
   entry,
@@ -52,50 +61,70 @@ export function MetadataDialog({
   onApplied: (entry: LibraryEntry) => void;
 }) {
   const { t } = useTranslation(['metadata', 'common']);
-  const [query, setQuery] = useState<MetadataQuery>(() => initialQuery(entry));
-  const [step, setStep] = useState<Step>({ kind: 'searching' });
+  const { settings, update } = useSettings();
+  const [mode, setMode] = useState<Mode>('api');
+  const [query, setQuery] = useState<MetadataQuery>(() => initialLookupQuery(entry));
+  const [pageUrl, setPageUrl] = useState('');
+  // A book with no information yet starts from its file name: a rule can read it into the fields.
+  const needsRule = !hasFiche(entry);
+  const rules = offeredRules(settings?.fileNameRules ?? [], settings?.libraryFileName ?? '');
+  const [rule, setRule] = useState('');
+  const [ruleMisses, setRuleMisses] = useState(false);
+  const ruleError = rule === '' ? null : fileNameTemplateError(rule);
+  const applyRule = () => {
+    const found = queryFromRule(entry, rule);
+    setRuleMisses(found === null);
+    if (!found) return;
+    setQuery(found);
+    update('fileNameRules', rememberRule(settings?.fileNameRules ?? [], rule));
+  };
+  const enabledSources = API_SOURCES.filter((source) =>
+    source === 'comicvine' ? settings?.comicVineEnabled : settings?.googleBooksEnabled,
+  );
+  const [unticked, setUnticked] = useState<Set<MetadataApiSource>>(new Set());
+  const sources = enabledSources.filter((source) => !unticked.has(source));
+  // Nothing is searched until the user asks: the dialog opens on the options.
+  const [step, setStep] = useState<Step>({ kind: 'options' });
   const [applying, setApplying] = useState(false);
 
-  // Only the latest search may update the dialog: an earlier, slower one would show stale results.
+  // Only the latest search may update the dialog: an earlier, slower one would show stale results,
+  // and stopping one (or closing the dialog) invalidates it the same way.
   const latestSearch = useRef(0);
+  useEffect(
+    () => () => {
+      latestSearch.current += 1;
+    },
+    [],
+  );
 
-  const runSearch = useCallback(
-    async (q: MetadataQuery) => {
-      const id = ++latestSearch.current;
-      if (isBedethequeAlbumUrl(q.text)) {
-        const result = await window.tankobon.metadata.fromPage(q.text.trim());
-        if (id !== latestSearch.current) return;
-        setStep(
-          result.status === 'ok'
-            ? { kind: 'review', candidates: [result.candidate], review: buildReview(entry, result.candidate) }
-            : { kind: 'error', message: result.message },
-        );
-        return;
-      }
-      const result = await window.tankobon.metadata.search(q);
+  const runSearch = async () => {
+    const id = ++latestSearch.current;
+    setStep({ kind: 'searching' });
+    if (mode === 'site') {
+      const result = await window.tankobon.metadata.fromPage(pageUrl.trim());
       if (id !== latestSearch.current) return;
       setStep(
         result.status === 'ok'
-          ? { kind: 'results', candidates: result.candidates, errors: result.errors }
+          ? { kind: 'review', candidates: [result.candidate], review: buildReview(entry, result.candidate) }
           : { kind: 'error', message: result.message },
       );
-    },
-    [entry],
-  );
-
-  const search = (q: MetadataQuery) => {
-    setStep({ kind: 'searching' });
-    void runSearch(q);
+      return;
+    }
+    const result = await window.tankobon.metadata.search({ ...query, sources });
+    if (id !== latestSearch.current) return;
+    setStep(
+      result.status === 'ok'
+        ? { kind: 'results', candidates: result.candidates, errors: result.errors }
+        : { kind: 'error', message: result.message },
+    );
   };
 
-  // Searches right away with the guessed query: most of the time it's good enough.
-  useEffect(() => {
-    void runSearch(initialQuery(entry));
-    return () => {
-      // Invalidates the search in flight, so it doesn't land after the dialog closed.
-      latestSearch.current += 1;
-    };
-  }, [entry, runSearch]);
+  const stop = () => {
+    latestSearch.current += 1;
+    setStep({ kind: 'options' });
+  };
+
+  const canSearch = mode === 'site' ? pageSourceOf(pageUrl) !== null : query.text.trim() !== '' && sources.length > 0;
 
   const apply = async (review: MetadataReview) => {
     const update = reviewToUpdate(entry, review);
@@ -104,7 +133,7 @@ export function MetadataDialog({
       return;
     }
     setApplying(true);
-    const updated = await window.tankobon.library.updateMetadata(entry.id, update);
+    const updated = await window.tankobon.metadata.apply(entry.id, update);
     setApplying(false);
     if (updated) onApplied(updated);
     onClose();
@@ -118,38 +147,141 @@ export function MetadataDialog({
       description={entry.path}
       className="max-w-3xl"
     >
+      <div role="tablist" className="flex gap-1">
+        {(['api', 'site'] as const).map((value) => (
+          <Button
+            key={value}
+            role="tab"
+            aria-selected={mode === value}
+            type="button"
+            size="sm"
+            variant={mode === value ? 'secondary' : 'ghost'}
+            disabled={step.kind === 'searching'}
+            onClick={() => {
+              setMode(value);
+              setStep({ kind: 'options' });
+            }}
+          >
+            {value === 'api' ? <Search /> : <Globe />}
+            {t(value === 'api' ? 'modeApi' : 'modeSite')}
+          </Button>
+        ))}
+      </div>
+
       <form
-        className="flex flex-wrap items-center gap-2"
+        className="flex flex-col gap-3"
         onSubmit={(event) => {
           event.preventDefault();
-          search(query);
+          if (canSearch && step.kind !== 'searching') void runSearch();
         }}
       >
-        <input
-          aria-label={t('queryLabel')}
-          placeholder={t('queryPlaceholder')}
-          className={cn(INPUT_CLASS, 'min-w-48 flex-1')}
-          value={query.text}
-          onChange={(event) => setQuery({ ...query, text: event.target.value })}
-        />
-        <input
-          aria-label={t('volumeLabel')}
-          placeholder={t('volumePlaceholder')}
-          className={cn(INPUT_CLASS, 'w-24')}
-          value={query.volume ?? ''}
-          onChange={(event) => setQuery({ ...query, volume: event.target.value || null })}
-        />
-        <Button type="submit" size="sm" variant="outline" disabled={step.kind === 'searching'}>
-          <Search />
-          {isBedethequeAlbumUrl(query.text) ? t('readPage') : t('search')}
-        </Button>
+        {mode === 'api' ? (
+          <>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                aria-label={t('queryLabel')}
+                placeholder={t('queryPlaceholder')}
+                className={cn(INPUT_CLASS, 'min-w-48 flex-1')}
+                value={query.text}
+                onChange={(event) => setQuery({ ...query, text: event.target.value })}
+              />
+              <input
+                aria-label={t('volumeLabel')}
+                placeholder={t('volumePlaceholder')}
+                className={cn(INPUT_CLASS, 'w-24')}
+                value={query.volume ?? ''}
+                onChange={(event) => setQuery({ ...query, volume: event.target.value || null })}
+              />
+            </div>
+            {needsRule && (
+              <div className="flex flex-col gap-1 rounded-md border p-2">
+                <span className="text-xs text-muted-foreground">{t('ruleHint')}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    aria-label={t('ruleLabel')}
+                    placeholder={t('rulePlaceholder')}
+                    list="file-name-rules"
+                    className={cn(INPUT_CLASS, 'min-w-48 flex-1 font-mono')}
+                    value={rule}
+                    onChange={(event) => {
+                      setRule(event.target.value);
+                      setRuleMisses(false);
+                    }}
+                  />
+                  <datalist id="file-name-rules">
+                    {rules.map((previous) => (
+                      <option key={previous} value={previous} />
+                    ))}
+                  </datalist>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={rule === '' || ruleError !== null}
+                    onClick={applyRule}
+                  >
+                    {t('applyRule')}
+                  </Button>
+                </div>
+                {ruleError && <p className="text-xs text-destructive">{t('ruleInvalid')}</p>}
+                {ruleMisses && <p className="text-xs text-destructive">{t('ruleNoMatch')}</p>}
+              </div>
+            )}
+            <fieldset className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+              <legend className="sr-only">{t('sourcesLabel')}</legend>
+              <span className="text-muted-foreground">{t('sourcesLabel')}</span>
+              {enabledSources.length === 0 && <span className="text-muted-foreground">{t('noApiEnabled')}</span>}
+              {enabledSources.map((source) => (
+                <label key={source} className="flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    checked={!unticked.has(source)}
+                    onChange={(event) =>
+                      setUnticked((current) => {
+                        const next = new Set(current);
+                        if (event.target.checked) next.delete(source);
+                        else next.add(source);
+                        return next;
+                      })
+                    }
+                  />
+                  {METADATA_SOURCE_LABELS[source]}
+                </label>
+              ))}
+            </fieldset>
+          </>
+        ) : (
+          <div className="flex flex-col gap-1">
+            <input
+              aria-label={t('pageUrlLabel')}
+              placeholder={t('pageUrlPlaceholder')}
+              className={cn(INPUT_CLASS, 'w-full')}
+              value={pageUrl}
+              onChange={(event) => setPageUrl(event.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">{t('pageSitesHint')}</p>
+          </div>
+        )}
+        <div className="flex gap-2">
+          {step.kind === 'searching' ? (
+            <Button type="button" size="sm" variant="outline" onClick={stop}>
+              <Square />
+              {t('stop')}
+            </Button>
+          ) : (
+            <Button type="submit" size="sm" variant="outline" disabled={!canSearch}>
+              {mode === 'site' ? <Globe /> : <Search />}
+              {t(mode === 'site' ? 'readPage' : 'search')}
+            </Button>
+          )}
+        </div>
       </form>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {step.kind === 'searching' && (
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" />
-            {isBedethequeAlbumUrl(query.text) ? t('readingPage') : t('searching')}
+            {mode === 'site' ? t('readingPage') : t('searching')}
           </p>
         )}
         {step.kind === 'error' && <p className="text-sm whitespace-pre-line text-destructive">{step.message}</p>}
@@ -233,11 +365,14 @@ function CandidateList({
                   <div className="h-16 w-11 shrink-0 rounded-sm bg-muted" />
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{candidateHeading(candidate, t)}</p>
+                  <p className="flex items-center gap-2">
+                    <span className="truncate text-sm font-medium">{candidateHeading(candidate, t)}</span>
+                    <span className="shrink-0 rounded-sm bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                      {METADATA_SOURCE_LABELS[candidate.source]}
+                    </span>
+                  </p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {[candidate.releaseDate, formatLanguage(candidate.language), METADATA_SOURCE_LABELS[candidate.source]]
-                      .filter(Boolean)
-                      .join(' · ')}
+                    {[candidate.releaseDate, formatLanguage(candidate.language)].filter(Boolean).join(' · ')}
                   </p>
                   {candidate.credits.length > 0 && (
                     <p className="truncate text-xs text-muted-foreground">

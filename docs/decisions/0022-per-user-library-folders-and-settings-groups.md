@@ -1,4 +1,4 @@
-# 0021. Watched folders per user, and settings split in two groups
+# 0022. Watched folders per user, and settings split in two groups
 
 - **Status:** Accepted
 - **Date:** 2026-10-19

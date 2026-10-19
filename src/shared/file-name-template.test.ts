@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { fileNameTemplateError, fillFileNameTemplate, isFileNameTemplate } from './file-name-template';
+import { fileNameTemplateError, fillFileNameTemplate, isFileNameTemplate, parseFileName } from './file-name-template';
 
 describe('fileNameTemplateError', () => {
   it('accepts the known fields, plain text and the empty template', () => {
@@ -29,5 +29,33 @@ describe('fillFileNameTemplate', () => {
     const values = { series: 'Tintin', volume: '20', title: 'Tintin au Tibet', year: '1960', author: 'Hergé' };
     expect(fillFileNameTemplate('{series} - T{volume} - {title}', values)).toBe('Tintin - T20 - Tintin au Tibet');
     expect(fillFileNameTemplate('{author} {year} {author}', values)).toBe('Hergé 1960 Hergé');
+  });
+});
+
+describe('parseFileName', () => {
+  it('reads the fields back, the reverse of fillFileNameTemplate', () => {
+    const template = '{series} - T{volume} - {title}';
+    const name = fillFileNameTemplate(template, { series: 'Tintin', volume: '20', title: 'Tintin au Tibet', year: '', author: '' });
+    expect(parseFileName(name, template)).toEqual({ series: 'Tintin', volume: '20', title: 'Tintin au Tibet' });
+  });
+
+  it('treats underscores as spaces and ignores case in the literals', () => {
+    expect(parseFileName('Blacksad_t02', '{series} T{volume}')).toEqual({ series: 'Blacksad', volume: '02' });
+  });
+
+  it('reads a year as four digits', () => {
+    expect(parseFileName('Blacksad (2003)', '{series} ({year})')).toEqual({ series: 'Blacksad', year: '2003' });
+    expect(parseFileName('Blacksad (03)', '{series} ({year})')).toBeNull();
+  });
+
+  it('is null when the name does not match, the template has no field or is invalid', () => {
+    expect(parseFileName('Blacksad', '{series} - T{volume}')).toBeNull();
+    expect(parseFileName('Blacksad', '')).toBeNull();
+    expect(parseFileName('Blacksad', 'Blacksad')).toBeNull();
+    expect(parseFileName('a/b', '{series}/{title}')).toBeNull();
+  });
+
+  it('keeps the first value of a repeated field', () => {
+    expect(parseFileName('A - B', '{title} - {title}')).toEqual({ title: 'A' });
   });
 });
