@@ -1,4 +1,4 @@
-import { Layers, Search, X } from 'lucide-react';
+import { FileQuestion, Layers, Search, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { ViewModePicker } from '@/components/book-row';
@@ -64,6 +64,17 @@ export function LibraryToolbar({
           rating={filters.rating}
           onChange={(rating) => onChange({ ...filters, rating })}
         />
+
+        <Button
+          variant={filters.withoutFiche ? 'secondary' : 'outline'}
+          size="icon"
+          onClick={() => onChange({ ...filters, withoutFiche: !filters.withoutFiche })}
+          aria-pressed={filters.withoutFiche}
+          title={t('withoutFiche')}
+          aria-label={t('withoutFiche')}
+        >
+          <FileQuestion />
+        </Button>
 
         <SortPicker sort={sort} onChange={onSortChange} disabled={grouped} />
 
