@@ -28,6 +28,7 @@ export function BookCard({
   onTick,
   onDragStart,
   actions,
+  editions = [],
 }: {
   entry: LibraryEntry;
   selected: boolean;
@@ -36,6 +37,8 @@ export function BookCard({
   onTick: (shift: boolean) => void;
   onDragStart: (event: DragEvent<HTMLElement>) => void;
   actions: BookCardActions;
+  /** The book's files when it exists in several formats: one button each, to pick the one to open. */
+  editions?: { id: string; format: string; onOpen: () => void }[];
 }) {
   const { t } = useTranslation(['library', 'common']);
   const iconButton = 'bg-background/85 hover:bg-background';
@@ -87,6 +90,22 @@ export function BookCard({
         {entry.series && <p className="truncate text-xs text-muted-foreground">{entry.series}</p>}
         <p className="truncate font-medium">{entry.title}</p>
         {entry.volume && <p className="truncate text-xs text-muted-foreground">{t('volumeShort', { volume: entry.volume })}</p>}
+        {editions.length > 0 && (
+          <div className="mt-1 flex flex-wrap gap-1">
+            {editions.map((edition) => (
+              <Button
+                key={edition.id}
+                variant="secondary"
+                size="xs"
+                onClick={edition.onOpen}
+                title={t('openFormat', { format: edition.format })}
+                aria-label={t('openFormatNamed', { title: entry.title, format: edition.format })}
+              >
+                {edition.format}
+              </Button>
+            ))}
+          </div>
+        )}
       </div>
     </article>
   );

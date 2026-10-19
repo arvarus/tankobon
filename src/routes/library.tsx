@@ -20,11 +20,13 @@ import { useOrganizationOffer } from '@/hooks/use-organization-offer';
 import { useSettings } from '@/hooks/use-settings';
 import { appData } from '@/lib/app-data';
 import { availableTags, EMPTY_FILTERS, filterEntries, type LibraryFilters } from '@/lib/library-filter';
+import { collapseEditions, editionGroups } from '@/lib/library-editions';
 import { gridLines, groupBySeries, ungroupedRows } from '@/lib/library-groups';
 import { sortEntries } from '@/lib/library-sort';
 import { draggedEntries, selectedEntries, toggleSelection } from '@/lib/library-selection';
 import { encodeDraggedEntries, LIBRARY_ENTRY_DRAG_TYPE, QUICK_TAGS } from '@/lib/reading-list';
 import { cn } from '@/lib/utils';
+import { comicFormat } from '@/shared/comic';
 import type { LibraryEntry, ScanProgress } from '@/shared/library';
 import type { BookRowView } from '@/shared/settings';
 
@@ -71,7 +73,12 @@ function LibraryPage() {
   const [anchor, setAnchor] = useState<string | null>(null);
   // The input follows the keystrokes; filtering and re-laying out the list can lag behind them.
   const deferredFilters = useDeferredValue(filters);
-  const visible = useMemo(() => filterEntries(entries, deferredFilters), [entries, deferredFilters]);
+  // The same book in several formats (a CBZ and a PDF) is one row; its other files are its editions.
+  const editions = useMemo(() => editionGroups(entries), [entries]);
+  const visible = useMemo(
+    () => collapseEditions(filterEntries(entries, deferredFilters), editions),
+    [entries, deferredFilters, editions],
+  );
   const tags = useMemo(() => availableTags(entries, QUICK_TAGS), [entries]);
   // Folded series last for the page's life only; a new key (a series renamed) starts unfolded.
   const [collapsedSeries, setCollapsedSeries] = useState<ReadonlySet<string>>(() => new Set());
@@ -272,6 +279,11 @@ function LibraryPage() {
                         selectionCount={selection.length}
                         onTick={(shift) => tick(entry.id, shift)}
                         onDragStart={(event) => startDrag(event, entry)}
+                        editions={editions.get(entry.id)?.map((edition) => ({
+                          id: edition.id,
+                          format: comicFormat(edition.path) ?? '',
+                          onOpen: () => void navigate({ to: '/reader', search: { book: edition.id } }),
+                        }))}
                         actions={{
                           onOpen: () => void navigate({ to: '/reader', search: { book: entry.id } }),
                           onEdit: () => setEditEntry(entry),
@@ -297,6 +309,8 @@ function LibraryPage() {
                 );
               }
               const entry = row.entry;
+              const formats = editions.get(entry.id);
+              const openEntry = (book: LibraryEntry) => void navigate({ to: '/reader', search: { book: book.id } });
               return (
             <li
               key={entry.id}
@@ -330,7 +344,8 @@ function LibraryPage() {
                 <BookDetails
                   entry={entry}
                   view={view}
-                  onOpen={() => void navigate({ to: '/reader', search: { book: entry.id } })}
+                  onOpen={() => openEntry(entry)}
+                  note={formats && t('editionsNote', { formats: formats.map((e) => comicFormat(e.path)).join(', ') })}
                 />
                 {view !== 'compact' && <BookRating entry={entry} />}
                 <Button
@@ -360,13 +375,25 @@ function LibraryPage() {
                 >
                   <ListPlus />
                 </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => navigate({ to: '/reader', search: { book: entry.id } })}
-                >
-                  {t('common:open')}
-                </Button>
+                {formats ? (
+                  // One button per format: the same book, opened in the file the user prefers.
+                  formats.map((edition) => (
+                    <Button
+                      key={edition.id}
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => openEntry(edition)}
+                      title={t('openFormat', { format: comicFormat(edition.path) })}
+                      aria-label={t('openFormatNamed', { title: entry.title, format: comicFormat(edition.path) })}
+                    >
+                      {t('common:open')} {comicFormat(edition.path)}
+                    </Button>
+                  ))
+                ) : (
+                  <Button variant="secondary" size="sm" onClick={() => openEntry(entry)}>
+                    {t('common:open')}
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="icon-sm"
