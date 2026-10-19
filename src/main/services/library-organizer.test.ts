@@ -122,6 +122,21 @@ describe('organizeEntries', () => {
     expect(await exists(path.join(source, 'Série'))).toBe(true);
   });
 
+  it('moves the cover kept beside the comic with it', async () => {
+    const source = await tree(['Tome 1.cbz', 'Tome 1.cover.webp']);
+    const target = await tree([]);
+    const repo = repository();
+    const from = path.join(source, 'Tome 1.cbz');
+    repo.register(from, 'Tome 1', 10, 10, 1);
+    const id = repo.idOfPath(from)!;
+
+    const summary = await organizeEntries(repo, flat(target), [id]);
+
+    const to = summary.moved[0]!.to;
+    expect(await exists(path.join(path.dirname(to), 'Tome 1.cover.webp'))).toBe(true);
+    expect(await exists(path.join(source, 'Tome 1.cover.webp'))).toBe(false);
+  });
+
   it('never moves a file that is not a comic, and does not offer it for organizing', async () => {
     const source = await tree(['notes.txt']);
     const target = await tree([]);

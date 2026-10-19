@@ -10,7 +10,9 @@ import path from 'node:path';
 
 import type { ComicPage } from '../../shared/comic';
 import type { ComicArchive } from './comic-archive';
+import { isOnlineOnly } from './cloud-files';
 import { openArchive } from './comic-service';
+import { coverSidecarPath } from './cover-sidecar';
 import { assertImageWithinLimit } from './image-size';
 
 /** Bounding box of a thumbnail, in pixels: about 3× the size the library list shows it at. */
@@ -46,7 +48,9 @@ export function thumbnailKey(filePath: string): string {
 }
 
 /**
- * The thumbnail cache directory. Every generation goes through a single queue, one book at a time:
+ * The thumbnails of the library. A cover is kept beside its comic (`coverSidecarPath()`), so it is
+ * shared with the library folder; the cache directory is the fallback for a comic whose folder can't
+ * be written to, and still serves the covers made before sidecars existed. Every generation goes through a single queue, one book at a time:
  * a library page asking for hundreds of covers at once, or a rebuild after an import, must not
  * open hundreds of archives in parallel. Concurrent requests for the same book share one
  * generation.
@@ -62,8 +66,20 @@ export class ThumbnailCache {
     private readonly open: (filePath: string) => Promise<ComicArchive> = openArchive,
   ) {}
 
-  /** The cached thumbnail of a book, or null when there is none yet. Never generates one. */
+  /**
+   * The cached thumbnail of a book, or null when there is none yet. Never generates one. The
+   * sidecar comes first, unless it is a cloud placeholder (reading it would download it): the
+   * local cache then answers, or nothing.
+   */
   async read(filePath: string): Promise<Uint8Array<ArrayBuffer> | null> {
+    const sidecar = coverSidecarPath(filePath);
+    try {
+      if (!(await isOnlineOnly(sidecar))) {
+        return new Uint8Array(await readFile(sidecar));
+      }
+    } catch {
+      // No sidecar (yet): the local cache may have one.
+    }
     try {
       return new Uint8Array(await readFile(this.fileFor(filePath)));
     } catch {
@@ -105,7 +121,8 @@ export class ThumbnailCache {
   }
 
   /**
-   * Deletes the thumbnail of a book (removed from the library); does nothing when there is none.
+   * Deletes the local cache's thumbnail of a book (removed from the library); does nothing when
+   * there is none. A sidecar belongs to the comic's folder and is left alone.
    * Queued like a generation, so one still running for this book finishes first and its file is
    * deleted too, instead of being written after the deletion and left orphaned.
    */
@@ -170,12 +187,11 @@ export class ThumbnailCache {
         return null;
       }
       const thumbnail = await renderThumbnail(page.data);
-      await mkdir(this.directory, { recursive: true });
-      // Written aside then renamed, so a reader never sees a half-written file.
-      const target = this.fileFor(filePath);
-      const temporary = `${target}.${process.pid}.tmp`;
-      await writeFile(temporary, thumbnail);
-      await rename(temporary, target);
+      // Beside the comic when its folder accepts it (read-only share, full disk…), else in the local cache.
+      if (!(await this.writeAtomically(coverSidecarPath(filePath), thumbnail).catch(() => false))) {
+        await mkdir(this.directory, { recursive: true });
+        await this.writeAtomically(this.fileFor(filePath), thumbnail);
+      }
       this.failed.delete(key);
       return thumbnail;
     } catch {
@@ -185,6 +201,19 @@ export class ThumbnailCache {
       }
       return null;
     }
+  }
+
+  /** Written aside then renamed, so a reader never sees a half-written file. */
+  private async writeAtomically(target: string, data: Uint8Array): Promise<true> {
+    const temporary = `${target}.${process.pid}.tmp`;
+    try {
+      await writeFile(temporary, data);
+      await rename(temporary, target);
+    } catch (error) {
+      await rm(temporary, { force: true });
+      throw error;
+    }
+    return true;
   }
 
   private async readCover(filePath: string): Promise<ComicPage | null> {
