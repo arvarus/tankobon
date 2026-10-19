@@ -77,6 +77,7 @@ export default {
   viewFull: 'Full: all the information',
   viewMedium: 'Medium: cover and basic information',
   viewCompact: 'Compact: title, volume and series',
+  viewGrid: 'Grid: covers side by side with series, title and volume',
   groupBySeries: 'Group by series',
   sortLabel: 'Sort by',
   sortDisabledGrouped: 'Grouped by series: series in alphabetical order, books by volume',
