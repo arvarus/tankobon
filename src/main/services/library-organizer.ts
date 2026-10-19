@@ -13,6 +13,7 @@ import { t } from '../../shared/i18n';
 import type { LibraryEntry } from '../../shared/library';
 import type { LibraryLevel, LibraryOrganization } from '../../shared/settings';
 import type { LibraryRepository } from '../db/library-repository';
+import { coverSidecarPath } from './cover-sidecar';
 import { isInside } from './library-sync';
 
 /**
@@ -311,6 +312,8 @@ export async function organizeEntries(
       continue;
     }
     summary.moved.push({ id, from: entry.path, to });
+    // The cover kept beside the comic follows it (best effort: it is regenerated when missing).
+    await moveFile(coverSidecarPath(entry.path), coverSidecarPath(to)).catch(() => undefined);
     await removeEmptyFolders(target.root, path.dirname(entry.path));
   }
   return summary;

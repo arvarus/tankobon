@@ -1,11 +1,12 @@
 import { createCanvas, loadImage } from '@napi-rs/canvas';
-import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { ComicPage } from '../../shared/comic';
 import type { ComicArchive } from './comic-archive';
+import { coverSidecarPath } from './cover-sidecar';
 import {
   renderThumbnail,
   THUMBNAIL_MAX_HEIGHT,
@@ -165,6 +166,34 @@ describe('ThumbnailCache', () => {
       }),
     ).toBeNull();
     expect(await cache.ensure('/bd/a.cbz')).not.toBeNull();
+  });
+
+  it('keeps the cover beside the comic and reads it back from there', async () => {
+    const folder = join(dir, 'library');
+    await mkdir(folder);
+    const comic = join(folder, 'a.cbz');
+    const { open, calls } = fakeOpener({ [comic]: [cover] });
+    const cache = new ThumbnailCache(join(dir, 'cache'), open);
+
+    const generated = await cache.ensure(comic);
+
+    expect(coverSidecarPath(comic)).toBe(join(folder, 'a.cover.webp'));
+    expect(await readdir(folder)).toEqual(['a.cover.webp']);
+    expect(await readdir(dir)).not.toContain('cache');
+    // Another machine (or a new cache directory) finds it without opening the comic.
+    expect(await new ThumbnailCache(join(dir, 'other-cache'), open).read(comic)).toEqual(generated);
+    expect(calls.opened).toBe(1);
+  });
+
+  it('falls back to the local cache when the comic folder cannot be written to', async () => {
+    const comic = join(dir, 'missing-folder', 'a.cbz');
+    const cache = new ThumbnailCache(join(dir, 'cache'), fakeOpener({ [comic]: [cover] }).open);
+
+    const generated = await cache.ensure(comic);
+
+    expect(generated).not.toBeNull();
+    expect(await readdir(join(dir, 'cache'))).toEqual([thumbnailKey(comic) + '.webp']);
+    expect(await cache.read(comic)).toEqual(generated);
   });
 
   it('removes a book thumbnail', async () => {
