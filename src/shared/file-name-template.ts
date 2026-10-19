@@ -14,6 +14,8 @@ export type FileNameField = (typeof FILE_NAME_FIELDS)[number];
 export const MAX_FILE_NAME_TEMPLATE_LENGTH = 200;
 
 const FIELD = /\{(series|volume|title|year|author)\}/g;
+const FIELD_TEST = /\{(?:series|volume|title|year|author)\}/;
+const FIELD_SPLIT = /\{(series|volume|title|year|author)\}/;
 
 /**
  * Why `template` can't be a file name template, or null when it can: `separator` for a `/` or `\`
@@ -39,4 +41,38 @@ export function isFileNameTemplate(value: unknown): value is string {
  */
 export function fillFileNameTemplate(template: string, values: Record<FileNameField, string>): string {
   return template.replace(FIELD, (_, field: FileNameField) => values[field]);
+}
+
+/** What {@link parseFileName} reads out of a file name: the fields the template names and the name holds. */
+export type ParsedFileName = Partial<Record<FileNameField, string>>;
+
+/** `_` as a word separator is the same as a space; runs of blanks are one. */
+function spaced(text: string): string {
+  return text.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Reads a file name (without its extension) with a template written like `libraryFileName`, the
+ * reverse of {@link fillFileNameTemplate}: with `{series} - T{volume}`, `Tintin - T20` gives
+ * `{ series: 'Tintin', volume: '20' }`. The whole name has to match; `null` when it doesn't, or when
+ * the template has no field. `_` counts as a space on both sides, the empty template matches nothing.
+ */
+export function parseFileName(name: string, template: string): ParsedFileName | null {
+  if (!isFileNameTemplate(template) || !FIELD_TEST.test(template)) return null;
+  const fields: FileNameField[] = [];
+  const source = spaced(template)
+    .split(FIELD_SPLIT)
+    .map((part, index) => {
+      if (index % 2 === 0) return part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      fields.push(part as FileNameField);
+      return part === 'year' ? '(\\d{4})' : part === 'volume' ? '(\\S+?)' : '(.+?)';
+    })
+    .join('');
+  const match = new RegExp(`^${source}$`, 'i').exec(spaced(name));
+  if (!match) return null;
+  const parsed: ParsedFileName = {};
+  fields.forEach((field, index) => {
+    parsed[field] ??= match[index + 1].trim();
+  });
+  return parsed;
 }

@@ -14,7 +14,10 @@ import {
   reviewFieldLabel,
   reviewToUpdate,
 } from '@/lib/metadata-review';
+import { hasFiche } from '@/lib/library-filter';
+import { initialLookupQuery, offeredRules, queryFromRule, rememberRule } from '@/lib/lookup-query';
 import { cn, formatLanguage } from '@/lib/utils';
+import { fileNameTemplateError } from '@/shared/file-name-template';
 import { CREDIT_ROLES, type CreditRole, type LibraryEntry } from '@/shared/library';
 import {
   METADATA_SOURCE_LABELS,
@@ -23,7 +26,7 @@ import {
   type MetadataQuery,
   pageSourceOf,
 } from '@/shared/metadata';
-import { formatPersonName, guessQueryFromTitle } from '@/shared/title-parsing';
+import { formatPersonName } from '@/shared/title-parsing';
 
 /** How to look the book up: in the public APIs, or from the link of a page of a supported site. */
 type Mode = 'api' | 'site';
@@ -40,11 +43,6 @@ type Step =
 
 const INPUT_CLASS =
   'h-8 rounded-md border bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
-
-/** What to search for first: the stored series and volume if any, else a guess from the title. */
-function initialQuery(entry: LibraryEntry): MetadataQuery {
-  return entry.series ? { text: entry.series, volume: entry.volume } : guessQueryFromTitle(entry.title);
-}
 
 /**
  * Looks a library entry up, lets the user pick the right book among the results (each shows its
@@ -63,10 +61,23 @@ export function MetadataDialog({
   onApplied: (entry: LibraryEntry) => void;
 }) {
   const { t } = useTranslation(['metadata', 'common']);
-  const { settings } = useSettings();
+  const { settings, update } = useSettings();
   const [mode, setMode] = useState<Mode>('api');
-  const [query, setQuery] = useState<MetadataQuery>(() => initialQuery(entry));
+  const [query, setQuery] = useState<MetadataQuery>(() => initialLookupQuery(entry));
   const [pageUrl, setPageUrl] = useState('');
+  // A book with no information yet starts from its file name: a rule can read it into the fields.
+  const needsRule = !hasFiche(entry);
+  const rules = offeredRules(settings?.fileNameRules ?? [], settings?.libraryFileName ?? '');
+  const [rule, setRule] = useState('');
+  const [ruleMisses, setRuleMisses] = useState(false);
+  const ruleError = rule === '' ? null : fileNameTemplateError(rule);
+  const applyRule = () => {
+    const found = queryFromRule(entry, rule);
+    setRuleMisses(found === null);
+    if (!found) return;
+    setQuery(found);
+    update('fileNameRules', rememberRule(settings?.fileNameRules ?? [], rule));
+  };
   const enabledSources = API_SOURCES.filter((source) =>
     source === 'comicvine' ? settings?.comicVineEnabled : settings?.googleBooksEnabled,
   );
@@ -182,6 +193,40 @@ export function MetadataDialog({
                 onChange={(event) => setQuery({ ...query, volume: event.target.value || null })}
               />
             </div>
+            {needsRule && (
+              <div className="flex flex-col gap-1 rounded-md border p-2">
+                <span className="text-xs text-muted-foreground">{t('ruleHint')}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    aria-label={t('ruleLabel')}
+                    placeholder={t('rulePlaceholder')}
+                    list="file-name-rules"
+                    className={cn(INPUT_CLASS, 'min-w-48 flex-1 font-mono')}
+                    value={rule}
+                    onChange={(event) => {
+                      setRule(event.target.value);
+                      setRuleMisses(false);
+                    }}
+                  />
+                  <datalist id="file-name-rules">
+                    {rules.map((previous) => (
+                      <option key={previous} value={previous} />
+                    ))}
+                  </datalist>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={rule === '' || ruleError !== null}
+                    onClick={applyRule}
+                  >
+                    {t('applyRule')}
+                  </Button>
+                </div>
+                {ruleError && <p className="text-xs text-destructive">{t('ruleInvalid')}</p>}
+                {ruleMisses && <p className="text-xs text-destructive">{t('ruleNoMatch')}</p>}
+              </div>
+            )}
             <fieldset className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
               <legend className="sr-only">{t('sourcesLabel')}</legend>
               <span className="text-muted-foreground">{t('sourcesLabel')}</span>

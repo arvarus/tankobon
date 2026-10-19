@@ -38,6 +38,12 @@ const metadata: Translation<typeof en> = {
   pageUrlPlaceholder: 'https://…',
   pageSitesHint: 'Sites pris en charge : Bédéthèque (fiche album), BDfugue (fiche produit) et Nautiljon (fiche du tome).',
   stop: 'Arrêter',
+  ruleHint: "Ce livre n'a pas encore d'informations : la recherche part de son nom de fichier. Décris comment le nom est construit, avec les champs des noms de fichiers de la bibliothèque ({series} {volume} {title} {year} {author}), pour en lire la série et le tome.",
+  ruleLabel: 'Règle du nom de fichier',
+  rulePlaceholder: '{series} - T{volume}',
+  applyRule: 'Lire le nom',
+  ruleInvalid: "Cette règle n'est pas valide : utilise seulement les champs ci-dessus, sans / ni \\.",
+  ruleNoMatch: "Le nom du fichier ne correspond pas à cette règle.",
 };
 
 export default metadata;
