@@ -279,13 +279,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
  * on. All the others (reading, appearance, language, home, library views…) belong to each user.
  */
 export const SHARED_SETTINGS: readonly (keyof AppSettings)[] = [
-  'addOpenedBooksToLibrary',
   'comicVineEnabled',
   'comicVineApiKey',
   'googleBooksEnabled',
   'googleBooksApiKey',
   'checkUpdatesOnStartup',
-  'lastScanFolder',
   'libraryOrganization',
   'libraryStructure',
   'libraryFileName',
