@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { availableTags, EMPTY_FILTERS, filterEntries, hasActiveFilters } from './library-filter';
+import { availableTags, EMPTY_FILTERS, filterEntries, hasActiveFilters, hasFiche } from './library-filter';
 import type { LibraryEntry } from '@/shared/library';
 
 function entry(overrides: Partial<LibraryEntry> = {}): LibraryEntry {
@@ -96,8 +96,8 @@ describe('filterEntries', () => {
   });
 
   it('combines the filters', () => {
-    expect(ids({ search: 'i', tags: ['À lire'], rating: 'all' })).toEqual(['c']);
-    expect(ids({ search: 'i', tags: ['À lire'], rating: 1 })).toEqual([]);
+    expect(ids({ search: 'i', tags: ['À lire'], rating: 'all', withoutFiche: false })).toEqual(['c']);
+    expect(ids({ search: 'i', tags: ['À lire'], rating: 1, withoutFiche: false })).toEqual([]);
   });
 });
 
@@ -113,5 +113,21 @@ describe('hasActiveFilters', () => {
   it('is true once a filter is set', () => {
     expect(hasActiveFilters({ ...EMPTY_FILTERS, tags: ['Lu'] })).toBe(true);
     expect(hasActiveFilters({ ...EMPTY_FILTERS, rating: 2 })).toBe(true);
+  });
+});
+
+describe('without-fiche filter', () => {
+  it('tells entries with and without a fiche apart', () => {
+    expect(hasFiche(entry())).toBe(false);
+    expect(hasFiche(entry({ series: 'Tintin' }))).toBe(true);
+    expect(hasFiche(entry({ language: 'fr' }))).toBe(true);
+    expect(hasFiche(entry({ credits: [{ firstName: 'Hergé', lastName: 'Remi', role: 'writer' }] as LibraryEntry['credits'] }))).toBe(true);
+  });
+
+  it('keeps only the entries without a fiche and counts as an active filter', () => {
+    const entries = [entry({ id: 'a' }), entry({ id: 'b', volume: '3' })];
+    const filters = { ...EMPTY_FILTERS, withoutFiche: true };
+    expect(filterEntries(entries, filters).map((e) => e.id)).toEqual(['a']);
+    expect(hasActiveFilters(filters)).toBe(true);
   });
 });

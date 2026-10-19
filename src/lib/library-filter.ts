@@ -19,10 +19,12 @@ export interface LibraryFilters {
   /** Entries must carry *every* selected tag; an empty list doesn't filter. */
   tags: string[];
   rating: RatingFilter;
+  /** Keeps only the entries without a fiche (see `hasFiche()`). */
+  withoutFiche: boolean;
 }
 
 /** Filters that keep every entry. */
-export const EMPTY_FILTERS: LibraryFilters = { search: '', tags: [], rating: 'all' };
+export const EMPTY_FILTERS: LibraryFilters = { search: '', tags: [], rating: 'all', withoutFiche: false };
 
 /**
  * Every tag in use across the library, for the filter bar to offer. `first` (the library page's
@@ -67,15 +69,24 @@ function searchableText(entry: LibraryEntry): string {
   return text;
 }
 
+/**
+ * Whether an entry has a fiche: some information beyond the title, whether typed by hand or
+ * brought by a lookup (series, volume, release date, language or credits).
+ */
+export function hasFiche(entry: LibraryEntry): boolean {
+  return Boolean(entry.series || entry.volume || entry.releaseDate || entry.language) || entry.credits.length > 0;
+}
+
 /** `matchesFilters` with the search text already normalized, so a whole list normalizes it once. */
 function matches(entry: LibraryEntry, search: string, filters: LibraryFilters): boolean {
   if (search && !searchableText(entry).includes(search)) return false;
   if (!filters.tags.every((tag) => entry.tags.includes(tag))) return false;
   if (filters.rating !== 'all' && entry.rating < filters.rating) return false;
+  if (filters.withoutFiche && hasFiche(entry)) return false;
   return true;
 }
 
-/** Whether an entry passes the search text, *every* selected tag and the minimum rating. */
+/** Whether an entry passes the search text, *every* selected tag, the minimum rating and the without-fiche filter. */
 export function matchesFilters(entry: LibraryEntry, filters: LibraryFilters): boolean {
   return matches(entry, normalize(filters.search.trim()), filters);
 }
@@ -88,5 +99,5 @@ export function filterEntries(entries: LibraryEntry[], filters: LibraryFilters):
 
 /** Whether any filter would narrow the list (whitespace-only search does not count). */
 export function hasActiveFilters(filters: LibraryFilters): boolean {
-  return filters.search.trim() !== '' || filters.tags.length > 0 || filters.rating !== 'all';
+  return filters.search.trim() !== '' || filters.tags.length > 0 || filters.rating !== 'all' || filters.withoutFiche;
 }

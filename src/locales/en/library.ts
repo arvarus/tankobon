@@ -73,6 +73,7 @@ export default {
   ratingFilter: 'Rating',
   atLeast_one: 'At least {{count}} star',
   atLeast_other: 'At least {{count}} stars',
+  withoutFiche: 'Only books without a fiche (no series, volume, date, language or credits)',
   viewMode: 'Display mode',
   viewFull: 'Full: all the information',
   viewMedium: 'Medium: cover and basic information',
