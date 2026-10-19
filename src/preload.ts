@@ -25,6 +25,7 @@ import type {
   OrganizeResult,
   PickOrganizationFolderResult,
   RelinkFolderResult,
+  RemoveEntriesResult,
   UnlinkedFolder,
   ResyncResult,
   UnorganizedCountResult,
@@ -104,6 +105,8 @@ export interface LibraryApi {
   onImageScanProgress(listener: (progress: ImageScanProgress) => void): () => void;
   /** Removes an entry from the library; the file on disk is left untouched. */
   remove(id: string): Promise<void>;
+  /** Removes several entries from the library; with `deleteFiles`, their files (and the covers beside them) are also moved to the system trash. A file that can't be trashed is counted as failed, its entry is removed anyway. */
+  removeMany(ids: string[], deleteFiles: boolean): Promise<RemoveEntriesResult>;
   /** Saves the last page read (0-based) of a library entry. */
   updateProgress(id: string, currentPage: number): Promise<void>;
   /** Sets the rating of a library entry: 0 (unrated) to 5. */
@@ -306,6 +309,7 @@ const api: TankobonApi = {
     relinkFolder: (id) => ipcRenderer.invoke('library:relink-folder', id),
     resync: () => ipcRenderer.invoke('library:resync'),
     remove: (id) => ipcRenderer.invoke('library:remove', id),
+    removeMany: (ids, deleteFiles) => ipcRenderer.invoke('library:remove-many', ids, deleteFiles),
     updateProgress: (id, currentPage) => ipcRenderer.invoke('library:update-progress', id, currentPage),
     updateRating: (id, rating) => ipcRenderer.invoke('library:update-rating', id, rating),
     updateTags: (id, tags) => ipcRenderer.invoke('library:update-tags', id, tags),

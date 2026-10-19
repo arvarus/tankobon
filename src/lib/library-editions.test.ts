@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { collapseEditions, editionGroups, editionKey } from './library-editions';
+import { collapseEditions, duplicateGroups, editionGroups, editionKey } from './library-editions';
 import type { LibraryEntry } from '@/shared/library';
 
 function entry(id: string, overrides: Partial<LibraryEntry> = {}): LibraryEntry {
@@ -69,5 +69,21 @@ describe('collapseEditions', () => {
     const pdf = entry('b', { path: '/comics/b.pdf' });
     const groups = editionGroups([cbz, other, pdf]);
     expect(collapseEditions([pdf, other, cbz], groups).map((e) => e.id)).toEqual(['b', 'c']);
+  });
+});
+
+describe('duplicateGroups', () => {
+  it('groups the files of the same book and format, in library order', () => {
+    const groups = duplicateGroups([
+      entry('a', { title: 'Tintin' }),
+      entry('b', { title: 'Other' }),
+      entry('c', { title: ' tintin ' }),
+      entry('d', { title: 'Tintin', path: '/comics/d.pdf' }),
+    ]);
+    expect(groups.map((group) => group.map((e) => e.id))).toEqual([['a', 'c']]);
+  });
+
+  it('is empty when every book is in one file per format', () => {
+    expect(duplicateGroups([entry('a'), entry('b', { path: '/comics/b.pdf' })])).toEqual([]);
   });
 });

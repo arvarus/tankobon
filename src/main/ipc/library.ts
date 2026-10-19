@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron';
+import { BrowserWindow, shell } from 'electron';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -9,6 +9,7 @@ import type {
   ImageScanProgress,
   PickOrganizationFolderResult,
   RelinkFolderResult,
+  RemoveEntriesResult,
   ScanResult,
 } from '../../shared/library';
 import type { LibraryFolderRepository } from '../db/library-folder-repository';
@@ -18,6 +19,7 @@ import { isOnlineOnly } from '../services/cloud-files';
 import type { DecoderClient } from '../decoder/decoder-client';
 import type { ImageStatsScanner } from '../services/image-stats-scanner';
 import { NOTHING_ORGANIZED, type LibraryOrganizer, type Resynchronizer } from '../services/library-organization';
+import { coverSidecarPath } from '../services/cover-sidecar';
 import { openErrorMessage } from '../services/open-error';
 import { scanIntoLibrary } from '../services/library-scanner';
 import { readNfoFor } from '../services/nfo';
@@ -31,6 +33,7 @@ import {
   expectInteger,
   expectMetadataUpdate,
   expectNonEmptyString,
+  booleanArg,
   expectStringArray,
   idArg,
   pageIndexArg,
@@ -44,6 +47,7 @@ export const LIBRARY_CHANNELS = {
   /** Main → renderer, while `addFolder` runs. */
   scanProgress: 'library:scan-progress',
   remove: 'library:remove',
+  removeMany: 'library:remove-many',
   listFolders: 'library:list-folders',
   removeFolder: 'library:remove-folder',
   listUnlinkedFolders: 'library:list-unlinked-folders',
@@ -255,6 +259,37 @@ export function registerLibraryIpc(
       await decoder.removeThumbnail(entry.path).catch(() => undefined);
     }
   });
+
+  handle(
+    LIBRARY_CHANNELS.removeMany,
+    args((ids) => expectStringArray(ids, 'ids'), booleanArg),
+    async (_event, ids, deleteFiles): Promise<RemoveEntriesResult> => {
+      const result: RemoveEntriesResult = { removed: 0, filesDeleted: 0, filesFailed: 0 };
+      const removed: string[] = [];
+      for (const id of new Set(ids)) {
+        const entry = repo.get(id);
+        if (!entry) continue;
+        repo.remove(id);
+        removed.push(id);
+        result.removed++;
+        await decoder.removeThumbnail(entry.path).catch(() => undefined);
+        if (!deleteFiles) continue;
+        // To the trash, so a wrong choice can still be undone; the cover beside the comic goes along.
+        try {
+          await shell.trashItem(entry.path);
+          result.filesDeleted++;
+          await shell.trashItem(coverSidecarPath(entry.path)).catch(() => undefined);
+        } catch {
+          result.filesFailed++;
+        }
+      }
+      if (removed.length > 0) {
+        notify({ scope: 'library', removed });
+        notify({ scope: 'readingLists' });
+      }
+      return result;
+    },
+  );
 
   handle(LIBRARY_CHANNELS.updateProgress, args(idArg, pageIndexArg), (_event, id, currentPage) => {
     repo.updateProgress(id, currentPage);

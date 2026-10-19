@@ -66,3 +66,21 @@ export function collapseEditions(
     return true;
   });
 }
+
+/**
+ * The books held as several files of the same format (two CBZ of the same volume): one group per
+ * book and format, of at least two entries, in library order. Unlike {@link editionGroups}, which
+ * links different formats, these are the duplicates the user may want to clean up.
+ */
+export function duplicateGroups(entries: readonly LibraryEntry[]): LibraryEntry[][] {
+  const byKey = new Map<string, LibraryEntry[]>();
+  for (const entry of entries) {
+    const format = comicFormat(entry.path);
+    if (format === null) continue;
+    const key = `${format}|${editionKey(entry)}`;
+    const group = byKey.get(key);
+    if (group) group.push(entry);
+    else byKey.set(key, [entry]);
+  }
+  return [...byKey.values()].filter((group) => group.length > 1);
+}

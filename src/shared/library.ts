@@ -212,3 +212,13 @@ export type RelinkFolderResult = { status: 'cancelled' } | { status: 'ok' } | { 
 
 /** Result of `library.pickOrganizationFolder()`. */
 export type PickOrganizationFolderResult = { status: 'cancelled' } | { status: 'ok'; folder: string };
+
+/** Outcome of `library:remove-many`: how many entries left the library and how many files went with them. */
+export interface RemoveEntriesResult {
+  /** Entries removed from the library. */
+  removed: number;
+  /** Files moved to the trash (0 unless the files were to be deleted too). */
+  filesDeleted: number;
+  /** Files that could not be deleted (already gone, no permission); their entries were removed anyway. */
+  filesFailed: number;
+}
