@@ -45,6 +45,17 @@ function restartOnMainRebuild(): void {
   mainBundleWatcher.unref();
 }
 
+// What the comic formats are called by the desktop (Linux `.desktop` MIME types, macOS document
+// types), so a double click on one in the file explorer can open the app. Windows installers built by
+// Squirrel can't register file types: there, "Open with…" does the same.
+const COMIC_MIME_TYPES = [
+  'application/vnd.comicbook+zip',
+  'application/vnd.comicbook-rar',
+  'application/x-cbz',
+  'application/x-cbr',
+  'application/pdf',
+];
+
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
@@ -56,13 +67,30 @@ const config: ForgeConfig = {
     // look for one named after `name`: without this, `make` fails on Linux with "could not find
     // the Electron app binary". Windows and macOS keep their product-named executables.
     executableName: process.platform === 'linux' ? 'tankobon' : undefined,
+    // macOS: the file types the app opens (Finder's "Open with" and double click).
+    extendInfo: {
+      CFBundleDocumentTypes: [
+        {
+          CFBundleTypeName: 'Comic book archive',
+          CFBundleTypeRole: 'Viewer',
+          LSHandlerRank: 'Alternate',
+          CFBundleTypeExtensions: ['cbz', 'cbr'],
+        },
+        {
+          CFBundleTypeName: 'PDF document',
+          CFBundleTypeRole: 'Viewer',
+          LSHandlerRank: 'Alternate',
+          CFBundleTypeExtensions: ['pdf'],
+        },
+      ],
+    },
   },
   rebuildConfig: {},
   makers: [
     new MakerSquirrel({ setupIcon: 'assets/icon.ico' }),
     new MakerZIP({}, ['darwin']),
-    new MakerRpm({ options: { icon: 'assets/icon.png' } }),
-    new MakerDeb({ options: { icon: 'assets/icon.png' } }),
+    new MakerRpm({ options: { icon: 'assets/icon.png', mimeType: COMIC_MIME_TYPES } }),
+    new MakerDeb({ options: { icon: 'assets/icon.png', mimeType: COMIC_MIME_TYPES } }),
   ],
   plugins: [
     // `@napi-rs/canvas` (used for PDF rendering, see pdf-archive.ts) ships a native `.node`

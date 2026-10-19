@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { stat } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
@@ -13,6 +12,7 @@ import type { NotifyDataChange } from './data-changes';
 import { ArchiveOwners } from './archive-owners';
 import { existingDirectory, openDialogFor } from './dialogs';
 import { handle } from './handle';
+import { PickedFiles } from './picked-files';
 import { args, booleanArg, idArg, pageIndexArg } from './validate';
 
 // Channel names are shared with preload.ts: keep them in sync.
@@ -22,9 +22,6 @@ export const COMIC_CHANNELS = {
   readPage: 'comic:read-page',
   close: 'comic:close',
 } as const;
-
-/** How many file-dialog picks `comic:open` remembers; an older token expires. */
-const MAX_PICKED_PATHS = 20;
 
 /** Directory of the last comic opened, so the file dialogs pick up where the user left off. */
 export function lastOpenedDirectory(libraryRepo: LibraryRepository): Promise<string | undefined> {
@@ -38,13 +35,9 @@ export function registerComicIpc(
   decoder: DecoderClient,
   notify: NotifyDataChange,
   imageScanner: ImageStatsScanner,
+  // Shared with the launch files (see LaunchFiles): a file the OS asked to open is opened by token too.
+  pickedFiles: PickedFiles = new PickedFiles(),
 ): void {
-  // The files the user picked in the open dialog, by the opaque token `comic:pick-file` returned,
-  // with whether the pick came from the library's "add a file" (such a book is always added).
-  // With the library's books (by id), they are the only things `comic:open` accepts: the renderer
-  // never names a path, so it can't have the main process read an arbitrary file.
-  // Only the most recent picks are kept: a token is used right after the dialog, never much later.
-  const pickedPaths = new Map<string, { path: string; addToLibrary: boolean }>();
   // The archives each window opened: closed when the window is destroyed (a crashed or closed
   // renderer never calls `comic:close`).
   const owners = new ArchiveOwners();
@@ -61,18 +54,12 @@ export function registerComicIpc(
     if (canceled || filePaths.length === 0) {
       return null;
     }
-    const token = randomUUID();
-    pickedPaths.set(token, { path: filePaths[0], addToLibrary });
-    for (const oldest of pickedPaths.keys()) {
-      if (pickedPaths.size <= MAX_PICKED_PATHS) break;
-      pickedPaths.delete(oldest);
-    }
-    return token;
+    return pickedFiles.add(filePaths[0], addToLibrary);
   });
 
   handle(COMIC_CHANNELS.open, args(idArg), async (event, ref): Promise<OpenComicResult> => {
     // A dialog token, else a library entry id; anything else is not a book we know.
-    const picked = pickedPaths.get(ref);
+    const picked = pickedFiles.get(ref);
     const filePath = picked?.path ?? libraryRepo.get(ref)?.path;
     if (!filePath) {
       return { status: 'error', message: t('errors:archive.unknownBook') };

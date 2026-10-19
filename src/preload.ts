@@ -47,6 +47,10 @@ export interface AppApi {
   openLink(link: AppLink): Promise<void>;
   /** Asks GitHub whether a release newer than the running version is published; a network failure comes back as an `error` result, not a rejection. */
   checkUpdate(): Promise<UpdateCheckResult>;
+  /** The token of the comic the operating system asked to open (double click in the file explorer, "Open with…", a second launch with a file), or `null`; it is handed out once and opens like a `comic.pickFile` token. */
+  takeLaunchFile(): Promise<string | null>;
+  /** Subscribes to the main process's `app:launch-file` push, sent when such a comic is waiting (call `takeLaunchFile` then); returns the unsubscribe function. */
+  onLaunchFile(listener: () => void): () => void;
 }
 
 /** Opening and reading comics, as `window.tankobon.comic`. */
@@ -258,6 +262,14 @@ const api: TankobonApi = {
     getSystemLanguages: () => ipcRenderer.invoke('app:get-system-languages'),
     openLink: (link) => ipcRenderer.invoke('app:open-link', link),
     checkUpdate: () => ipcRenderer.invoke('app:check-update'),
+    takeLaunchFile: () => ipcRenderer.invoke('app:take-launch-file'),
+    onLaunchFile: (listener) => {
+      const handler = () => listener();
+      ipcRenderer.on('app:launch-file', handler);
+      return () => {
+        ipcRenderer.removeListener('app:launch-file', handler);
+      };
+    },
   },
   comic: {
     pickFile: (addToLibrary) => ipcRenderer.invoke('comic:pick-file', addToLibrary),

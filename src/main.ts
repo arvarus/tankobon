@@ -18,8 +18,10 @@ import { UserRepository } from './main/db/user-repository';
 import { broadcastDataChange } from './main/ipc/data-changes';
 import { setAppUrl } from './main/ipc/trusted-sender';
 import { registerAchievementsIpc } from './main/ipc/achievements';
-import { registerAppIpc } from './main/ipc/app';
+import { announceLaunchFile, registerAppIpc } from './main/ipc/app';
 import { registerComicIpc } from './main/ipc/comic';
+import { LaunchFiles } from './main/ipc/launch-files';
+import { PickedFiles } from './main/ipc/picked-files';
 import { registerDatabaseIpc } from './main/ipc/database';
 import { registerDataIpc } from './main/ipc/data';
 import { broadcastImageScanProgress, registerLibraryIpc } from './main/ipc/library';
@@ -29,6 +31,7 @@ import { registerStatsIpc } from './main/ipc/stats';
 import { registerSettingsIpc } from './main/ipc/settings';
 import { registerUserIpc } from './main/ipc/users';
 import { applyMainLanguage, onMainLanguageApplied } from './main/language';
+import { comicPathFromArgv } from './main/launch-files';
 import { createImageStatsScanner } from './main/services/image-stats-scanner';
 import { createLibraryOrganizer, createResynchronizer } from './main/services/library-organization';
 
@@ -43,6 +46,16 @@ const isFirstInstance = app.requestSingleInstanceLock();
 if (!isFirstInstance) {
   app.quit();
 }
+
+// macOS hands the file of a double click over `open-file`, possibly before the app is ready (a cold
+// start): those paths wait here until `offerLaunchFile` exists.
+let offerLaunchFile: ((filePath: string) => void) | null = null;
+const earlyLaunchFiles: string[] = [];
+app.on('open-file', (event, filePath) => {
+  event.preventDefault();
+  if (offerLaunchFile) offerLaunchFile(filePath);
+  else earlyLaunchFiles.push(filePath);
+});
 
 // Development mode (`npm run dev`, see forge.config.ts): only there are DevTools opened.
 const isDevMode = !app.isPackaged && process.env.TANKOBON_DEV === '1';
@@ -158,23 +171,34 @@ app.whenReady().then(() => {
   registerSettingsIpc(settingsRepo, broadcastDataChange);
   registerUserIpc(userRepo, settingsRepo, broadcastDataChange);
   registerDataIpc(db, libraryRepo, settingsRepo, readingListRepo, decoder, broadcastDataChange, imageScanner);
-  registerComicIpc(libraryRepo, settingsRepo, decoder, broadcastDataChange, imageScanner);
+  // The comics the OS asks to open are opened by token, like those picked in the reader's dialog.
+  const pickedFiles = new PickedFiles();
+  const launchFiles = new LaunchFiles(pickedFiles, announceLaunchFile);
+  registerComicIpc(libraryRepo, settingsRepo, decoder, broadcastDataChange, imageScanner, pickedFiles);
   registerDatabaseIpc();
   registerMetadataIpc(settingsRepo);
   registerAchievementsIpc(achievementRepo, broadcastDataChange);
-  registerAppIpc();
+  registerAppIpc(launchFiles);
 
   app.on('will-quit', () => {
     decoder.dispose();
     db.close();
   });
 
-  app.on('second-instance', () => {
+  app.on('second-instance', (_event, argv, workingDirectory) => {
+    const launched = comicPathFromArgv(argv, workingDirectory);
+    if (launched) launchFiles.offer(launched);
     const [window] = BrowserWindow.getAllWindows();
     if (!window) return;
     if (window.isMinimized()) window.restore();
     window.focus();
   });
+
+  // The file this launch was started with (before the window, whose renderer takes it when it starts).
+  const launched = comicPathFromArgv(process.argv, process.cwd());
+  if (launched) launchFiles.offer(launched);
+  offerLaunchFile = (filePath) => launchFiles.offer(filePath);
+  for (const filePath of earlyLaunchFiles.splice(0)) launchFiles.offer(filePath);
 
   createWindow();
 
