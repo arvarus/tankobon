@@ -148,10 +148,12 @@ export interface AchievementsApi {
 
 /** Book information lookups in public APIs, as `window.tankobon.metadata`. */
 export interface MetadataApi {
-  /** Looks a book up in the public APIs enabled in the settings (Comic Vine, Google Books). */
+  /** Looks a book up in the public APIs enabled in the settings (Comic Vine, Google Books), or only in those named by `query.sources`. */
   search(query: MetadataQuery): Promise<MetadataSearchResult>;
-  /** Reads a book from the Bédéthèque album page at `url`, a link the user pasted. */
+  /** Reads a book from the page at `url`, a link the user pasted (Bédéthèque album, BDfugue product or Nautiljon volume). */
   fromPage(url: string): Promise<MetadataPageResult>;
+  /** Saves what the user accepted in the lookup dialog: updates the library entry, rewrites the `.nfo` beside the file and makes the cover thumbnail if it has none; resolves with the updated entry, or null if it is gone. */
+  apply(id: string, update: MetadataUpdate): Promise<LibraryEntry | null>;
 }
 
 /** The user's settings, as `window.tankobon.settings`. */
@@ -355,6 +357,7 @@ const api: TankobonApi = {
   metadata: {
     search: (query) => ipcRenderer.invoke('metadata:search', query),
     fromPage: (url) => ipcRenderer.invoke('metadata:from-page', url),
+    apply: (id, update) => ipcRenderer.invoke('metadata:apply', id, update),
   },
   achievements: {
     list: () => ipcRenderer.invoke('achievements:list'),

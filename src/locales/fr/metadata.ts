@@ -3,8 +3,8 @@ import type { Translation } from '../types';
 
 const metadata: Translation<typeof en> = {
   title: 'Rechercher les infos',
-  queryLabel: 'Titre, série ou lien Bédéthèque',
-  queryPlaceholder: "Titre, série ou lien d'une fiche Bédéthèque",
+  queryLabel: 'Titre ou série',
+  queryPlaceholder: 'Titre ou série',
   volumeLabel: 'Tome ou numéro',
   volumePlaceholder: 'Tome / n°',
   readPage: 'Lire la fiche',
@@ -14,7 +14,7 @@ const metadata: Translation<typeof en> = {
   otherResults: 'Autres résultats',
   apply: 'Appliquer',
   untitled: 'Sans titre',
-  noResults: "Aucun résultat. Essaie avec le nom de la série seul, sans numéro de tome, ou colle le lien de la fiche de l'album sur bedetheque.com.",
+  noResults: "Aucun résultat. Essaie avec le nom de la série seul, sans numéro de tome, ou cherche le livre depuis le lien de sa fiche.",
   accept: 'Accepter',
   acceptField: 'Accepter : {{field}}',
   field: 'Champ',
@@ -30,6 +30,14 @@ const metadata: Translation<typeof en> = {
   role: 'Rôle',
   currentTag: 'actuel',
   proposedTag: 'proposé',
+  modeApi: 'Recherche par API',
+  modeSite: 'Depuis un lien',
+  sourcesLabel: 'Rechercher dans :',
+  noApiEnabled: 'Aucune API activée : active-en une dans Paramètres › Métadonnées.',
+  pageUrlLabel: 'Lien de la fiche du livre',
+  pageUrlPlaceholder: 'https://…',
+  pageSitesHint: 'Sites pris en charge : Bédéthèque (fiche album), BDfugue (fiche produit) et Nautiljon (fiche du tome).',
+  stop: 'Arrêter',
 };
 
 export default metadata;

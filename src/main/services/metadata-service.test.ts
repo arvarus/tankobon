@@ -121,6 +121,19 @@ describe('rankCandidates', () => {
 describe('searchMetadata', () => {
   const settings = { ...DEFAULT_SETTINGS, comicVineApiKey: 'KEY' };
 
+  it('only queries the sources the query names', async () => {
+    const fetch = fakeFetch([...comicVineRoutes, [/googleapis/, { items: [] }]]);
+    await searchMetadata({ text: 'X-Men', volume: '141', sources: ['googlebooks'] }, settings, http(fetch));
+    const urls = fetch.mock.calls.map(([url]) => String(url));
+    expect(urls.length).toBeGreaterThan(0);
+    expect(urls.every((url) => url.includes('googleapis'))).toBe(true);
+  });
+
+  it('is an error when the named sources are all unavailable', async () => {
+    const result = await searchMetadata({ text: 'X', volume: null, sources: [] }, settings, http(fakeFetch([])));
+    expect(result.status).toBe('error');
+  });
+
   it('finds the issue in the matching series on Comic Vine, with its credits', async () => {
     const fetch = fakeFetch([...comicVineRoutes, [/googleapis/, {}]]);
     const result = await searchMetadata({ text: 'X-Men', volume: '141' }, settings, http(fetch));
@@ -226,7 +239,7 @@ describe('fetchMetadataPage', () => {
   it('returns errors as a result, not as a rejection', async () => {
     expect(await fetchMetadataPage('https://example.com/', http(fakeFetch([])))).toMatchObject({
       status: 'error',
-      message: expect.stringMatching(/^Bédéthèque : ce lien n'est pas/),
+      message: expect.stringMatching(/^Ce lien n'est pas celui d'une page d'un site pris en charge/),
     });
     expect(
       await fetchMetadataPage('https://www.bedetheque.com/BD-X-1.html', http(fakeFetch([]))),

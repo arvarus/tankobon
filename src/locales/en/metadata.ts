@@ -1,8 +1,8 @@
 // The metadata lookup dialog ("Look up details"): search, results, review.
 export default {
   title: 'Look up details',
-  queryLabel: 'Title, series or Bédéthèque link',
-  queryPlaceholder: 'Title, series or link to a Bédéthèque album page',
+  queryLabel: 'Title or series',
+  queryPlaceholder: 'Title or series',
   volumeLabel: 'Volume or issue number',
   volumePlaceholder: 'Volume / #',
   readPage: 'Read the page',
@@ -12,7 +12,7 @@ export default {
   otherResults: 'Other results',
   apply: 'Apply',
   untitled: 'Untitled',
-  noResults: 'No results. Try the series name alone, without a volume number, or paste the link to the album’s page on bedetheque.com.',
+  noResults: 'No results. Try the series name alone, without a volume number, or look the book up from the link of its page.',
   accept: 'Accept',
   acceptField: 'Accept: {{field}}',
   field: 'Field',
@@ -28,4 +28,12 @@ export default {
   role: 'Role',
   currentTag: 'current',
   proposedTag: 'proposed',
+  modeApi: 'Search in APIs',
+  modeSite: 'From a page link',
+  sourcesLabel: 'Search in:',
+  noApiEnabled: 'No API enabled: turn one on in Settings › Metadata.',
+  pageUrlLabel: 'Link of the book’s page',
+  pageUrlPlaceholder: 'https://…',
+  pageSitesHint: 'Supported sites: Bédéthèque (album page), BDfugue (product page) and Nautiljon (volume page).',
+  stop: 'Stop',
 };

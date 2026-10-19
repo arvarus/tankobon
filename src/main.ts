@@ -178,7 +178,7 @@ app.whenReady().then(() => {
   const launchFiles = new LaunchFiles(pickedFiles, announceLaunchFile);
   registerComicIpc(libraryRepo, settingsRepo, decoder, broadcastDataChange, imageScanner, pickedFiles);
   registerDatabaseIpc();
-  registerMetadataIpc(settingsRepo);
+  registerMetadataIpc(settingsRepo, libraryRepo, decoder, broadcastDataChange);
   registerAchievementsIpc(achievementRepo, broadcastDataChange);
   registerAppIpc(launchFiles);
 
