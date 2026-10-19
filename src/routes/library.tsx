@@ -1,13 +1,14 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { FolderOpen, FolderTree, GripVertical, ListPlus, Pencil, ScanSearch, Trash2 } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type DragEvent, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AddToListDialog } from '@/components/add-to-list-dialog';
 import { BookDetails, BookRating, BookTags } from '@/components/book-row';
 import { BookEditDialog } from '@/components/book-edit-dialog';
 import { useConfirm } from '@/components/confirm-dialog';
+import { BookCard } from '@/components/library/book-card';
 import { LibraryToolbar } from '@/components/library/library-toolbar';
 import { ScanProgressBar } from '@/components/library/scan-progress-bar';
 import { SelectionBar } from '@/components/library/selection-bar';
@@ -20,7 +21,7 @@ import { useSettings } from '@/hooks/use-settings';
 import { appData } from '@/lib/app-data';
 import { availableTags, EMPTY_FILTERS, filterEntries, type LibraryFilters } from '@/lib/library-filter';
 import { collapseEditions, editionGroups } from '@/lib/library-editions';
-import { groupBySeries, ungroupedRows } from '@/lib/library-groups';
+import { gridLines, groupBySeries, ungroupedRows } from '@/lib/library-groups';
 import { sortEntries } from '@/lib/library-sort';
 import { draggedEntries, selectedEntries, toggleSelection } from '@/lib/library-selection';
 import { encodeDraggedEntries, LIBRARY_ENTRY_DRAG_TYPE, QUICK_TAGS } from '@/lib/reading-list';
@@ -28,6 +29,12 @@ import { cn } from '@/lib/utils';
 import { comicFormat } from '@/shared/comic';
 import type { LibraryEntry, ScanProgress } from '@/shared/library';
 import type { BookRowView } from '@/shared/settings';
+
+/** Narrowest a book card of the grid view is allowed to get, and the space between cards (px). */
+const CARD_MIN_WIDTH = 150;
+const CARD_GAP = 16;
+/** Height guessed for a line of covers before it is measured. */
+const ESTIMATED_CARDS_HEIGHT = 300;
 
 export const Route = createFileRoute('/library')({
   component: LibraryPage,
@@ -48,7 +55,9 @@ function LibraryPage() {
   const navigate = useNavigate();
   const library = useLibrary();
   const { settings, update } = useSettings();
-  const view = settings.libraryView;
+  const gridView = settings.libraryView === 'grid';
+  // Rows only; the grid view lays the same books out in lines of covers instead.
+  const view: BookRowView = settings.libraryView === 'grid' ? 'full' : settings.libraryView;
   const grouped = settings.libraryGroupBySeries;
   const sort = settings.librarySort;
   const entries = library ?? NO_ENTRIES;
@@ -153,6 +162,19 @@ function LibraryPage() {
     await window.tankobon.library.remove(entry.id);
   };
 
+  // Only the grip of a row (or a whole card) drags the book onto a reading list of the sidebar; a
+  // selected book carries the whole selection with it. `image` is the drag image of a single book (the
+  // card itself when omitted), or a "N books" label for several, so the user sees what is carried.
+  const startDrag = (event: DragEvent<HTMLElement>, entry: LibraryEntry, image: Element | null = event.currentTarget) => {
+    const carried = draggedEntries(entry, selection);
+    event.dataTransfer.setData(LIBRARY_ENTRY_DRAG_TYPE, encodeDraggedEntries(carried));
+    // 'move', like the app's other drags, so the OS shows the same pointer (not the
+    // copy one with a "+"), even though the book stays in the library.
+    event.dataTransfer.effectAllowed = 'move';
+    if (carried.length > 1) setCountDragImage(event.dataTransfer, t('dragCount', { count: carried.length }));
+    else if (image) event.dataTransfer.setDragImage(image, 0, 0);
+  };
+
   const replaceEntry = (updated: LibraryEntry) => appData.upsertEntry(updated);
 
   // Only the rows near the viewport exist: a library of tens of thousands of books stays light.
@@ -160,17 +182,24 @@ function LibraryPage() {
   // A new search or order starts from the top, not from wherever the previous results were scrolled to.
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
-  }, [deferredFilters, grouped, sort]);
+  }, [deferredFilters, grouped, sort, gridView]);
+  const columns = useGridColumns(scrollRef, gridView && library !== null && visible.length > 0);
+  const lines = useMemo(() => (gridView ? gridLines(rows, columns) : rows), [gridView, rows, columns]);
   // The virtualizer's functions aren't memoized, which the React Compiler lint can't know is fine here.
   // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
-    count: rows.length,
+    count: lines.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: (index) => (rows[index].kind === 'series' ? ESTIMATED_HEADER_HEIGHT : ESTIMATED_ROW_HEIGHT[view]),
+    estimateSize: (index) => {
+      const line = lines[index];
+      if (line.kind === 'series') return ESTIMATED_HEADER_HEIGHT;
+      return line.kind === 'cards' ? ESTIMATED_CARDS_HEIGHT : ESTIMATED_ROW_HEIGHT[view];
+    },
     getItemKey: (index) => {
-      const row = rows[index];
-      // A series heading's key can't collide with an entry id (a UUID).
-      return row.kind === 'series' ? `series:${row.key}` : row.entry.id;
+      const line = lines[index];
+      // A heading's or a line's key can't collide with an entry id (a UUID).
+      if (line.kind === 'series') return `series:${line.key}`;
+      return line.kind === 'cards' ? `cards:${line.entries[0].id}` : line.entry.id;
     },
     overscan: 6,
   });
@@ -228,7 +257,45 @@ function LibraryPage() {
         <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto rounded-md border">
           <ul className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
             {virtualizer.getVirtualItems().map((item) => {
-              const row = rows[item.index];
+              const row = lines[item.index];
+              if (row.kind === 'cards') {
+                return (
+                  <li
+                    key={`cards:${row.entries[0].id}`}
+                    ref={virtualizer.measureElement}
+                    data-index={item.index}
+                    style={{
+                      transform: `translateY(${item.start}px)`,
+                      gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+                      gap: CARD_GAP,
+                    }}
+                    className="absolute top-0 left-0 grid w-full p-4 pb-0"
+                  >
+                    {row.entries.map((entry) => (
+                      <BookCard
+                        key={entry.id}
+                        entry={entry}
+                        selected={selected.has(entry.id)}
+                        selectionCount={selection.length}
+                        onTick={(shift) => tick(entry.id, shift)}
+                        onDragStart={(event) => startDrag(event, entry)}
+                        editions={editions.get(entry.id)?.map((edition) => ({
+                          id: edition.id,
+                          format: comicFormat(edition.path) ?? '',
+                          onOpen: () => void navigate({ to: '/reader', search: { book: edition.id } }),
+                        }))}
+                        actions={{
+                          onOpen: () => void navigate({ to: '/reader', search: { book: entry.id } }),
+                          onEdit: () => setEditEntry(entry),
+                          onLookup: () => setLookupEntry(entry),
+                          onAddToList: () => setListEntries([entry]),
+                          onRemove: () => void remove(entry),
+                        }}
+                      />
+                    ))}
+                  </li>
+                );
+              }
               if (row.kind === 'series') {
                 return (
                   <SeriesHeader
@@ -258,18 +325,7 @@ function LibraryPage() {
                     is the drag image (or a "N books" label for several), so the user sees what is carried. */}
                 <div
                   draggable
-                  onDragStart={(event) => {
-                    const carried = draggedEntries(entry, selection);
-                    event.dataTransfer.setData(LIBRARY_ENTRY_DRAG_TYPE, encodeDraggedEntries(carried));
-                    // 'move', like the app's other drags, so the OS shows the same pointer (not the
-                    // copy one with a "+"), even though the book stays in the library.
-                    event.dataTransfer.effectAllowed = 'move';
-                    if (carried.length > 1) setCountDragImage(event.dataTransfer, t('dragCount', { count: carried.length }));
-                    else {
-                      const row = event.currentTarget.closest('li');
-                      if (row) event.dataTransfer.setDragImage(row, 0, 0);
-                    }
-                  }}
+                  onDragStart={(event) => startDrag(event, entry, event.currentTarget.closest('li'))}
                   className="-ml-1 shrink-0 cursor-grab rounded-sm py-2 text-muted-foreground/60 hover:bg-accent hover:text-foreground active:cursor-grabbing"
                   title={t(selected.has(entry.id) && selection.length > 1 ? 'dragSelectionHint' : 'dragHint')}
                   aria-label={t('dragHandle', { title: entry.title })}
@@ -364,6 +420,28 @@ function LibraryPage() {
       {confirmDialog}
     </div>
   );
+}
+
+/**
+ * How many covers fit side by side in the scroll area `ref` while the grid view is on, from its width
+ * (kept up to date as the window is resized). Starts at one, until the area is measured.
+ */
+function useGridColumns(ref: RefObject<HTMLDivElement | null>, active: boolean): number {
+  const [columns, setColumns] = useState(1);
+  useEffect(() => {
+    const element = ref.current;
+    if (!active || !element) return;
+    const measure = () => {
+      // The list's padding on both sides is left out of the width the cards share.
+      const width = element.clientWidth - 2 * CARD_GAP;
+      setColumns(Math.max(1, Math.floor((width + CARD_GAP) / (CARD_MIN_WIDTH + CARD_GAP))));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [ref, active]);
+  return columns;
 }
 
 /**

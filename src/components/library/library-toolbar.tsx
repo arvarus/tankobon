@@ -1,4 +1,4 @@
-import { Layers, Search, X } from 'lucide-react';
+import { FileQuestion, Layers, Search, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { ViewModePicker } from '@/components/book-row';
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { EMPTY_FILTERS, hasActiveFilters, type LibraryFilters } from '@/lib/library-filter';
 import { tagLabel } from '@/lib/reading-list';
 import { cn } from '@/lib/utils';
-import type { BookRowView, LibrarySort } from '@/shared/settings';
+import type { LibrarySort, LibraryView } from '@/shared/settings';
 
 /** Search field, filters, order and display options above the library list. */
 export function LibraryToolbar({
@@ -29,8 +29,8 @@ export function LibraryToolbar({
   tags: string[];
   shown: number;
   total: number;
-  view: BookRowView;
-  onViewChange: (view: BookRowView) => void;
+  view: LibraryView;
+  onViewChange: (view: LibraryView) => void;
   grouped: boolean;
   onGroupedChange: (grouped: boolean) => void;
   sort: LibrarySort;
@@ -65,9 +65,20 @@ export function LibraryToolbar({
           onChange={(rating) => onChange({ ...filters, rating })}
         />
 
+        <Button
+          variant={filters.withoutFiche ? 'secondary' : 'outline'}
+          size="icon"
+          onClick={() => onChange({ ...filters, withoutFiche: !filters.withoutFiche })}
+          aria-pressed={filters.withoutFiche}
+          title={t('withoutFiche')}
+          aria-label={t('withoutFiche')}
+        >
+          <FileQuestion />
+        </Button>
+
         <SortPicker sort={sort} onChange={onSortChange} disabled={grouped} />
 
-        <ViewModePicker view={view} onChange={onViewChange} />
+        <ViewModePicker view={view} onChange={onViewChange} withGrid />
 
         <Button
           variant={grouped ? 'secondary' : 'outline'}

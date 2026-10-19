@@ -56,6 +56,13 @@ export type LibrarySort = (typeof LIBRARY_SORTS)[number];
  */
 export type BookRowView = 'full' | 'medium' | 'compact';
 
+/**
+ * The library's display modes: the {@link BookRowView} rows, or `grid`, covers side by side with the
+ * series, title and volume under each. A reading list keeps to rows, so only `AppSettings.libraryView`
+ * can be `grid`.
+ */
+export type LibraryView = BookRowView | 'grid';
+
 /** Every block of the home page, in the order they show by default. */
 export const HOME_SECTIONS = ['continueReading', 'recentlyAdded', 'favorites', 'suggestions', 'secondChance'] as const;
 
@@ -144,8 +151,8 @@ export interface AppSettings {
    * the library is read anonymously: nothing is saved, and it reopens from its first page.
    */
   addOpenedBooksToLibrary: boolean;
-  /** How much each row of the library shows (see {@link BookRowView}). */
-  libraryView: BookRowView;
+  /** How the library shows its books: how much each row shows, or a grid of covers (see {@link LibraryView}). */
+  libraryView: LibraryView;
   /** How much each row of a reading list's page shows, set apart from the library's (see {@link BookRowView}). */
   readingListView: BookRowView;
   /** Whether the library list is grouped by series, each series behind a heading that can be folded. */
@@ -311,6 +318,7 @@ const isBoolean = (value: unknown): value is boolean => typeof value === 'boolea
 const isString = (value: unknown): value is string => typeof value === 'string';
 const isBookRowView = (value: unknown): value is BookRowView =>
   value === 'full' || value === 'medium' || value === 'compact';
+const isLibraryView = (value: unknown): value is LibraryView => value === 'grid' || isBookRowView(value);
 
 /**
  * One type guard per setting, the single definition of what a stored value may be. The main process
@@ -323,7 +331,7 @@ export const SETTING_VALIDATORS: SettingValidators = {
   theme: (value): value is ThemeSetting => (THEME_SETTINGS as readonly unknown[]).includes(value),
   readingDirection: (value): value is AppSettings['readingDirection'] => value === 'ltr' || value === 'rtl',
   addOpenedBooksToLibrary: isBoolean,
-  libraryView: isBookRowView,
+  libraryView: isLibraryView,
   readingListView: isBookRowView,
   libraryGroupBySeries: isBoolean,
   librarySort: (value): value is AppSettings['librarySort'] =>

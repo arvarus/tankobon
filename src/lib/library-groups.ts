@@ -36,6 +36,40 @@ export interface EntryRow {
 /** One row of the library list: a series heading (grouped view only) or a book. */
 export type LibraryRow = SeriesHeaderRow | EntryRow;
 
+/** A line of covers of the grid view: the books that sit side by side. */
+export interface CardsRow {
+  /** Tells a line of covers from a heading or a single book. */
+  kind: 'cards';
+  /** The books of the line, in order; the last line may hold fewer than the columns. */
+  entries: LibraryEntry[];
+}
+
+/** One line of the library list as drawn: a row, or in the grid view a heading or a line of covers. */
+export type LibraryLine = SeriesHeaderRow | EntryRow | CardsRow;
+
+/**
+ * The rows laid out for the grid view: each run of books between two headings is cut into lines of
+ * `columns` covers, the headings stay on a line of their own. Fewer than one column counts as one.
+ */
+export function gridLines(rows: LibraryRow[], columns: number): LibraryLine[] {
+  const size = Math.max(1, Math.floor(columns));
+  const lines: LibraryLine[] = [];
+  let line: CardsRow | null = null;
+  for (const row of rows) {
+    if (row.kind === 'series') {
+      lines.push(row);
+      line = null;
+      continue;
+    }
+    if (!line || line.entries.length === size) {
+      line = { kind: 'cards', entries: [] };
+      lines.push(line);
+    }
+    line.entries.push(row.entry);
+  }
+  return lines;
+}
+
 /** The entries as rows, in their order, with no heading: the library list when grouping is off. */
 export function ungroupedRows(entries: LibraryEntry[]): EntryRow[] {
   return entries.map((entry) => ({ kind: 'entry', entry }));

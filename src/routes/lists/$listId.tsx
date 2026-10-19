@@ -142,7 +142,10 @@ function ReadingListPage() {
         <p className="text-xs text-muted-foreground">
           {t('count', { count: entries.length, max: MAX_READING_LIST_SIZE, readTag: tagLabel(READ_TAG) })}
         </p>
-        {entries.length > 0 && <ViewModePicker view={view} onChange={(next) => update('readingListView', next)} />}
+        {entries.length > 0 && <ViewModePicker
+            view={view}
+            onChange={(next) => next !== 'grid' && update('readingListView', next)}
+          />}
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
 
