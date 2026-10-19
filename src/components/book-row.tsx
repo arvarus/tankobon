@@ -1,4 +1,4 @@
-import { LayoutList, Rows2, Rows3, Star, X } from 'lucide-react';
+import { LayoutGrid, LayoutList, Rows2, Rows3, Star, X } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -15,20 +15,32 @@ import { cn, formatFileSize, formatLanguage } from '@/lib/utils';
 import { comicFormat } from '@/shared/comic';
 import { currentLanguage } from '@/shared/i18n';
 import { CREDIT_ROLES, type LibraryEntry } from '@/shared/library';
-import type { BookRowView } from '@/shared/settings';
+import type { BookRowView, LibraryView } from '@/shared/settings';
 import { formatPersonName } from '@/shared/title-parsing';
 
 // The parts of a book row shared by the library page and a reading list's page, so that both show a
 // book the same way in each display mode. Each page keeps its own row layout and actions around them.
 
-/** Switches a list of books between the display modes: one icon button per mode. */
-export function ViewModePicker({ view, onChange }: { view: BookRowView; onChange: (view: BookRowView) => void }) {
+/**
+ * Switches a list of books between the display modes: one icon button per mode. `withGrid` adds the
+ * grid of covers, which only the library offers.
+ */
+export function ViewModePicker({
+  view,
+  onChange,
+  withGrid = false,
+}: {
+  view: LibraryView;
+  onChange: (view: LibraryView) => void;
+  withGrid?: boolean;
+}) {
   const { t } = useTranslation('library');
-  const modes = [
+  const modes: { value: LibraryView; Icon: typeof LayoutList; label: string }[] = [
     { value: 'full', Icon: LayoutList, label: t('viewFull') },
     { value: 'medium', Icon: Rows2, label: t('viewMedium') },
     { value: 'compact', Icon: Rows3, label: t('viewCompact') },
-  ] as const;
+    ...(withGrid ? [{ value: 'grid' as const, Icon: LayoutGrid, label: t('viewGrid') }] : []),
+  ];
   return (
     <div role="group" aria-label={t('viewMode')} className="flex h-9 w-fit items-center gap-0.5 rounded-md border p-px">
       {modes.map(({ value, Icon, label }) => (

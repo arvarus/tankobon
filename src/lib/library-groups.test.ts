@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { groupBySeries, NO_SERIES_KEY, seriesKey, ungroupedRows, type LibraryRow } from './library-groups';
+import { gridLines, groupBySeries, NO_SERIES_KEY, seriesKey, ungroupedRows, type LibraryRow } from './library-groups';
 import type { LibraryEntry } from '@/shared/library';
 
 function entry(overrides: Partial<LibraryEntry> = {}): LibraryEntry {
@@ -85,5 +85,31 @@ describe('groupBySeries', () => {
 describe('ungroupedRows', () => {
   it('keeps the entries in their order, without headings', () => {
     expect(shape(ungroupedRows([entry({ id: 'b' }), entry({ id: 'a' })]))).toEqual(['b', 'a']);
+  });
+});
+
+describe('gridLines', () => {
+  const titles = (lines: ReturnType<typeof gridLines>) =>
+    lines.map((line) =>
+      line.kind === 'series' ? `# ${line.series}` : line.kind === 'cards' ? line.entries.map((e) => e.title).join(',') : '?',
+    );
+
+  it('cuts the books into lines of the given number of columns, the last one shorter', () => {
+    const rows = ungroupedRows(['a', 'b', 'c', 'd', 'e'].map((title) => entry({ id: title, title })));
+    expect(titles(gridLines(rows, 2))).toEqual(['a,b', 'c,d', 'e']);
+  });
+
+  it('starts a new line after each series heading', () => {
+    const rows = groupBySeries([
+      entry({ id: '1', title: 'a1', series: 'A' }),
+      entry({ id: '2', title: 'a2', series: 'A' }),
+      entry({ id: '3', title: 'b1', series: 'B' }),
+    ]);
+    expect(titles(gridLines(rows, 4))).toEqual(['# A', 'a1,a2', '# B', 'b1']);
+  });
+
+  it('keeps only the heading of a folded series and counts fewer than one column as one', () => {
+    const rows = groupBySeries([entry({ id: '1', title: 'a1', series: 'A' }), entry({ id: '2', title: 'b1', series: 'B' })], new Set(['a']));
+    expect(titles(gridLines(rows, 0))).toEqual(['# A', '# B', 'b1']);
   });
 });

@@ -79,6 +79,7 @@ const library: Translation<typeof en> = {
   viewFull: 'Complet : toutes les informations',
   viewMedium: 'Intermédiaire : couverture et informations de base',
   viewCompact: 'Compact : titre, volume et série',
+  viewGrid: 'Vignettes : couvertures côte à côte avec série, titre et volume',
   groupBySeries: 'Regrouper par série',
   sortLabel: 'Trier par',
   sortDisabledGrouped: 'Regroupé par série : séries par ordre alphabétique, albums par tome',
