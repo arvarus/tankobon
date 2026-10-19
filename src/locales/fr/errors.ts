@@ -70,6 +70,8 @@ const errors: Translation<typeof en> = {
     pageNotFound: "{{source}} : cette page n'existe pas.",
     invalidKey: '{{source}} : clé API invalide.',
     notAlbumPage: '{{source}} : cette page ne décrit pas un album.',
+    notBookPage: '{{source}} : cette page ne décrit pas un livre.',
+    notPageUrl: "Ce lien n'est pas celui d'une page d'un site pris en charge (Bédéthèque, BDfugue ou Nautiljon).",
     notAlbumUrl: "{{source}} : ce lien n'est pas celui d'une fiche album (https://www.bedetheque.com/BD-….html).",
     redirected: "{{source}} : le service redirige vers un autre site, requête refusée.",
     tooLarge: '{{source}} : la réponse est trop volumineuse.',

@@ -24,6 +24,7 @@ An ADR records one structural decision: the context, what was decided, and what 
 | [0018](./0018-decoder-timeouts-and-archive-ownership.md) | Decoder calls bounded by a timeout, archives tied to their window | Accepted |
 | [0019](./0019-multiple-users.md) | Several users on one library, without passwords | Accepted |
 | [0020](./0020-library-paths-relative-to-folders.md) | Library paths relative to the library folders | Accepted |
+| [0021](./0021-metadata-lookup-dialog-rework.md) | Metadata lookup dialog: explicit search, more page sources, saved to the `.nfo` | Accepted |
 
 These first four ADRs were written after the fact, from the code and its comments, then checked by the maintainer.
 

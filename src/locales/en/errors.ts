@@ -69,6 +69,8 @@ export default {
     pageNotFound: '{{source}}: this page doesn’t exist.',
     invalidKey: '{{source}}: invalid API key.',
     notAlbumPage: '{{source}}: this page doesn’t describe an album.',
+    notBookPage: '{{source}}: this page doesn’t describe a book.',
+    notPageUrl: 'This link isn’t a page of a supported site (Bédéthèque, BDfugue or Nautiljon).',
     notAlbumUrl: '{{source}}: this link isn’t an album page (https://www.bedetheque.com/BD-….html).',
     redirected: '{{source}}: the service redirected to another site, request refused.',
     tooLarge: '{{source}}: the response is too large.',

@@ -227,6 +227,11 @@ export interface AppSettings {
    * `libraryStructure`, changing it renames nothing by itself.
    */
   libraryFileName: string;
+  /**
+   * The templates the user read file names with in the lookup dialog (`parseFileName()`, written like
+   * `libraryFileName`), most recent first, at most {@link MAX_FILE_NAME_RULES}: offered again next time.
+   */
+  fileNameRules: string[];
   /** Folder last added with "Ajouter un dossier…" (empty before the first one): where the next folder dialog opens. */
   lastScanFolder: string;
 }
@@ -264,6 +269,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   libraryOrganizationFolder: '',
   libraryStructure: [],
   libraryFileName: '',
+  fileNameRules: [],
 };
 
 /**
@@ -315,6 +321,9 @@ export const MAX_PAGE_SPACING = 1000;
 export type SettingValidators = { [K in keyof AppSettings]: (value: unknown) => value is AppSettings[K] };
 
 const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
+/** How many file name rules {@link AppSettings.fileNameRules} keeps. */
+export const MAX_FILE_NAME_RULES = 10;
+
 const isString = (value: unknown): value is string => typeof value === 'string';
 const isBookRowView = (value: unknown): value is BookRowView =>
   value === 'full' || value === 'medium' || value === 'compact';
@@ -357,6 +366,8 @@ export const SETTING_VALIDATORS: SettingValidators = {
   libraryOrganizationFolder: isString,
   libraryStructure: isLibraryStructure,
   libraryFileName: isFileNameTemplate,
+  fileNameRules: (value): value is string[] =>
+    Array.isArray(value) && value.length <= MAX_FILE_NAME_RULES && value.every((rule) => isFileNameTemplate(rule) && rule !== ''),
 };
 
 /**
