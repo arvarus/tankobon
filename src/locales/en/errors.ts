@@ -34,6 +34,7 @@ export default {
     organizationFolderUnreachable: 'The organized folder can’t be reached: {{folder}}',
     organizationExpired: 'These comics can no longer be moved from here: add them again or resynchronize.',
     organizeRunning: 'A resynchronization or an organization of the library is already running.',
+    trashFailed: 'The book was removed from the library, but its file could not be moved to the trash: {{message}}',
   },
   import: {
     notJson: 'Unreadable file: this is not valid JSON.',

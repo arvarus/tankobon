@@ -50,7 +50,7 @@ const ESTIMATED_HEADER_HEIGHT = 41;
 
 function LibraryPage() {
   const { t } = useTranslation(['library', 'common']);
-  const { confirm, dialog: confirmDialog } = useConfirm();
+  const { confirm, confirmWithChoice, dialog: confirmDialog } = useConfirm();
   const offerOrganization = useOrganizationOffer(confirm);
   const navigate = useNavigate();
   const library = useLibrary();
@@ -153,13 +153,15 @@ function LibraryPage() {
 
   // The list drops the entry on the main process's `data:changed`.
   const remove = async (entry: LibraryEntry) => {
-    const confirmed = await confirm({
+    const { confirmed, checked } = await confirmWithChoice({
       title: t('confirmRemoveTitle'),
       message: t('confirmRemove', { title: entry.title }),
       action: t('confirmRemoveAction'),
+      checkbox: t('deleteFile'),
     });
     if (!confirmed) return;
-    await window.tankobon.library.remove(entry.id);
+    const result = await window.tankobon.library.remove(entry.id, checked);
+    if (result.status === 'error') setScanStatus(result.message);
   };
 
   // Only the grip of a row (or a whole card) drags the book onto a reading list of the sidebar; a

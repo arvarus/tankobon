@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { FolderOpen, Trash2 } from 'lucide-react';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useConfirm } from '@/components/confirm-dialog';
@@ -37,7 +37,8 @@ function ReaderPage() {
   const { settings } = useSettings();
   const library = useLibrary();
   const navigate = useNavigate();
-  const { confirm, dialog: confirmDialog } = useConfirm();
+  const { confirmWithChoice, dialog: confirmDialog } = useConfirm();
+  const [removeError, setRemoveError] = useState<string | null>(null);
   const { comic, page, pageUrl, pageKey, error, loading, pickAndOpen, openFile, close, next, prev } = useComic({
     loadPages: settings.readingMode !== 'continuous',
   });
@@ -65,14 +66,17 @@ function ReaderPage() {
 
   const removeFailedEntry = async () => {
     if (!failedEntry) return;
-    const confirmed = await confirm({
+    const { confirmed, checked } = await confirmWithChoice({
       title: tLibrary('confirmRemoveTitle'),
       message: tLibrary('confirmRemove', { title: failedEntry.title }),
       action: tLibrary('confirmRemoveAction'),
+      checkbox: tLibrary('deleteFile'),
     });
     if (!confirmed) return;
-    await window.tankobon.library.remove(failedEntry.id);
-    void navigate({ to: '/library' });
+    const result = await window.tankobon.library.remove(failedEntry.id, checked);
+    // The entry is gone either way; a file that stays in the trash-less case is reported, the page stays to show it.
+    if (result.status === 'error') setRemoveError(result.message);
+    else void navigate({ to: '/library' });
   };
 
   if (!comic) {
@@ -85,6 +89,7 @@ function ReaderPage() {
           {t('openFile')}
         </Button>
         {error && <p className="text-sm text-destructive">{error}</p>}
+        {removeError && <p className="text-sm text-destructive">{removeError}</p>}
         {failedEntry && (
           <Button variant="outline" onClick={removeFailedEntry}>
             <Trash2 />

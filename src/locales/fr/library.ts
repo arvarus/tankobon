@@ -61,6 +61,7 @@ const library: Translation<typeof en> = {
   remove: 'Retirer de la bibliothèque',
   confirmRemoveTitle: 'Retirer ce livre ?',
   confirmRemoveAction: 'Retirer',
+  deleteFile: 'Mettre aussi le fichier à la corbeille',
   confirmRemove: "Retirer « {{title}} » de la bibliothèque ? Sa note, ses étiquettes et ses infos seront perdues ; le fichier reste sur le disque.",
   rating: '{{rating}} / 5',
   notRated: 'Non noté',

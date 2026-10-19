@@ -10,34 +10,49 @@ export interface ConfirmOptions {
   message: string;
   /** Label of the confirming button. */
   action: string;
+  /** Label of an unchecked box shown above the buttons; only `confirmWithChoice()` reports whether it was checked. */
+  checkbox?: string;
+}
+
+/** What `confirmWithChoice()` resolves with: the answer and the state of the optional box. */
+export interface ConfirmChoice {
+  confirmed: boolean;
+  checked: boolean;
 }
 
 /**
  * In-app replacement for `window.confirm()`: `confirm(options)` resolves `true` when the user
- * confirms and `false` when they cancel, press Escape or click the backdrop. Render the returned
- * `dialog` once in the component's tree.
+ * confirms and `false` when they cancel, press Escape or click the backdrop; `confirmWithChoice()` also
+ * reports the box of `ConfirmOptions.checkbox`. Render the returned `dialog` once in the component's tree.
  */
-export function useConfirm(): { confirm: (options: ConfirmOptions) => Promise<boolean>; dialog: ReactNode } {
+export function useConfirm(): {
+  confirm: (options: ConfirmOptions) => Promise<boolean>;
+  confirmWithChoice: (options: ConfirmOptions) => Promise<ConfirmChoice>;
+  dialog: ReactNode;
+} {
   const { t } = useTranslation('common');
   const [options, setOptions] = useState<ConfirmOptions | null>(null);
-  const resolver = useRef<((confirmed: boolean) => void) | null>(null);
-
+  const [checked, setChecked] = useState(false);
+  const resolver = useRef<((choice: ConfirmChoice) => void) | null>(null);
   const settle = useCallback((confirmed: boolean) => {
-    resolver.current?.(confirmed);
+    resolver.current?.({ confirmed, checked: confirmed && checked });
     resolver.current = null;
     setOptions(null);
+  }, [checked]);
+
+  const confirmWithChoice = useCallback((next: ConfirmOptions) => {
+    // A confirmation still open is dismissed rather than left pending forever.
+    resolver.current?.({ confirmed: false, checked: false });
+    return new Promise<ConfirmChoice>((resolve) => {
+      resolver.current = resolve;
+      setChecked(false);
+      setOptions(next);
+    });
   }, []);
 
   const confirm = useCallback(
-    (next: ConfirmOptions) => {
-      // A confirmation still open is dismissed rather than left pending forever.
-      resolver.current?.(false);
-      return new Promise<boolean>((resolve) => {
-        resolver.current = resolve;
-        setOptions(next);
-      });
-    },
-    [],
+    async (next: ConfirmOptions) => (await confirmWithChoice(next)).confirmed,
+    [confirmWithChoice],
   );
 
   const dialog = (
@@ -48,6 +63,12 @@ export function useConfirm(): { confirm: (options: ConfirmOptions) => Promise<bo
       description={options?.message}
       className="max-w-md"
     >
+      {options?.checkbox && (
+        <label className="mb-4 flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={checked} onChange={(event) => setChecked(event.target.checked)} />
+          {options.checkbox}
+        </label>
+      )}
       <div className="flex justify-end gap-2">
         <Button variant="outline" onClick={() => settle(false)}>
           {t('cancel')}
@@ -59,5 +80,5 @@ export function useConfirm(): { confirm: (options: ConfirmOptions) => Promise<bo
     </Dialog>
   );
 
-  return { confirm, dialog };
+  return { confirm, confirmWithChoice, dialog };
 }

@@ -205,6 +205,9 @@ export interface UnlinkedFolder {
   path: string;
 }
 
+/** Result of `library.remove()`: `error` when the entry left the library but its file could not be moved to the trash. */
+export type RemoveEntryResult = { status: 'ok' } | { status: 'error'; message: string };
+
 /** Result of `library.relinkFolder()`. */
 export type RelinkFolderResult = { status: 'cancelled' } | { status: 'ok' } | { status: 'error'; message: string };
 

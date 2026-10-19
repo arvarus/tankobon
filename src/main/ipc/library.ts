@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron';
+import { BrowserWindow, shell } from 'electron';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -9,6 +9,7 @@ import type {
   ImageScanProgress,
   PickOrganizationFolderResult,
   RelinkFolderResult,
+  RemoveEntryResult,
   ScanResult,
 } from '../../shared/library';
 import type { LibraryFolderRepository } from '../db/library-folder-repository';
@@ -20,7 +21,8 @@ import type { ImageStatsScanner } from '../services/image-stats-scanner';
 import { NOTHING_ORGANIZED, type LibraryOrganizer, type Resynchronizer } from '../services/library-organization';
 import { openErrorMessage } from '../services/open-error';
 import { scanIntoLibrary } from '../services/library-scanner';
-import { readNfoFor } from '../services/nfo';
+import { coverSidecarPath } from '../services/cover-sidecar';
+import { nfoPathFor, readNfoFor } from '../services/nfo';
 import { lastOpenedDirectory } from './comic';
 import type { NotifyDataChange } from './data-changes';
 import { existingDirectory, openDialogFor } from './dialogs';
@@ -28,6 +30,7 @@ import { handle } from './handle';
 import {
   MAX_PATH_LENGTH,
   args,
+  booleanArg,
   expectInteger,
   expectMetadataUpdate,
   expectNonEmptyString,
@@ -245,7 +248,7 @@ export function registerLibraryIpc(
     }),
   );
 
-  handle(LIBRARY_CHANNELS.remove, args(idArg), async (_event, id) => {
+  handle(LIBRARY_CHANNELS.remove, args(idArg, booleanArg), async (_event, id, deleteFile): Promise<RemoveEntryResult> => {
     const entry = repo.get(id);
     repo.remove(id);
     notify({ scope: 'library', removed: [id] });
@@ -254,6 +257,23 @@ export function registerLibraryIpc(
     if (entry) {
       await decoder.removeThumbnail(entry.path).catch(() => undefined);
     }
+    if (!entry || !deleteFile) return { status: 'ok' };
+    // To the trash, not deleted for good; the sidecars (cover, .nfo) follow when they exist.
+    try {
+      await shell.trashItem(entry.path);
+    } catch (error) {
+      // A file already gone is what the user wanted.
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT' && (await stat(entry.path).catch(() => null))) {
+        return {
+          status: 'error',
+          message: t('errors:library.trashFailed', { message: error instanceof Error ? error.message : String(error) }),
+        };
+      }
+    }
+    for (const sidecar of [coverSidecarPath(entry.path), nfoPathFor(entry.path)]) {
+      if (await stat(sidecar).catch(() => null)) await shell.trashItem(sidecar).catch(() => undefined);
+    }
+    return { status: 'ok' };
   });
 
   handle(LIBRARY_CHANNELS.updateProgress, args(idArg, pageIndexArg), (_event, id, currentPage) => {
