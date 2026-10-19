@@ -19,6 +19,7 @@ import type { ImageStatsScanner } from '../services/image-stats-scanner';
 import { NOTHING_ORGANIZED, type LibraryOrganizer, type Resynchronizer } from '../services/library-organization';
 import { openErrorMessage } from '../services/open-error';
 import { scanIntoLibrary } from '../services/library-scanner';
+import { readNfoFor } from '../services/nfo';
 import { lastOpenedDirectory } from './comic';
 import type { NotifyDataChange } from './data-changes';
 import { existingDirectory, openDialogFor } from './dialogs';
@@ -110,6 +111,10 @@ export function registerLibraryIpc(
       const { pageCount, fileCount } = await decoder.inspect(filePath);
       const { size } = await stat(filePath);
       repo.register(filePath, title, pageCount, fileCount, size);
+      // A `.nfo` next to the comic documents the new row.
+      const nfo = await readNfoFor(filePath);
+      const newId = repo.idOfPath(filePath);
+      if (nfo && newId) repo.updateMetadata(newId, nfo);
     } catch (error) {
       return { status: 'error', message: openErrorMessage(error) };
     }

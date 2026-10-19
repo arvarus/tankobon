@@ -9,6 +9,7 @@ import { isSupportedComicFile } from '../../shared/comic';
 import type { ScanProgress } from '../../shared/library';
 import type { ArchiveSummary } from '../decoder/protocol';
 import type { LibraryRepository } from '../db/library-repository';
+import { readNfoFor } from './nfo';
 
 /** Counts reported at the end of `scanIntoLibrary`. */
 export interface ScanSummary {
@@ -83,7 +84,12 @@ export async function scanIntoLibrary(
       repo.register(filePath, title, pageCount, fileCount, size);
       summary.added += 1;
       const id = repo.idOfPath(filePath);
-      if (id) summary.addedEntries.push({ id, path: filePath });
+      if (id) {
+        summary.addedEntries.push({ id, path: filePath });
+        // A `.nfo` next to the comic documents the new row (never an existing one).
+        const nfo = await readNfoFor(filePath);
+        if (nfo) repo.updateMetadata(id, nfo);
+      }
     } catch {
       summary.failed += 1;
     }

@@ -71,6 +71,23 @@ describe('collectComicFiles', () => {
 });
 
 describe('scanIntoLibrary', () => {
+  it('applies the .nfo next to a new comic, and ignores an orphan one or one beside a known comic', async () => {
+    const root = await tree(['a.cbz', 'b.cbz', 'orphan.nfo']);
+    await writeFile(path.join(root, 'a.nfo'), '<title>Titre A</title><series>Serie</series>');
+    await writeFile(path.join(root, 'b.nfo'), '<title>Titre B</title>');
+    const db = new DatabaseSync(':memory:');
+    migrate(db);
+    const repo = new LibraryRepository(db);
+    repo.register(path.join(root, 'b.cbz'), 'b', 1, 1, 1);
+
+    await scanIntoLibrary(repo, root, () => {}, async () => ({ pageCount: 1, fileCount: 1 }));
+
+    const entries = repo.list();
+    expect(entries.find((e) => e.path.endsWith('a.cbz'))).toMatchObject({ title: 'Titre A', series: 'Serie' });
+    expect(entries.find((e) => e.path.endsWith('b.cbz'))?.title).toBe('b');
+    expect(entries).toHaveLength(2);
+  });
+
   it('registers what `inspect` reports, skips known files and counts a failing file apart', async () => {
     const root = await tree(['a.cbz', 'b.cbz', 'c.cbz']);
     const db = new DatabaseSync(':memory:');
