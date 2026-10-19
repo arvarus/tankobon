@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here. This file is maintained by [release-please](https://github.com/googleapis/release-please) from the [Conventional Commits](https://www.conventionalcommits.org/) merged into `master`: don't edit released entries by hand. New versions are inserted above the previous ones.
 
+## [0.12.0](https://github.com/pprb/tankobon/compare/v0.11.0...v0.12.0) (2026-10-19)
+
+
+### Features
+
+* **covers:** keep the cover beside the comic instead of the local cache ([#150](https://github.com/pprb/tankobon/issues/150)) ([67a7cf4](https://github.com/pprb/tankobon/commit/67a7cf4dbb2ec28a3b5daa8dd6e5f8f8514a6062))
+* **library:** write the missing .nfo sidecars during resynchronization ([#149](https://github.com/pprb/tankobon/issues/149)) ([5f4c894](https://github.com/pprb/tankobon/commit/5f4c894a6dab3a7dfa0f9cf08090ca5b7a26014f))
+
 ## [0.11.0](https://github.com/pprb/tankobon/compare/v0.10.0...v0.11.0) (2026-10-19)
 
 
