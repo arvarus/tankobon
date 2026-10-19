@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented here. This file is maintained by [release-please](https://github.com/googleapis/release-please) from the [Conventional Commits](https://www.conventionalcommits.org/) merged into `master`: don't edit released entries by hand. New versions are inserted above the previous ones.
 
+## [0.13.0](https://github.com/pprb/tankobon/compare/v0.12.0...v0.13.0) (2026-10-19)
+
+
+### Features
+
+* **library:** extract missing covers during resynchronization ([#153](https://github.com/pprb/tankobon/issues/153)) ([8918236](https://github.com/pprb/tankobon/commit/891823666b4d15b5080942540fb7c6a01de60f93))
+* **library:** find duplicate files of the same book and format and choose which to keep ([#154](https://github.com/pprb/tankobon/issues/154)) ([f6fe4e5](https://github.com/pprb/tankobon/commit/f6fe4e58a64dee49599793b8955d1cb591eba594))
+* **library:** move the .nfo with its comic when organizing ([#152](https://github.com/pprb/tankobon/issues/152)) ([0e71c83](https://github.com/pprb/tankobon/commit/0e71c83d15d54d7b2a08a5bd916c66b9e3fcaf53))
+* **library:** offer to trash the file when removing a book ([#155](https://github.com/pprb/tankobon/issues/155)) ([0c9c38d](https://github.com/pprb/tankobon/commit/0c9c38d1c09cc16cdee54dac43bd003da773a199))
+* **metadata:** rework the lookup dialog with explicit search and page sources ([#156](https://github.com/pprb/tankobon/issues/156)) ([bbb87aa](https://github.com/pprb/tankobon/commit/bbb87aaf938650236cf9a0561b48191dffef520f))
+* **settings:** split user settings from shared library settings ([#158](https://github.com/pprb/tankobon/issues/158)) ([195c20d](https://github.com/pprb/tankobon/commit/195c20dbf26ac25a8419a0a3f6f011817cc24362))
+
+
+### Bug Fixes
+
+* **settings:** make the startup user choice a per-user setting ([#159](https://github.com/pprb/tankobon/issues/159)) ([b439d31](https://github.com/pprb/tankobon/commit/b439d31d745a5bcf97490c5289b432b4c7af57c8))
+
 ## [0.12.0](https://github.com/pprb/tankobon/compare/v0.11.0...v0.12.0) (2026-10-19)
 
 
