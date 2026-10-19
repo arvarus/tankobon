@@ -35,6 +35,7 @@ const errors: Translation<typeof en> = {
     organizationFolderUnreachable: 'Le dossier organisé est inaccessible : {{folder}}',
     organizationExpired: 'Ces BD ne peuvent plus être déplacées d’ici : ajoutez-les à nouveau ou resynchronisez.',
     organizeRunning: 'Une resynchronisation ou une organisation de la bibliothèque est déjà en cours.',
+    trashFailed: "Le livre a été retiré de la bibliothèque, mais son fichier n'a pas pu être mis à la corbeille : {{message}}",
   },
   import: {
     notJson: "Fichier illisible : ce n'est pas du JSON valide.",

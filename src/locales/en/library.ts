@@ -59,6 +59,7 @@ export default {
   remove: 'Remove from the library',
   confirmRemoveTitle: 'Remove this book?',
   confirmRemoveAction: 'Remove',
+  deleteFile: 'Also move the file to the trash',
   confirmRemove: "Remove “{{title}}” from the library? Its rating, tags and details will be lost; the file stays on disk.",
   rating: '{{rating}} / 5',
   notRated: 'Not rated',
