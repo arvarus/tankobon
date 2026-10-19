@@ -4,13 +4,17 @@ import type { Translation } from '../types';
 const settings: Translation<typeof en> = {
   title: 'Paramètres',
   sections: {
-    reading: 'Lecture',
-    appearance: 'Affichage',
     home: 'Accueil',
+    appearance: 'Affichage',
+    reading: 'Lecteur',
     library: 'Bibliothèque',
+    organization: 'Organisation',
     metadata: 'Métadonnées',
     data: 'Données',
-    about: 'À propos',
+  },
+  groups: {
+    user: 'Utilisateur',
+    library: 'Bibliothèque partagée',
   },
   reading: {
     direction: 'Sens de lecture',
@@ -46,6 +50,9 @@ const settings: Translation<typeof en> = {
       sepia: 'Sépia',
       white: 'Blanc',
     },
+    askUser: 'Utilisateurs',
+    askUserOnStartup: 'Demander qui lit au démarrage',
+    askUserHint: 'Affiche un écran de choix de l’utilisateur à chaque lancement de l’application. Partagé par tous les utilisateurs.',
   },
   library: {
     folders: 'Dossiers de la bibliothèque',
@@ -61,9 +68,6 @@ const settings: Translation<typeof en> = {
     resyncButton: 'Resynchroniser maintenant',
     resyncRunning: 'Resynchronisation…',
     resyncOnStartup: 'Resynchroniser la bibliothèque au démarrage',
-    askUser: 'Utilisateurs',
-    askUserOnStartup: 'Demander qui lit au démarrage',
-    askUserHint: 'Affiche un écran de choix de l’utilisateur à chaque lancement de l’application. Partagé par tous les utilisateurs.',
     lastResync: 'Dernière resynchronisation : {{date}}',
     neverResynced: 'Jamais resynchronisée.',
     resyncDone: '{{added}} ajoutée(s) · {{removed}} retirée(s)',
@@ -79,6 +83,9 @@ const settings: Translation<typeof en> = {
     organizationAlways: 'Toujours les déplacer',
     organizationFolder: 'Dossier organisé',
     organizationNoFolder: 'Aucun dossier choisi.',
+    organizationFolderHint: 'Où vos BD ajoutées sont déplacées quand l’organisation de la bibliothèque est active. Chaque utilisateur choisit son propre dossier ; l’arborescence se règle dans Paramètres › Organisation.',
+    organizationFolderIs: 'Dossier organisé : {{folder}}',
+    organizationFolderNone: 'Aucun dossier organisé choisi : choisissez-le dans Paramètres › Bibliothèque.',
     organizationChoose: 'Choisir…',
     structure: 'Arborescence',
     structureLevel: 'Niveau {{level}}',
@@ -176,6 +183,7 @@ const settings: Translation<typeof en> = {
     moveDownNamed: 'Descendre « {{name}} »',
   },
   about: {
+    title: 'À propos',
     version: 'Version',
     system: 'Système',
     copied: 'Copié',

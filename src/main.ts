@@ -121,7 +121,7 @@ app.whenReady().then(() => {
   // The books are stored relative to their library folder; where each folder is lives on this machine only.
   const pathRoots = new PathRoots(fileRootsStore(path.join(app.getPath('userData'), 'library-roots.json')));
   const libraryRepo = new LibraryRepository(db, activeUser, pathRoots);
-  const folderRepo = new LibraryFolderRepository(db, pathRoots);
+  const folderRepo = new LibraryFolderRepository(db, pathRoots, activeUser);
   // Folders already on this machine (a database from before the roots, or the same layout elsewhere), then
   // the books under them made relative.
   folderRepo.syncRoots();

@@ -2,13 +2,17 @@
 export default {
   title: 'Settings',
   sections: {
-    reading: 'Reading',
-    appearance: 'Display',
     home: 'Home',
+    appearance: 'Display',
+    reading: 'Reader',
     library: 'Library',
+    organization: 'Organization',
     metadata: 'Metadata',
     data: 'Data',
-    about: 'About',
+  },
+  groups: {
+    user: 'User',
+    library: 'Shared library',
   },
   reading: {
     direction: 'Reading direction',
@@ -44,6 +48,9 @@ export default {
       sepia: 'Sepia',
       white: 'White',
     },
+    askUser: 'Users',
+    askUserOnStartup: 'Ask who is reading at startup',
+    askUserHint: 'Shows a screen to pick a user each time the app starts. Shared by every user.',
   },
   library: {
     folders: 'Library folders',
@@ -59,9 +66,6 @@ export default {
     resyncButton: 'Resynchronize now',
     resyncRunning: 'Resynchronizing…',
     resyncOnStartup: 'Resynchronize the library at startup',
-    askUser: 'Users',
-    askUserOnStartup: 'Ask who is reading at startup',
-    askUserHint: 'Shows a screen to pick a user each time the app starts. Shared by every user.',
     lastResync: 'Last resynchronization: {{date}}',
     neverResynced: 'Never resynchronized.',
     resyncDone: '{{added}} added · {{removed}} removed',
@@ -77,6 +81,9 @@ export default {
     organizationAlways: 'Always move them',
     organizationFolder: 'Organized folder',
     organizationNoFolder: 'No folder chosen yet.',
+    organizationFolderHint: 'Where your added comics are moved when the library organization is on. Each user chooses their own folder; the layout itself is set in Settings › Organization.',
+    organizationFolderIs: 'Organized folder: {{folder}}',
+    organizationFolderNone: 'No organized folder chosen yet: pick it in Settings › Library.',
     organizationChoose: 'Choose…',
     structure: 'Folder tree',
     structureLevel: 'Level {{level}}',
@@ -174,6 +181,7 @@ export default {
     moveDownNamed: 'Move "{{name}}" down',
   },
   about: {
+    title: 'About',
     version: 'Version',
     system: 'System',
     copied: 'Copied',

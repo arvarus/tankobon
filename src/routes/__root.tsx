@@ -1,5 +1,6 @@
 import { Link, Outlet, createRootRoute, useRouterState } from '@tanstack/react-router';
 import {
+  Info,
   Award,
   BarChart3,
   BookOpen,
@@ -12,7 +13,7 @@ import {
   ListOrdered,
   Settings,
 } from 'lucide-react';
-import { type DragEvent, useEffect, useState } from 'react';
+import { Fragment, type DragEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AchievementToasts } from '@/components/achievement-toasts';
@@ -37,7 +38,7 @@ import {
   moveItem,
 } from '@/lib/reading-list';
 import { imageScanPercent } from '@/lib/image-scan';
-import { SETTINGS_SECTIONS } from '@/lib/settings-nav';
+import { SETTINGS_GROUPS } from '@/lib/settings-nav';
 import { cn } from '@/lib/utils';
 import type { ReadingList } from '@/shared/reading-list';
 
@@ -116,6 +117,15 @@ function RootLayout() {
           ),
         )}
         <SettingsNav collapsed={collapsed} />
+        <Link
+          to="/about"
+          className={linkClass(collapsed)}
+          activeProps={{ className: activeLinkClass }}
+          title={collapsed ? t('about') : undefined}
+        >
+          <Info className="size-4" />
+          {!collapsed && t('about')}
+        </Link>
         <div className="mt-auto pt-2">
           <UserMenu collapsed={collapsed} />
         </div>
@@ -198,16 +208,18 @@ function SettingsNav({ collapsed }: { collapsed: boolean }) {
         )}
       </Link>
       {unfolded &&
-        SETTINGS_SECTIONS.map(({ to, id, icon: Icon }) => (
-          <Link
-            key={to}
-            to={to}
-            className={subLinkClass}
-            activeProps={{ className: activeLinkClass }}
-          >
-            <Icon className="size-3.5" />
-            {t(`settings:sections.${id}`)}
-          </Link>
+        SETTINGS_GROUPS.map((group) => (
+          <Fragment key={group.id}>
+            <span className="px-3 pt-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground/70">
+              {t(`settings:groups.${group.id}`)}
+            </span>
+            {group.sections.map(({ to, id, icon: Icon }) => (
+              <Link key={to} to={to} className={subLinkClass} activeProps={{ className: activeLinkClass }}>
+                <Icon className="size-3.5" />
+                {t(`settings:sections.${id}`)}
+              </Link>
+            ))}
+          </Fragment>
         ))}
     </>
   );

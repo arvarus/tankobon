@@ -115,7 +115,7 @@ describe('versioned migrations', () => {
     const db = new DatabaseSync(':memory:');
     migrate(db);
 
-    expect(userVersion(db)).toBe(8);
+    expect(userVersion(db)).toBe(9);
     expect(indexNames(db)).toEqual(INDEXES);
   });
 
@@ -127,7 +127,7 @@ describe('versioned migrations', () => {
 
     migrate(db);
 
-    expect(userVersion(db)).toBe(8);
+    expect(userVersion(db)).toBe(9);
     expect(indexNames(db)).toEqual(INDEXES);
     expect(db.prepare('SELECT value FROM settings').get()).toEqual({ value: '"dark"' });
   });
@@ -139,7 +139,7 @@ describe('versioned migrations', () => {
 
     migrate(db);
 
-    expect(userVersion(db)).toBe(8);
+    expect(userVersion(db)).toBe(9);
     expect(columnNames(db, 'library')).toContain('finished_at');
     expect(columnNames(db, 'reading_sessions')).toEqual(['id', 'library_id', 'day', 'seconds', 'user_id']);
   });
@@ -151,7 +151,7 @@ describe('versioned migrations', () => {
 
     migrate(db);
 
-    expect(userVersion(db)).toBe(8);
+    expect(userVersion(db)).toBe(9);
     expect(columnNames(db, 'achievements')).toEqual(['id', 'unlocked_at']);
   });
 
@@ -218,6 +218,22 @@ describe('versioned migrations', () => {
       ['/b', 1],
     ]);
     expect(new Set(rows.map((row) => row.id)).size).toBe(2);
+  });
+
+  it('makes the watched library folders each existing user\'s own (version 9)', () => {
+    const db = new DatabaseSync(':memory:');
+    migrate(db);
+    db.exec(`
+      DROP TABLE user_library_folders;
+      INSERT INTO library_folders (id, path, added_at, watched) VALUES ('f1', '/a', '2024-01-01', 1), ('f2', '/b', '2024-01-02', 0);
+      PRAGMA user_version = 8;
+    `);
+
+    migrate(db);
+
+    expect(db.prepare('SELECT user_id, folder_id FROM user_library_folders').all()).toEqual([
+      { user_id: 'default', folder_id: 'f1' },
+    ]);
   });
 
   it('leaves a database from a newer release alone', () => {

@@ -32,6 +32,26 @@ describe('LibraryFolderRepository', () => {
   });
 });
 
+describe('LibraryFolderRepository users', () => {
+  it('lists, adds and forgets the folders of the active user only', () => {
+    const db = new DatabaseSync(':memory:');
+    migrate(db);
+    let user = 'anna';
+    const repo = new LibraryFolderRepository(db, new PathRoots(), () => user);
+    repo.add('/shared');
+    repo.add('/anna-only');
+    user = 'ben';
+    expect(repo.list()).toEqual([]);
+    repo.add('/shared');
+    expect(repo.list()).toEqual(['/shared']);
+    repo.remove('/shared');
+    expect(repo.list()).toEqual([]);
+
+    user = 'anna';
+    expect(repo.list().sort()).toEqual(['/anna-only', '/shared']);
+  });
+});
+
 describe('LibraryFolderRepository roots', () => {
   function shared(): { db: DatabaseSync; a: PathRoots; b: PathRoots } {
     const db = new DatabaseSync(':memory:');

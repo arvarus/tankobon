@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as AchievementsRouteImport } from './routes/achievements'
 import { Route as LibraryRouteImport } from './routes/library'
 import { Route as ProfileRouteImport } from './routes/profile'
@@ -19,17 +20,22 @@ import { Route as StatsRouteImport } from './routes/stats'
 import { Route as ListsIndexRouteImport } from './routes/lists/index'
 import { Route as ListsListIdRouteImport } from './routes/lists/$listId'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
-import { Route as SettingsAboutRouteImport } from './routes/settings/about'
 import { Route as SettingsAppearanceRouteImport } from './routes/settings/appearance'
 import { Route as SettingsDataRouteImport } from './routes/settings/data'
 import { Route as SettingsHomeRouteImport } from './routes/settings/home'
 import { Route as SettingsLibraryRouteImport } from './routes/settings/library'
 import { Route as SettingsMetadataRouteImport } from './routes/settings/metadata'
+import { Route as SettingsOrganizationRouteImport } from './routes/settings/organization'
 import { Route as SettingsReadingRouteImport } from './routes/settings/reading'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AchievementsRoute = AchievementsRouteImport.update({
@@ -77,11 +83,6 @@ const SettingsIndexRoute = SettingsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => SettingsRoute,
 } as any)
-const SettingsAboutRoute = SettingsAboutRouteImport.update({
-  id: '/about',
-  path: '/about',
-  getParentRoute: () => SettingsRoute,
-} as any)
 const SettingsAppearanceRoute = SettingsAppearanceRouteImport.update({
   id: '/appearance',
   path: '/appearance',
@@ -107,6 +108,11 @@ const SettingsMetadataRoute = SettingsMetadataRouteImport.update({
   path: '/metadata',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsOrganizationRoute = SettingsOrganizationRouteImport.update({
+  id: '/organization',
+  path: '/organization',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SettingsReadingRoute = SettingsReadingRouteImport.update({
   id: '/reading',
   path: '/reading',
@@ -115,6 +121,7 @@ const SettingsReadingRoute = SettingsReadingRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/achievements': typeof AchievementsRoute
   '/library': typeof LibraryRoute
   '/profile': typeof ProfileRoute
@@ -122,30 +129,31 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRouteWithChildren
   '/stats': typeof StatsRoute
   '/lists/$listId': typeof ListsListIdRoute
-  '/settings/about': typeof SettingsAboutRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/data': typeof SettingsDataRoute
   '/settings/home': typeof SettingsHomeRoute
   '/settings/library': typeof SettingsLibraryRoute
   '/settings/metadata': typeof SettingsMetadataRoute
+  '/settings/organization': typeof SettingsOrganizationRoute
   '/settings/reading': typeof SettingsReadingRoute
   '/lists/': typeof ListsIndexRoute
   '/settings/': typeof SettingsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/achievements': typeof AchievementsRoute
   '/library': typeof LibraryRoute
   '/profile': typeof ProfileRoute
   '/reader': typeof ReaderRoute
   '/stats': typeof StatsRoute
   '/lists/$listId': typeof ListsListIdRoute
-  '/settings/about': typeof SettingsAboutRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/data': typeof SettingsDataRoute
   '/settings/home': typeof SettingsHomeRoute
   '/settings/library': typeof SettingsLibraryRoute
   '/settings/metadata': typeof SettingsMetadataRoute
+  '/settings/organization': typeof SettingsOrganizationRoute
   '/settings/reading': typeof SettingsReadingRoute
   '/lists': typeof ListsIndexRoute
   '/settings': typeof SettingsIndexRoute
@@ -153,6 +161,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/achievements': typeof AchievementsRoute
   '/library': typeof LibraryRoute
   '/profile': typeof ProfileRoute
@@ -160,12 +169,12 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRouteWithChildren
   '/stats': typeof StatsRoute
   '/lists/$listId': typeof ListsListIdRoute
-  '/settings/about': typeof SettingsAboutRoute
   '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/data': typeof SettingsDataRoute
   '/settings/home': typeof SettingsHomeRoute
   '/settings/library': typeof SettingsLibraryRoute
   '/settings/metadata': typeof SettingsMetadataRoute
+  '/settings/organization': typeof SettingsOrganizationRoute
   '/settings/reading': typeof SettingsReadingRoute
   '/lists/': typeof ListsIndexRoute
   '/settings/': typeof SettingsIndexRoute
@@ -174,6 +183,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/about'
     | '/achievements'
     | '/library'
     | '/profile'
@@ -181,36 +191,38 @@ export interface FileRouteTypes {
     | '/settings'
     | '/stats'
     | '/lists/$listId'
-    | '/settings/about'
     | '/settings/appearance'
     | '/settings/data'
     | '/settings/home'
     | '/settings/library'
     | '/settings/metadata'
+    | '/settings/organization'
     | '/settings/reading'
     | '/lists/'
     | '/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/about'
     | '/achievements'
     | '/library'
     | '/profile'
     | '/reader'
     | '/stats'
     | '/lists/$listId'
-    | '/settings/about'
     | '/settings/appearance'
     | '/settings/data'
     | '/settings/home'
     | '/settings/library'
     | '/settings/metadata'
+    | '/settings/organization'
     | '/settings/reading'
     | '/lists'
     | '/settings'
   id:
     | '__root__'
     | '/'
+    | '/about'
     | '/achievements'
     | '/library'
     | '/profile'
@@ -218,12 +230,12 @@ export interface FileRouteTypes {
     | '/settings'
     | '/stats'
     | '/lists/$listId'
-    | '/settings/about'
     | '/settings/appearance'
     | '/settings/data'
     | '/settings/home'
     | '/settings/library'
     | '/settings/metadata'
+    | '/settings/organization'
     | '/settings/reading'
     | '/lists/'
     | '/settings/'
@@ -231,6 +243,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
   AchievementsRoute: typeof AchievementsRoute
   LibraryRoute: typeof LibraryRoute
   ProfileRoute: typeof ProfileRoute
@@ -248,6 +261,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/achievements': {
@@ -313,13 +333,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsIndexRouteImport
       parentRoute: typeof SettingsRoute
     }
-    '/settings/about': {
-      id: '/settings/about'
-      path: '/about'
-      fullPath: '/settings/about'
-      preLoaderRoute: typeof SettingsAboutRouteImport
-      parentRoute: typeof SettingsRoute
-    }
     '/settings/appearance': {
       id: '/settings/appearance'
       path: '/appearance'
@@ -355,6 +368,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsMetadataRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/organization': {
+      id: '/settings/organization'
+      path: '/organization'
+      fullPath: '/settings/organization'
+      preLoaderRoute: typeof SettingsOrganizationRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/settings/reading': {
       id: '/settings/reading'
       path: '/reading'
@@ -366,23 +386,23 @@ declare module '@tanstack/react-router' {
 }
 
 interface SettingsRouteChildren {
-  SettingsAboutRoute: typeof SettingsAboutRoute
   SettingsAppearanceRoute: typeof SettingsAppearanceRoute
   SettingsDataRoute: typeof SettingsDataRoute
   SettingsHomeRoute: typeof SettingsHomeRoute
   SettingsLibraryRoute: typeof SettingsLibraryRoute
   SettingsMetadataRoute: typeof SettingsMetadataRoute
+  SettingsOrganizationRoute: typeof SettingsOrganizationRoute
   SettingsReadingRoute: typeof SettingsReadingRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
-  SettingsAboutRoute: SettingsAboutRoute,
   SettingsAppearanceRoute: SettingsAppearanceRoute,
   SettingsDataRoute: SettingsDataRoute,
   SettingsHomeRoute: SettingsHomeRoute,
   SettingsLibraryRoute: SettingsLibraryRoute,
   SettingsMetadataRoute: SettingsMetadataRoute,
+  SettingsOrganizationRoute: SettingsOrganizationRoute,
   SettingsReadingRoute: SettingsReadingRoute,
   SettingsIndexRoute: SettingsIndexRoute,
 }
@@ -393,6 +413,7 @@ const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
   AchievementsRoute: AchievementsRoute,
   LibraryRoute: LibraryRoute,
   ProfileRoute: ProfileRoute,
