@@ -1,9 +1,9 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { MAX_NFO_BYTES, nfoPathFor, parseNfo, readNfoFor } from './nfo';
+import { buildNfo, MAX_NFO_BYTES, nfoPathFor, parseNfo, readNfoFor, writeNfoIfMissing } from './nfo';
 
 const dirs: string[] = [];
 afterEach(async () => {
@@ -81,5 +81,57 @@ describe('readNfoFor', () => {
     expect(await readNfoFor(path.join(d, 'a.cbz'))).toBeNull();
     await writeFile(path.join(d, 'b.nfo'), `<title>${'x'.repeat(MAX_NFO_BYTES)}</title>`);
     expect(await readNfoFor(path.join(d, 'b.cbz'))).toBeNull();
+  });
+});
+
+describe('buildNfo', () => {
+  const entry = {
+    title: 'Tom & <Jerry>',
+    series: 'Cartoons',
+    volume: '3',
+    releaseDate: '2003-05',
+    language: 'fr',
+    credits: [
+      { personId: '1', firstName: 'Jean', lastName: 'Van Hamme', role: 'writer' as const },
+      { personId: '2', firstName: '', lastName: 'Moebius', role: 'artist' as const },
+    ],
+  };
+
+  it('is read back by parseNfo', () => {
+    expect(parseNfo(buildNfo(entry))).toEqual({
+      title: 'Tom & <Jerry>',
+      series: 'Cartoons',
+      volume: '3',
+      releaseDate: '2003-05',
+      language: 'fr',
+      credits: [
+        { firstName: 'Jean', lastName: 'Van Hamme', role: 'writer' },
+        { firstName: '', lastName: 'Moebius', role: 'artist' },
+      ],
+    });
+  });
+
+  it('leaves out the unknown fields', () => {
+    const text = buildNfo({ title: 'Seul', series: null, volume: null, releaseDate: null, language: null, credits: [] });
+    expect(parseNfo(text)).toEqual({ title: 'Seul' });
+  });
+});
+
+describe('writeNfoIfMissing', () => {
+  const base = { title: 'Un', series: null, volume: null, releaseDate: null, language: null, credits: [] };
+
+  it('creates the sidecar, then never overwrites it', async () => {
+    const d = await mkdtemp(path.join(tmpdir(), 'tankobon-nfo-'));
+    dirs.push(d);
+    const comic = path.join(d, 'Tome 1.cbz');
+    expect(await writeNfoIfMissing({ ...base, path: comic })).toBe(true);
+    expect(await readFile(nfoPathFor(comic), 'utf8')).toContain('<title>Un</title>');
+    await writeFile(nfoPathFor(comic), '<title>Mien</title>');
+    expect(await writeNfoIfMissing({ ...base, path: comic })).toBe(false);
+    expect(await readFile(nfoPathFor(comic), 'utf8')).toBe('<title>Mien</title>');
+  });
+
+  it('returns false when the folder is missing', async () => {
+    expect(await writeNfoIfMissing({ ...base, path: path.join(tmpdir(), 'tankobon-nfo-none', 'a.cbz') })).toBe(false);
   });
 });

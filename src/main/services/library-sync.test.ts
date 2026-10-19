@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -64,6 +64,23 @@ describe('resyncLibrary', () => {
     expect(summary).toMatchObject({ added: 1, removed: 1, failed: 0, unreachable: 0 });
     expect(repo.list().map((entry) => path.basename(entry.path)).sort()).toEqual(['kept.cbz', 'new.cbz']);
     expect(summary.removedEntries.map((entry) => path.basename(entry.path))).toEqual(['gone.cbz']);
+  });
+
+  it('writes the missing .nfo of the comics in the folders, and keeps an existing one', async () => {
+    const root = await tree(['a.cbz', 'b.cbz']);
+    const alone = await tree(['c.cbz']);
+    await writeFile(path.join(root, 'b.nfo'), '<title>Mien</title>');
+    const repo = repository();
+    for (const file of [path.join(root, 'a.cbz'), path.join(root, 'b.cbz'), path.join(alone, 'c.cbz')]) {
+      repo.register(file, path.basename(file, '.cbz'), 10, 10, 0);
+    }
+
+    const summary = await resyncLibrary(repo, [root], noProgress, inspect);
+
+    expect(summary.nfoWritten).toBe(1);
+    expect(await readFile(path.join(root, 'a.nfo'), 'utf8')).toContain('<title>a</title>');
+    expect(await readFile(path.join(root, 'b.nfo'), 'utf8')).toBe('<title>Mien</title>');
+    await expect(readFile(path.join(alone, 'c.nfo'))).rejects.toThrow();
   });
 
   it('removes a standalone entry whose file is gone from a directory that still exists', async () => {
