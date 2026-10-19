@@ -11,7 +11,7 @@
 
 - **Which folders a resynchronization walks is personal**: `user_library_folders` (migration 9) links a user to the library folders they watch. `library_folders` stays common, since books are recorded relative to a folder id ([ADR 0020](./0020-library-paths-relative-to-folders.md)). `resyncOnStartup`, `lastResyncAt` and the organized folder (`libraryOrganizationFolder`) leave `SHARED_SETTINGS`; the layout of the organization (mode, tree, file name) stays shared.
 - **The settings menu has two groups**: "Utilisateur" (Accueil, Affichage, Lecteur, Bibliothèque: personal settings) and "Bibliothèque partagée" (Organisation, Métadonnées, Données). "À propos" is not a setting: it is its own sidebar entry and route (`/about`).
-- The startup choice of user stays shared, since it is read before anyone is chosen; it is shown in Affichage.
+- The startup choice of user was shared at first (read before anyone is chosen); it is now personal, read for the user the app reopens on (the last active one). It is shown in Affichage.
 
 ## Consequences
 

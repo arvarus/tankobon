@@ -193,8 +193,9 @@ export interface AppSettings {
   /** Whether the library is resynchronized with its folders in the background at every start. */
   resyncOnStartup: boolean;
   /**
-   * Whether the app starts on a screen where the user picks who is reading. Shared, since it is read
-   * before anyone is chosen; the screen's "don't ask again" box turns it off.
+   * Whether the app starts on a screen where the user picks who is reading. Personal: it is read for
+   * the user the app reopens on (the last active one), and the screen's "don't ask again" box turns
+   * it off for that user only.
    */
   askUserOnStartup: boolean;
   /** Whether the app asks GitHub at every start if a newer release exists, and offers to download it. */
@@ -284,7 +285,6 @@ export const SHARED_SETTINGS: readonly (keyof AppSettings)[] = [
   'googleBooksEnabled',
   'googleBooksApiKey',
   'checkUpdatesOnStartup',
-  'askUserOnStartup',
   'lastScanFolder',
   'libraryOrganization',
   'libraryStructure',
