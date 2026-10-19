@@ -283,13 +283,10 @@ export const SHARED_SETTINGS: readonly (keyof AppSettings)[] = [
   'comicVineApiKey',
   'googleBooksEnabled',
   'googleBooksApiKey',
-  'resyncOnStartup',
   'checkUpdatesOnStartup',
   'askUserOnStartup',
-  'lastResyncAt',
   'lastScanFolder',
   'libraryOrganization',
-  'libraryOrganizationFolder',
   'libraryStructure',
   'libraryFileName',
 ];

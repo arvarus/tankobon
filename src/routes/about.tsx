@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button';
 import { useSettings } from '@/hooks/use-settings';
 import { formatAppInfo, type AppInfo, type AppLink, type UpdateCheckResult } from '@/shared/app';
 
-export const Route = createFileRoute('/settings/about')({
-  component: AboutSettingsPage,
+export const Route = createFileRoute('/about')({
+  component: AboutPage,
 });
 
 /** Each link's label is the `settings:about.<link>` translation. The license has its own section. */
@@ -20,7 +20,7 @@ const LINKS: { link: Exclude<AppLink, 'license'>; icon: LucideIcon }[] = [
   { link: 'issues', icon: Bug },
 ];
 
-function AboutSettingsPage() {
+function AboutPage() {
   const { t } = useTranslation('settings', { keyPrefix: 'about' });
   const [info, setInfo] = useState<AppInfo | null>(null);
   const { settings, update } = useSettings();
@@ -52,7 +52,8 @@ function AboutSettingsPage() {
   };
 
   return (
-    <>
+    <div className="flex flex-col gap-6 p-6">
+      <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
       <SettingsSection title={t('version')}>
         {info && (
           <>
@@ -134,6 +135,6 @@ function AboutSettingsPage() {
           </Button>
         </div>
       </SettingsSection>
-    </>
+    </div>
   );
 }

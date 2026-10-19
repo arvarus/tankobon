@@ -25,6 +25,7 @@ An ADR records one structural decision: the context, what was decided, and what 
 | [0019](./0019-multiple-users.md) | Several users on one library, without passwords | Accepted |
 | [0020](./0020-library-paths-relative-to-folders.md) | Library paths relative to the library folders | Accepted |
 | [0021](./0021-metadata-lookup-dialog-rework.md) | Metadata lookup dialog: explicit search, more page sources, saved to the `.nfo` | Accepted |
+| [0022](./0022-per-user-library-folders-and-settings-groups.md) | Watched folders per user, and settings split in two groups | Accepted |
 
 These first four ADRs were written after the fact, from the code and its comments, then checked by the maintainer.
 

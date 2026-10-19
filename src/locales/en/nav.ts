@@ -7,6 +7,7 @@ export default {
   reader: 'Reader',
   stats: 'Statistics',
   settings: 'Settings',
+  about: 'About',
   expandSidebar: 'Expand the sidebar',
   collapseSidebar: 'Collapse the sidebar',
 };

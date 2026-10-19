@@ -151,7 +151,7 @@ export class UserRepository {
       this.db
         .prepare('DELETE FROM reading_list_items WHERE list_id IN (SELECT id FROM reading_lists WHERE user_id = ?)')
         .run(id);
-      for (const table of ['reading_lists', 'reading_sessions', 'user_books', 'user_settings', 'user_achievements']) {
+      for (const table of ['reading_lists', 'reading_sessions', 'user_books', 'user_settings', 'user_achievements', 'user_library_folders']) {
         this.db.prepare(`DELETE FROM ${table} WHERE user_id = ?`).run(id);
       }
       this.db.prepare('DELETE FROM users WHERE id = ?').run(id);

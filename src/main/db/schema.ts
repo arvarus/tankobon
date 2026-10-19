@@ -10,7 +10,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { withTransaction } from './transaction';
 
 /** The user migration 7 creates and hands the existing data to; the same value as `DEFAULT_USER_ID`, frozen here. */
-const FIRST_USER_ID = 'default';
+export const FIRST_USER_ID = 'default';
 
 /** One step of the schema's history, applied at most once per database. */
 interface Migration {
@@ -234,6 +234,23 @@ const MIGRATIONS: Migration[] = [
           SELECT lower(hex(randomblob(16))), path, added_at FROM library_folders;
         DROP TABLE library_folders;
         ALTER TABLE library_folders_v8 RENAME TO library_folders;
+      `);
+    },
+  },
+  {
+    // Which library folders a resynchronization walks becomes each user's choice. The folders stay
+    // common (books are stored relative to them); the `watched` column is no longer read. Every
+    // existing user keeps watching what was watched.
+    version: 9,
+    run: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS user_library_folders (
+          user_id TEXT NOT NULL,
+          folder_id TEXT NOT NULL,
+          PRIMARY KEY (user_id, folder_id)
+        );
+        INSERT OR IGNORE INTO user_library_folders (user_id, folder_id)
+          SELECT u.id, f.id FROM users u, library_folders f WHERE f.watched = 1;
       `);
     },
   },

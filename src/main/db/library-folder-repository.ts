@@ -9,6 +9,7 @@ import type { DatabaseSync } from 'node:sqlite';
 
 import type { UnlinkedFolder } from '../../shared/library';
 import { PathRoots } from './path-roots';
+import { FIRST_USER_ID } from './schema';
 
 interface FolderRow {
   id: string;
@@ -20,15 +21,18 @@ function samePath(a: string, b: string): boolean {
 }
 
 /**
- * The folders added to the library with "Ajouter un dossier…", which a resynchronization walks
- * again, and the roots the books' paths are stored relative to (see `PathRoots`). The database
- * holds each folder's id and the path it had when added; where it is on *this* machine lives in
- * `roots`. Kept in the main process only: the renderer never names a path, it only lists them.
+ * The folders added to the library with "Ajouter un dossier…", and the roots the books' paths are
+ * stored relative to (see `PathRoots`). The database holds each folder's id and the path it had
+ * when added; where it is on *this* machine lives in `roots`. The folders themselves are common
+ * (books refer to them), but which of them a resynchronization walks is each user's choice
+ * (`user_library_folders`). Kept in the main process only: the renderer never names a path, it
+ * only lists them.
  */
 export class LibraryFolderRepository {
   constructor(
     private readonly db: DatabaseSync,
     private readonly roots: PathRoots = new PathRoots(),
+    private readonly userId: () => string = () => FIRST_USER_ID,
   ) {}
 
   private rows(): FolderRow[] {
@@ -58,11 +62,18 @@ export class LibraryFolderRepository {
     return found;
   }
 
-  /** The folders a resynchronization walks, in the order they were added, as paths on this machine. */
+  /**
+   * The folders a resynchronization walks for the active user, in the order they were added, as
+   * paths on this machine.
+   */
   list(): string[] {
     const watched = this.db
-      .prepare('SELECT id FROM library_folders WHERE watched = 1 ORDER BY added_at, path')
-      .all() as {
+      .prepare(
+        `SELECT f.id FROM library_folders f
+         JOIN user_library_folders w ON w.folder_id = f.id AND w.user_id = ?
+         ORDER BY f.added_at, f.path`,
+      )
+      .all(this.userId()) as {
       id: string;
     }[];
     return watched.flatMap((row) => {
@@ -83,7 +94,7 @@ export class LibraryFolderRepository {
     return true;
   }
 
-  /** Remembers a folder and watches it; one that is already known is only watched again. */
+  /** Remembers a folder and watches it for the active user; one that is already known is only watched again. */
   add(folderPath: string): void {
     const rows = this.rows();
     const known =
@@ -93,7 +104,7 @@ export class LibraryFolderRepository {
       }) ?? rows.find((row) => row.path === folderPath && this.roots.get(row.id) === undefined);
     if (known) {
       this.roots.set(known.id, folderPath);
-      this.db.prepare('UPDATE library_folders SET watched = 1 WHERE id = ?').run(known.id);
+      this.watch(known.id);
       return;
     }
     const id = randomUUID();
@@ -101,17 +112,26 @@ export class LibraryFolderRepository {
     this.db
       .prepare('INSERT INTO library_folders (id, path, added_at, watched) VALUES (?, ?, ?, 1)')
       .run(id, folderPath, new Date().toISOString());
+    this.watch(id);
+  }
+
+  private watch(folderId: string): void {
+    this.db
+      .prepare('INSERT OR IGNORE INTO user_library_folders (user_id, folder_id) VALUES (?, ?)')
+      .run(this.userId(), folderId);
   }
 
   /**
-   * Stops watching a folder. Its comics stay in the library, and the folder itself is kept (unwatched)
-   * since their stored paths are relative to it.
+   * Stops watching a folder for the active user. Its comics stay in the library, and the folder itself
+   * is kept since their stored paths are relative to it (and other users may watch it).
    */
   remove(folderPath: string): void {
     for (const row of this.rows()) {
       const here = this.roots.get(row.id);
       if (here !== undefined && samePath(here, folderPath)) {
-        this.db.prepare('UPDATE library_folders SET watched = 0 WHERE id = ?').run(row.id);
+        this.db
+          .prepare('DELETE FROM user_library_folders WHERE user_id = ? AND folder_id = ?')
+          .run(this.userId(), row.id);
       }
     }
   }

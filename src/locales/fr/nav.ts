@@ -9,6 +9,7 @@ const nav: Translation<typeof en> = {
   reader: 'Lecteur',
   stats: 'Statistiques',
   settings: 'Paramètres',
+  about: 'À propos',
   expandSidebar: 'Développer le panneau latéral',
   collapseSidebar: 'Réduire le panneau latéral',
 };
