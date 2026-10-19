@@ -140,3 +140,24 @@ describe('resyncLibrary', () => {
     expect(phases.at(-1)).toBe('done');
   });
 });
+
+describe('resyncLibrary covers', () => {
+  it('extracts the missing covers of the comics in the folders only', async () => {
+    const root = await tree(['a.cbz', 'b.cbz']);
+    const alone = await tree(['c.cbz']);
+    const repo = repository();
+    for (const file of [path.join(root, 'a.cbz'), path.join(root, 'b.cbz'), path.join(alone, 'c.cbz')]) {
+      repo.register(file, path.basename(file, '.cbz'), 10, 10, 0);
+    }
+    const asked: string[] = [];
+    const extractCover = async (file: string) => {
+      asked.push(path.basename(file));
+      return file.endsWith('a.cbz');
+    };
+
+    const summary = await resyncLibrary(repo, [root], noProgress, inspect, extractCover);
+
+    expect(asked.sort()).toEqual(['a.cbz', 'b.cbz']);
+    expect(summary.coversExtracted).toBe(1);
+  });
+});
