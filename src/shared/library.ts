@@ -169,6 +169,8 @@ export type ResyncResult =
       unreachable: number;
       /** `.nfo` sidecars created for comics that had none. */
       nfoWritten: number;
+      /** Cover thumbnails created for comics that had none. */
+      coversExtracted: number;
       /** When it finished (ISO 8601); also stored as the `lastResyncAt` setting. */
       finishedAt: string;
       /** What the library organization did with the comics added. */
