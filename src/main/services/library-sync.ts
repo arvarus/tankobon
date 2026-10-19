@@ -102,8 +102,9 @@ export async function resyncLibrary(
   }
 
   // Comics inside the walked folders get the `.nfo` they lack (an existing one is never touched).
-  for (const entry of repo.list()) {
-    if (!folders.some((folder) => isInside(folder, entry.path))) continue;
+  const inFolders = repo.list().filter((entry) => folders.some((folder) => isInside(folder, entry.path)));
+  for (const [index, entry] of inFolders.entries()) {
+    onProgress({ phase: 'importing', processed: index, total: inFolders.length, currentFile: entry.path });
     if (await writeNfoIfMissing(entry)) summary.nfoWritten += 1;
   }
 

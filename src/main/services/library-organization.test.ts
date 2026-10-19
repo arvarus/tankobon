@@ -252,7 +252,7 @@ describe('library organization and resynchronization', () => {
 
       const result = await resynchronizer().run();
 
-      expect(result).toMatchObject({ status: 'ok', added: 2, removed: 0, organization: NOTHING_ORGANIZED });
+      expect(result).toMatchObject({ status: 'ok', added: 2, removed: 0, nfoWritten: 2, organization: NOTHING_ORGANIZED });
       expect(repo.list()).toHaveLength(2);
       expect(settings.getAll().lastResyncAt).not.toBe('');
       expect(notify).toHaveBeenCalledWith({ scope: 'library' });

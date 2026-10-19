@@ -258,6 +258,7 @@ export function createResynchronizer(
           removed: summary.removed,
           failed: summary.failed,
           unreachable: summary.unreachable,
+          nfoWritten: summary.nfoWritten,
           finishedAt,
           organization,
         };
