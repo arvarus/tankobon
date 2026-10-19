@@ -68,7 +68,7 @@ describe('library organization and resynchronization', () => {
   let repo: LibraryRepository;
   let settings: SettingsRepository;
   let folders: LibraryFolderRepository;
-  const decoder = { removeThumbnail: vi.fn(async () => undefined), inspect: vi.fn(async () => ({ pageCount: 10, fileCount: 10 })) };
+  const decoder = { thumbnail: vi.fn(async () => new Uint8Array([1])), removeThumbnail: vi.fn(async () => undefined), inspect: vi.fn(async () => ({ pageCount: 10, fileCount: 10 })) };
   const imageScanner = { kick: vi.fn() };
   const notify = vi.fn();
   let organizer: LibraryOrganizer;

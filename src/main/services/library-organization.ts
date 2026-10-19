@@ -29,6 +29,8 @@ import { resyncLibrary } from './library-sync';
 export interface LibraryDecoder {
   /** Counts a file's pages and caches its cover. */
   inspect(filePath: string): Promise<ArchiveSummary>;
+  /** A book's thumbnail, generated when missing (unless `cachedOnly`); null when it has none. */
+  thumbnail(filePath: string, archiveId?: string, cachedOnly?: boolean): Promise<Uint8Array | null>;
   /** Deletes a book's cached thumbnail. */
   removeThumbnail(filePath: string): Promise<void>;
 }
@@ -239,6 +241,7 @@ export function createResynchronizer(
       try {
         const summary = await resyncLibrary(repo, organizer.watchedFolders(folders.list()), onProgress, (filePath) =>
           decoder.inspect(filePath),
+          async (filePath) => !(await decoder.thumbnail(filePath, undefined, true)) && (await decoder.thumbnail(filePath)) !== null,
         );
         const organization = await organizer.afterAdd(summary.addedEntries);
         const finishedAt = new Date().toISOString();
@@ -259,6 +262,7 @@ export function createResynchronizer(
           failed: summary.failed,
           unreachable: summary.unreachable,
           nfoWritten: summary.nfoWritten,
+          coversExtracted: summary.coversExtracted,
           finishedAt,
           organization,
         };
