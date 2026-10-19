@@ -1,8 +1,9 @@
-import { app, net, shell } from 'electron';
+import { app, BrowserWindow, net, shell } from 'electron';
 
 import { APP_LINKS, isAppLink, type AppInfo, type UpdateCheckResult } from '../../shared/app';
 import { checkForUpdate } from '../services/update-checker';
 import { handle } from './handle';
+import type { LaunchFiles } from './launch-files';
 import { IpcArgumentError, args } from './validate';
 
 // Channel names are shared with preload.ts: keep them in sync.
@@ -11,13 +12,18 @@ export const APP_CHANNELS = {
   getSystemLanguages: 'app:get-system-languages',
   openLink: 'app:open-link',
   checkUpdate: 'app:check-update',
+  takeLaunchFile: 'app:take-launch-file',
+  /** Main → renderer: a comic the OS asked to open is waiting (see `takeLaunchFile`). */
+  launchFile: 'app:launch-file',
 } as const;
 
 /**
  * Information shown in the "À propos" settings section. The versions are read here rather than in
  * the preload: `app.getVersion()` only exists in the main process.
  */
-export function registerAppIpc(): void {
+export function registerAppIpc(launchFiles: LaunchFiles): void {
+  handle(APP_CHANNELS.takeLaunchFile, args(), (): string | null => launchFiles.take());
+
   handle(APP_CHANNELS.getInfo, args(), (): AppInfo => ({
     name: app.getName(),
     version: app.getVersion(),
@@ -58,4 +64,13 @@ export function registerAppIpc(): void {
         timeoutMs: 15_000,
       }),
   );
+}
+
+/** Tells every window a comic the OS asked to open is waiting: the renderer then calls `app:take-launch-file`. */
+export function announceLaunchFile(): void {
+  for (const window of BrowserWindow.getAllWindows()) {
+    if (!window.isDestroyed() && !window.webContents.isDestroyed()) {
+      window.webContents.send(APP_CHANNELS.launchFile);
+    }
+  }
 }

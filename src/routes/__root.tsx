@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { useAchievementTracker } from '@/hooks/use-achievements';
 import { useFullscreen } from '@/hooks/use-fullscreen';
 import { useImageScan } from '@/hooks/use-image-scan';
+import { useLaunchFile } from '@/hooks/use-launch-file';
 import { useReadingLists } from '@/hooks/use-reading-lists';
 import { useSettings } from '@/hooks/use-settings';
 import { useUsers } from '@/hooks/use-users';
@@ -73,6 +74,8 @@ function RootLayout() {
   // collapsed/expanded preference is untouched and comes back on exit.
   const { fullscreen } = useFullscreen();
   const activeUserId = useUsers()?.activeId;
+  // A comic opened from the file explorer.
+  useLaunchFile();
 
   return (
     <div className="flex h-full flex-col">
