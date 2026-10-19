@@ -38,8 +38,11 @@ export interface DecoderMethods {
    * a PDF's from its page boxes). Pages that can't be read are left out of the average; null when none could be.
    */
   measure(filePath: string): PageSizeAverage | null;
-  /** A book's cover thumbnail, generated first when missing (from the open archive `archiveId`, if any). */
-  thumbnail(filePath: string, archiveId?: string): Uint8Array<ArrayBuffer> | null;
+  /**
+   * A book's cover thumbnail, generated first when missing (from the open archive `archiveId`, if any).
+   * With `cachedOnly`, the file is never opened: the cached thumbnail or null.
+   */
+  thumbnail(filePath: string, archiveId?: string, cachedOnly?: boolean): Uint8Array<ArrayBuffer> | null;
   /** Deletes a book's thumbnail. */
   removeThumbnail(filePath: string): void;
   /** Deletes every thumbnail that isn't one of `filePaths`'. */

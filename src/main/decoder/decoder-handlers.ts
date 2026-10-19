@@ -38,8 +38,10 @@ export function createDecoderHandlers(thumbnailsDirectory: string): DecoderHandl
         await archive.close();
       }
     },
-    thumbnail: (filePath, archiveId) =>
-      thumbnails.ensure(filePath, archiveId ? () => service.readPage(archiveId, 0) : undefined),
+    thumbnail: (filePath, archiveId, cachedOnly) =>
+      cachedOnly
+        ? thumbnails.read(filePath)
+        : thumbnails.ensure(filePath, archiveId ? () => service.readPage(archiveId, 0) : undefined),
     removeThumbnail: (filePath) => thumbnails.remove(filePath),
     pruneThumbnails: (filePaths) => thumbnails.prune(filePaths),
     rebuildThumbnails: (filePaths) => thumbnails.rebuild(filePaths),

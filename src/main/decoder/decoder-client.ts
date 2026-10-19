@@ -86,9 +86,9 @@ export class DecoderClient {
     return this.call('measure', filePath);
   }
 
-  /** A book's thumbnail, generated when missing; null when it has no cover. */
-  thumbnail(filePath: string, archiveId?: string): Promise<Uint8Array<ArrayBuffer> | null> {
-    return this.call('thumbnail', filePath, archiveId);
+  /** A book's thumbnail, generated when missing (unless `cachedOnly`); null when it has no cover. */
+  thumbnail(filePath: string, archiveId?: string, cachedOnly?: boolean): Promise<Uint8Array<ArrayBuffer> | null> {
+    return this.call('thumbnail', filePath, archiveId, cachedOnly);
   }
 
   /** Deletes a book's thumbnail. */

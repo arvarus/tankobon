@@ -32,6 +32,7 @@ import { registerSettingsIpc } from './main/ipc/settings';
 import { registerUserIpc } from './main/ipc/users';
 import { applyMainLanguage, onMainLanguageApplied } from './main/language';
 import { comicPathFromArgv } from './main/launch-files';
+import { isOnlineOnly } from './main/services/cloud-files';
 import { createImageStatsScanner } from './main/services/image-stats-scanner';
 import { createLibraryOrganizer, createResynchronizer } from './main/services/library-organization';
 
@@ -142,6 +143,7 @@ app.whenReady().then(() => {
   // Measures the pages of the books (average width and height) in the background, one book at a time.
   const imageScanner = createImageStatsScanner(libraryRepo, {
     measure: (filePath) => decoder.measure(filePath),
+    isOnlineOnly,
     onProgress: broadcastImageScanProgress,
     onUpdated: (entries) => broadcastDataChange({ scope: 'library', upserted: entries }),
   });
