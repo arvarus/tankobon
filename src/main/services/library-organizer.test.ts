@@ -22,6 +22,7 @@ import {
   unorganizedIds,
   type OrganizedEntry,
 } from './library-organizer';
+import { nfoPathFor } from './nfo';
 
 const roots: string[] = [];
 
@@ -135,6 +136,20 @@ describe('organizeEntries', () => {
     const to = summary.moved[0]!.to;
     expect(await exists(path.join(path.dirname(to), 'Tome 1.cover.webp'))).toBe(true);
     expect(await exists(path.join(source, 'Tome 1.cover.webp'))).toBe(false);
+  });
+
+  it('moves the .nfo beside the comic with it, under the comic\'s new name', async () => {
+    const source = await tree(['Tome 1.cbz', 'Tome 1.nfo']);
+    const target = await tree([]);
+    const repo = repository();
+    const from = path.join(source, 'Tome 1.cbz');
+    repo.register(from, 'Tome 1', 10, 10, 1);
+    const id = repo.idOfPath(from)!;
+
+    const summary = await organizeEntries(repo, flat(target), [id]);
+
+    expect(await exists(nfoPathFor(summary.moved[0]!.to))).toBe(true);
+    expect(await exists(path.join(source, 'Tome 1.nfo'))).toBe(false);
   });
 
   it('never moves a file that is not a comic, and does not offer it for organizing', async () => {
