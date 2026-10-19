@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here. This file is maintained by [release-please](https://github.com/googleapis/release-please) from the [Conventional Commits](https://www.conventionalcommits.org/) merged into `master`: don't edit released entries by hand. New versions are inserted above the previous ones.
 
+## [0.10.0](https://github.com/pprb/tankobon/compare/v0.9.1...v0.10.0) (2026-10-19)
+
+
+### Features
+
+* **app:** open a comic from the file explorer ([#143](https://github.com/pprb/tankobon/issues/143)) ([9fe506e](https://github.com/pprb/tankobon/commit/9fe506e2dd6b5194e7d286673c1d91a487500ae5))
+* **library:** add a filter for books without a fiche ([#141](https://github.com/pprb/tankobon/issues/141)) ([6b329f4](https://github.com/pprb/tankobon/commit/6b329f49578e8c2d35a944507dad0ec69db494c7))
+* **library:** add a grid display mode with covers side by side ([#142](https://github.com/pprb/tankobon/issues/142)) ([c506b86](https://github.com/pprb/tankobon/commit/c506b86c63f064ca714b7381aa0ebd915c3f9ce8))
+* **library:** group a book that exists in several formats ([#144](https://github.com/pprb/tankobon/issues/144)) ([8dd4d09](https://github.com/pprb/tankobon/commit/8dd4d0946d9e6f3f84f05a0d7a9c61ee4a1117dd))
+
 ## [0.9.1](https://github.com/pprb/tankobon/compare/v0.9.0...v0.9.1) (2026-10-18)
 
 

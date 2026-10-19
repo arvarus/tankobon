@@ -1,7 +1,7 @@
 {
   "name": "tankobon",
   "productName": "Tankōbon",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "description": "Digital comics, BD and manga library manager and reader.",
   "main": ".vite/build/main.cjs",
   "private": true,
