@@ -22,6 +22,11 @@ export interface ImageStatsScanner {
 export interface ImageStatsScannerOptions {
   /** Averages a file's page sizes (the decoder process's `measure`); null when none could be read. */
   measure: (filePath: string) => Promise<PageSizeAverage | null>;
+  /**
+   * Whether a file is a cloud placeholder (reading it would download it). Such books are left for
+   * later in the session: they are measured once opened. Defaults to never.
+   */
+  isOnlineOnly?: (filePath: string) => Promise<boolean>;
   /** Called as the scan advances. */
   onProgress: (progress: ImageScanProgress) => void;
   /** Called with the entries just updated, at most once per `flushIntervalMs` and when the run ends. */
@@ -35,7 +40,7 @@ export interface ImageStatsScannerOptions {
  * is skipped for the rest of the session and tried again at the next start: its columns stay null.
  */
 export function createImageStatsScanner(repo: LibraryRepository, options: ImageStatsScannerOptions): ImageStatsScanner {
-  const { measure, onProgress, onUpdated, flushIntervalMs = 500 } = options;
+  const { measure, isOnlineOnly = async () => false, onProgress, onUpdated, flushIntervalMs = 500 } = options;
   const gaveUp = new Set<string>();
   let progress: ImageScanProgress = { running: false, processed: 0, total: 0 };
   let current: Promise<void> | undefined;
@@ -67,6 +72,12 @@ export function createImageStatsScanner(repo: LibraryRepository, options: ImageS
 
         for (const entry of queue) {
           try {
+            if (await isOnlineOnly(entry.path)) {
+              gaveUp.add(entry.id);
+              processed += 1;
+              report({ running: true, processed, total });
+              continue;
+            }
             const average = await measure(entry.path);
             const saved = average ? repo.updateImageStats(entry.id, average.width, average.height) : null;
             if (saved) updated.push(saved);

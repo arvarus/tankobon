@@ -14,6 +14,7 @@ import type {
 import type { LibraryFolderRepository } from '../db/library-folder-repository';
 import type { LibraryRepository } from '../db/library-repository';
 import type { SettingsRepository } from '../db/settings-repository';
+import { isOnlineOnly } from '../services/cloud-files';
 import type { DecoderClient } from '../decoder/decoder-client';
 import type { ImageStatsScanner } from '../services/image-stats-scanner';
 import { NOTHING_ORGANIZED, type LibraryOrganizer, type Resynchronizer } from '../services/library-organization';
@@ -275,9 +276,12 @@ export function registerLibraryIpc(
 
   // Generated on the spot when missing: books added before thumbnails existed, or by an import
   // whose rebuild hasn't reached them yet.
-  handle(LIBRARY_CHANNELS.thumbnail, args(idArg), (_event, id) => {
+  // A cloud placeholder is never opened for it (that would download the file): its cached cover or none.
+  handle(LIBRARY_CHANNELS.thumbnail, args(idArg), async (_event, id) => {
     const entry = repo.get(id);
-    return entry ? decoder.thumbnail(entry.path).catch(() => null) : null;
+    if (!entry) return null;
+    const cachedOnly = await isOnlineOnly(entry.path);
+    return decoder.thumbnail(entry.path, undefined, cachedOnly).catch(() => null);
   });
 
   handle(LIBRARY_CHANNELS.imageScanStatus, args(), () => imageScanner.status());

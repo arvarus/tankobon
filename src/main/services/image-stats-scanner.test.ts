@@ -6,7 +6,10 @@ import { LibraryRepository } from '../db/library-repository';
 import { migrate } from '../db/schema';
 import { createImageStatsScanner } from './image-stats-scanner';
 
-function setup(measure: (filePath: string) => Promise<{ width: number; height: number } | null>) {
+function setup(
+  measure: (filePath: string) => Promise<{ width: number; height: number } | null>,
+  isOnlineOnly?: (filePath: string) => Promise<boolean>,
+) {
   const db = new DatabaseSync(':memory:');
   migrate(db);
   const repo = new LibraryRepository(db);
@@ -14,6 +17,7 @@ function setup(measure: (filePath: string) => Promise<{ width: number; height: n
   const updates: LibraryEntry[][] = [];
   const scanner = createImageStatsScanner(repo, {
     measure,
+    isOnlineOnly,
     onProgress: (p) => progress.push(p),
     onUpdated: (entries) => updates.push(entries),
     flushIntervalMs: 0,
@@ -22,6 +26,19 @@ function setup(measure: (filePath: string) => Promise<{ width: number; height: n
 }
 
 describe('createImageStatsScanner', () => {
+  it('never opens a cloud placeholder', async () => {
+    const measure = vi.fn(async () => ({ width: 10, height: 10 }));
+    const { repo, scanner } = setup(measure, async (filePath) => filePath === '/cloud.cbz');
+    repo.register('/cloud.cbz', 'cloud', 10, 10, 1);
+    repo.register('/local.cbz', 'local', 10, 10, 1);
+
+    await scanner.kick();
+
+    expect(measure).toHaveBeenCalledTimes(1);
+    expect(measure).toHaveBeenCalledWith('/local.cbz');
+    expect(repo.unmeasured().map((e) => e.path)).toEqual(['/cloud.cbz']);
+  });
+
   it('measures the books that have no average yet, and stores it', async () => {
     const { repo, scanner, progress, updates } = setup(async () => ({ width: 1000, height: 1500 }));
     repo.register('/a.cbz', 'a', 10, 10, 1);
