@@ -4,6 +4,7 @@
  */
 import {
   HOME_SECTION_DEFAULT_COUNT,
+  HOME_SECTION_DEFAULT_LAYOUT,
   HOME_SECTION_HIDE_WHEN_EMPTY_DEFAULT,
   HOME_SECTION_MAX_COUNT,
   HOME_SECTION_MIN_COUNT,
@@ -47,6 +48,7 @@ export function resolveHomeSections(
     count: clampHomeCount(section.count ?? HOME_SECTION_DEFAULT_COUNT),
     hideWhenEmpty:
       section.hideWhenEmpty ?? HOME_SECTION_HIDE_WHEN_EMPTY_DEFAULT[section.id],
+    layout: section.layout ?? HOME_SECTION_DEFAULT_LAYOUT,
   }));
 }
 
@@ -61,7 +63,7 @@ export function visibleHomeSections(
 export function setHomeSectionOptions(
   stored: readonly HomeSectionSetting[],
   id: HomeSectionSetting["id"],
-  patch: Partial<Pick<HomeSectionSetting, "count" | "hideWhenEmpty">>,
+  patch: Partial<Pick<HomeSectionSetting, "count" | "hideWhenEmpty" | "layout">>,
 ): ResolvedHomeSection[] {
   return resolveHomeSections(stored).map((section) =>
     section.id === id

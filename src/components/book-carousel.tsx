@@ -9,16 +9,24 @@ import {
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
+import type { HomeSectionLayout } from "@/shared/settings";
 
 /** Share of the visible width one click on an arrow scrolls by. */
 const SCROLL_STEP = 0.8;
 
 /**
- * A single row of items (the children, `li`s) in a view of fixed size: what doesn't fit is reached
+ * In `wrap` layout the items flow over as many lines as the width needs, with no arrows. Otherwise:
+ * a single row of items (the children, `li`s) in a view of fixed size: what doesn't fit is reached
  * with the arrows at either side, which only show while there is something to scroll to. The row
  * has no scroll bar and doesn't wrap, so the block keeps the same height whatever it holds.
  */
-export function BookCarousel({ children }: { children: ReactNode }) {
+export function BookCarousel({
+  children,
+  layout = "row",
+}: {
+  children: ReactNode;
+  layout?: HomeSectionLayout;
+}) {
   const { t } = useTranslation("home");
   const list = useRef<HTMLUListElement>(null);
   const [edges, setEdges] = useState({ start: true, end: true });
@@ -46,6 +54,10 @@ export function BookCarousel({ children }: { children: ReactNode }) {
       left: direction * list.current.clientWidth * SCROLL_STEP,
       behavior: "smooth",
     });
+
+  if (layout === "wrap") {
+    return <ul className="mt-3 flex flex-wrap gap-4 p-1">{children}</ul>;
+  }
 
   return (
     <div className="relative mt-3">

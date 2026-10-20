@@ -78,6 +78,15 @@ export const HOME_SECTION_MAX_COUNT = 20;
 /** How many books a home block shows until the user sets it. */
 export const HOME_SECTION_DEFAULT_COUNT = 5;
 
+/** How a home block lays its books out: one row scrolled with arrows, or lines wrapping to the width. */
+export const HOME_SECTION_LAYOUTS = ['row', 'wrap'] as const;
+
+/** A layout of {@link HOME_SECTION_LAYOUTS}. */
+export type HomeSectionLayout = (typeof HOME_SECTION_LAYOUTS)[number];
+
+/** The layout of a home block until the user sets it. */
+export const HOME_SECTION_DEFAULT_LAYOUT: HomeSectionLayout = 'row';
+
 /**
  * Whether a block is hidden while it has nothing to show, until the user sets it: the blocks that
  * had no empty state before the option existed keep disappearing, the others keep their message.
@@ -93,7 +102,7 @@ export const HOME_SECTION_HIDE_WHEN_EMPTY_DEFAULT: Record<HomeSection, boolean> 
 /**
  * One block of the home page in {@link AppSettings.homeSections}: whether it is shown, at its place in
  * the list. `count` (between {@link HOME_SECTION_MIN_COUNT} and {@link HOME_SECTION_MAX_COUNT}) and
- * `hideWhenEmpty` are absent from settings saved before they existed; `resolveHomeSections()` (renderer)
+ * `hideWhenEmpty` and `layout` are absent from settings saved before they existed; `resolveHomeSections()` (renderer)
  * fills them in.
  */
 export interface HomeSectionSetting {
@@ -103,6 +112,8 @@ export interface HomeSectionSetting {
   count?: number;
   /** Hide the block while it has no book, instead of showing an explanatory message. */
   hideWhenEmpty?: boolean;
+  /** One scrolled row of covers, or lines wrapping automatically (default `row`). */
+  layout?: HomeSectionLayout;
 }
 
 /**
@@ -115,7 +126,7 @@ export function isHomeSections(value: unknown): value is HomeSectionSetting[] {
   const ids = new Set<unknown>();
   for (const item of value) {
     if (typeof item !== 'object' || item === null) return false;
-    const { id, visible, count, hideWhenEmpty } = item as Record<string, unknown>;
+    const { id, visible, count, hideWhenEmpty, layout } = item as Record<string, unknown>;
     if (typeof visible !== 'boolean' || !(HOME_SECTIONS as readonly unknown[]).includes(id) || ids.has(id)) return false;
     if (
       count !== undefined &&
@@ -124,6 +135,7 @@ export function isHomeSections(value: unknown): value is HomeSectionSetting[] {
       return false;
     }
     if (hideWhenEmpty !== undefined && typeof hideWhenEmpty !== 'boolean') return false;
+    if (layout !== undefined && !(HOME_SECTION_LAYOUTS as readonly unknown[]).includes(layout)) return false;
     ids.add(id);
   }
   return true;
