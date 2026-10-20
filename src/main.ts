@@ -34,6 +34,7 @@ import { applyMainLanguage, onMainLanguageApplied } from './main/language';
 import { comicPathFromArgv } from './main/launch-files';
 import { isOnlineOnly } from './main/services/cloud-files';
 import { createImageStatsScanner } from './main/services/image-stats-scanner';
+import { createLibraryCleaner } from './main/services/library-cleanup';
 import { createLibraryOrganizer, createResynchronizer } from './main/services/library-organization';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
@@ -168,6 +169,7 @@ app.whenReady().then(() => {
     broadcastDataChange,
     imageScanner,
     organizer,
+    createLibraryCleaner(libraryRepo, decoder, broadcastDataChange),
   );
   registerReadingListIpc(readingListRepo, broadcastDataChange);
   registerStatsIpc(statsRepo);

@@ -4,6 +4,7 @@
  */
 import type { ArchiveInfo, ComicPage } from '../../shared/comic';
 import type { Language } from '../../shared/i18n';
+import type { CleanedArchive, JunkEntry } from '../services/cbz-cleaner';
 
 /** What `inspect` learns about an archive: enough to register it in the library. */
 export interface ArchiveSummary {
@@ -38,6 +39,16 @@ export interface DecoderMethods {
    * a PDF's from its page boxes). Pages that can't be read are left out of the average; null when none could be.
    */
   measure(filePath: string): PageSizeAverage | null;
+  /**
+   * The files of a CBZ that are not pages; null for a format that can't be rewritten (CBR, PDF).
+   * Rejects when the archive can't be read or holds no image.
+   */
+  listJunk(filePath: string): JunkEntry[] | null;
+  /**
+   * Rewrites a CBZ without the entries `names` (see `removeEntries()`): the original is replaced only
+   * once the new archive has been checked.
+   */
+  cleanArchive(filePath: string, names: string[]): CleanedArchive;
   /**
    * A book's cover thumbnail, generated first when missing (from the open archive `archiveId`, if any).
    * With `cachedOnly`, the file is never opened: the cached thumbnail or null.

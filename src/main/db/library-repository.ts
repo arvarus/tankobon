@@ -407,6 +407,12 @@ export class LibraryRepository {
     return this.get(id);
   }
 
+  /** Stores the archive's entry count and size on disk, after the file was rewritten; returns the updated entry, or null if the id is unknown. */
+  updateFileStats(id: string, fileCount: number, fileSize: number): LibraryEntry | null {
+    this.db.prepare('UPDATE library SET file_count = ?, file_size = ? WHERE id = ?').run(fileCount, fileSize, id);
+    return this.get(id);
+  }
+
   /** The entries the background scan has yet to measure (id and path), most recently opened first. */
   unmeasured(): { id: string; path: string }[] {
     const rows = this.db
