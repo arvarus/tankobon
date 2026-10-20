@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useConfirm } from '@/components/confirm-dialog';
 import { DuplicatesDialog } from '@/components/duplicates-dialog';
+import { ScanFailuresDialog } from '@/components/scan-failures-dialog';
 import { SETTINGS_SELECT_CLASS, SettingsSection } from '@/components/settings-section';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -15,7 +16,7 @@ import { duplicateGroups } from '@/lib/library-editions';
 import { fileNameExample, levelChoices, setLevel, structureExample } from '@/lib/library-structure';
 import { cn } from '@/lib/utils';
 import { FILE_NAME_FIELDS, MAX_FILE_NAME_TEMPLATE_LENGTH, fileNameTemplateError } from '@/shared/file-name-template';
-import type { LibraryEntry, ScanProgress } from '@/shared/library';
+import type { LibraryEntry, ScanFailure, ScanProgress } from '@/shared/library';
 import {
   MAX_LIBRARY_LEVELS,
   isLibraryStructure,
@@ -44,6 +45,9 @@ function OrganizationSettingsPage() {
   const [progress, setProgress] = useState<ScanProgress | null>(null);
   // Whether this page started the run, to show its progress here (a run started elsewhere only disables the controls).
   const [running, setRunning] = useState(false);
+  // The files the last resynchronization couldn't open (`total` is the exact count), shown in a dialog on request.
+  const [failures, setFailures] = useState<{ list: ScanFailure[]; total: number } | null>(null);
+  const [failuresOpen, setFailuresOpen] = useState(false);
   const [resyncRunning, setResyncRunning] = useState(false);
   const [resyncStatus, setResyncStatus] = useState<{ message: string; error?: boolean } | null>(null);
   const [organizeStatus, setOrganizeStatus] = useState<{ message: string; error?: boolean } | null>(null);
@@ -86,6 +90,7 @@ function OrganizationSettingsPage() {
 
   const resync = async () => {
     setResyncStatus(null);
+    setFailures(null);
     setResyncRunning(true);
     setProgress({ phase: 'scanning', processed: 0, total: 0, currentFile: '' });
     const result = await window.tankobon.library.resync();
@@ -95,6 +100,7 @@ function OrganizationSettingsPage() {
       setResyncStatus({ message: result.message, error: true });
       return;
     }
+    if (result.failed > 0) setFailures({ list: result.failures, total: result.failed });
     const parts = [t('resyncDone', { added: result.added, removed: result.removed })];
     if (result.failed > 0) parts.push(t('resyncFailed', { count: result.failed }));
     if (result.nfoWritten > 0) parts.push(t('resyncNfoWritten', { count: result.nfoWritten }));
@@ -208,6 +214,13 @@ function OrganizationSettingsPage() {
             {resyncStatus.message}
           </p>
         )}
+        {failures && (
+          <div>
+            <Button variant="outline" size="sm" onClick={() => setFailuresOpen(true)}>
+              {t('resyncShowFailures')}
+            </Button>
+          </div>
+        )}
         <p className="text-sm text-muted-foreground">{lastResync}</p>
         <div className="flex items-center gap-2">
           <input
@@ -223,6 +236,9 @@ function OrganizationSettingsPage() {
       </SettingsSection>
       {duplicates && <DuplicatesDialog groups={duplicates} onClose={() => setDuplicates(null)} />}
       {confirmDialog}
+      {failures && failuresOpen && (
+        <ScanFailuresDialog failures={failures.list} total={failures.total} onClose={() => setFailuresOpen(false)} />
+      )}
     </>
   );
 }

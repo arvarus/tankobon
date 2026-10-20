@@ -19,8 +19,10 @@ import { Button } from '@/components/ui/button';
 import { useLibrary } from '@/hooks/use-library';
 import { useOrganizationOffer } from '@/hooks/use-organization-offer';
 import { useSettings } from '@/hooks/use-settings';
+import { useActiveUser } from '@/hooks/use-users';
 import { appData } from '@/lib/app-data';
-import { availableTags, EMPTY_FILTERS, filterEntries, type LibraryFilters } from '@/lib/library-filter';
+import { availableTags, filterEntries, type LibraryFilters } from '@/lib/library-filter';
+import { rememberedFilters, rememberFilters } from '@/lib/library-filters-memory';
 import { collapseEditions, editionGroups } from '@/lib/library-editions';
 import { gridLines, groupBySeries, ungroupedRows } from '@/lib/library-groups';
 import { sortEntries } from '@/lib/library-sort';
@@ -62,7 +64,13 @@ function LibraryPage() {
   const grouped = settings.libraryGroupBySeries;
   const sort = settings.librarySort;
   const entries = library ?? NO_ENTRIES;
-  const [filters, setFilters] = useState<LibraryFilters>(EMPTY_FILTERS);
+  const userId = useActiveUser()?.id ?? null;
+  // Search and filters outlive the page: coming back to the library finds them as they were left.
+  const [filters, setFilters] = useState<LibraryFilters>(() => rememberedFilters(userId));
+  const changeFilters = (next: LibraryFilters) => {
+    setFilters(next);
+    rememberFilters(userId, next);
+  };
   const [scan, setScan] = useState<ScanProgress | null>(null);
   const [scanStatus, setScanStatus] = useState<string | null>(null);
   const [lookupEntry, setLookupEntry] = useState<LibraryEntry | null>(null);
@@ -230,7 +238,7 @@ function LibraryPage() {
       {entries.length > 0 && (
         <LibraryToolbar
           filters={filters}
-          onChange={setFilters}
+          onChange={changeFilters}
           tags={tags}
           shown={visible.length}
           total={entries.length}

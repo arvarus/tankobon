@@ -261,6 +261,7 @@ export function createResynchronizer(
           added: summary.added,
           removed: summary.removed,
           failed: summary.failed,
+          failures: summary.failures,
           unreachable: summary.unreachable,
           nfoWritten: summary.nfoWritten,
           coversExtracted: summary.coversExtracted,
