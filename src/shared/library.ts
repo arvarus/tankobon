@@ -155,6 +155,17 @@ export type ScanResult =
       organization: OrganizationOutcome;
     };
 
+/** A file a scan or resynchronization couldn't open, and why. */
+export interface ScanFailure {
+  /** Absolute path of the file. */
+  path: string;
+  /** The error message, in the interface language. */
+  reason: string;
+}
+
+/** The most failures a resynchronization reports (the count in `failed` stays exact). */
+export const MAX_REPORTED_FAILURES = 200;
+
 /** Outcome of `library.resync()`. */
 export type ResyncResult =
   | {
@@ -165,6 +176,8 @@ export type ResyncResult =
       removed: number;
       /** Files that couldn't be opened. */
       failed: number;
+      /** The first `MAX_REPORTED_FAILURES` of those files, with the reason each one failed. */
+      failures: ScanFailure[];
       /** Folders that couldn't be read, left untouched. */
       unreachable: number;
       /** `.nfo` sidecars created for comics that had none. */

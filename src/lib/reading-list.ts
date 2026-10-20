@@ -166,7 +166,7 @@ export function dropFeedback(list: ReadingList, entry: DraggedEntry, result: Rea
 }
 
 /** How a series name is compared: trimmed, case and accents ignored ("Astérix" = "asterix "). */
-function seriesKey(series: string): string {
+export function seriesKey(series: string): string {
   return series.trim().normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase();
 }
 
@@ -178,18 +178,21 @@ function seriesKey(series: string): string {
 export function seriesEntries(entry: LibraryEntry, library: LibraryEntry[]): LibraryEntry[] {
   if (!entry.series?.trim()) return [entry];
   const key = seriesKey(entry.series);
+  return sortByVolume(library.filter((other) => other.series != null && seriesKey(other.series) === key));
+}
+
+/** Sorts `books` of one series in place by volume (natural order, no volume last), then title. */
+export function sortByVolume(books: LibraryEntry[]): LibraryEntry[] {
   const collator = new Intl.Collator(currentLanguage(), { numeric: true, sensitivity: 'base' });
-  return library
-    .filter((other) => other.series != null && seriesKey(other.series) === key)
-    .sort((a, b) => {
-      if (a.volume === null || b.volume === null) {
-        if (a.volume !== b.volume) return a.volume === null ? 1 : -1;
-      } else {
-        const byVolume = collator.compare(a.volume, b.volume);
-        if (byVolume !== 0) return byVolume;
-      }
-      return collator.compare(a.title, b.title);
-    });
+  return books.sort((a, b) => {
+    if (a.volume === null || b.volume === null) {
+      if (a.volume !== b.volume) return a.volume === null ? 1 : -1;
+    } else {
+      const byVolume = collator.compare(a.volume, b.volume);
+      if (byVolume !== 0) return byVolume;
+    }
+    return collator.compare(a.title, b.title);
+  });
 }
 
 /**

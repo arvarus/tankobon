@@ -75,6 +75,7 @@ export default {
     resyncCoversExtracted_one: '{{count}} cover extracted',
     resyncCoversExtracted_other: '{{count}} covers extracted',
     resyncUnreachable: '{{count}} folder unreachable, skipped',
+    resyncShowFailures: 'Show the files that could not be opened…',
     organization: 'Library organization',
     organizationHint: 'Moves the comics you add into a folder whose layout Tankōbon manages, following the tree below. This folder is resynchronized like the others, and a comic dropped there by hand is moved into place.',
     organizationMode: 'When comics are added',
