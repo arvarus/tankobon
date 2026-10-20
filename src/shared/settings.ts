@@ -244,6 +244,11 @@ export interface AppSettings {
    * `libraryFileName`), most recent first, at most {@link MAX_FILE_NAME_RULES}: offered again next time.
    */
   fileNameRules: string[];
+  /**
+   * The duplicate groups the user chose to keep as they are ("Tout garder"), as `duplicateGroupKey()`s:
+   * the duplicates search doesn't offer them again unless asked. At most {@link MAX_IGNORED_DUPLICATES}.
+   */
+  ignoredDuplicates: string[];
   /** Folder last added with "Ajouter un dossier…" (empty before the first one): where the next folder dialog opens. */
   lastScanFolder: string;
 }
@@ -284,6 +289,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   librarySidecarCovers: true,
   libraryWriteNfo: true,
   fileNameRules: [],
+  ignoredDuplicates: [],
 };
 
 /**
@@ -331,6 +337,8 @@ export const MAX_PAGE_SPACING = 1000;
 export type SettingValidators = { [K in keyof AppSettings]: (value: unknown) => value is AppSettings[K] };
 
 const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
+/** How many groups {@link AppSettings.ignoredDuplicates} keeps (the oldest are dropped first). */
+export const MAX_IGNORED_DUPLICATES = 2000;
 /** How many file name rules {@link AppSettings.fileNameRules} keeps. */
 export const MAX_FILE_NAME_RULES = 10;
 
@@ -380,6 +388,8 @@ export const SETTING_VALIDATORS: SettingValidators = {
   libraryWriteNfo: isBoolean,
   fileNameRules: (value): value is string[] =>
     Array.isArray(value) && value.length <= MAX_FILE_NAME_RULES && value.every((rule) => isFileNameTemplate(rule) && rule !== ''),
+  ignoredDuplicates: (value): value is string[] =>
+    Array.isArray(value) && value.length <= MAX_IGNORED_DUPLICATES && value.every(isString),
 };
 
 /**

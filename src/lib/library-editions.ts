@@ -84,3 +84,25 @@ export function duplicateGroups(entries: readonly LibraryEntry[]): LibraryEntry[
   }
   return [...byKey.values()].filter((group) => group.length > 1);
 }
+
+/** Identifies a duplicate group by the ids of its entries: a file added to the group makes it a new one. */
+export function duplicateGroupKey(group: readonly LibraryEntry[]): string {
+  return group
+    .map((entry) => entry.id)
+    .sort()
+    .join('|');
+}
+
+/**
+ * Adds the groups the user kept as they are to the stored keys (no repeat, newest last), dropping the
+ * oldest beyond `limit`.
+ */
+export function rememberIgnoredGroups(
+  stored: readonly string[],
+  groups: readonly (readonly LibraryEntry[])[],
+  limit: number,
+): string[] {
+  const merged = [...stored];
+  for (const key of groups.map(duplicateGroupKey)) if (!merged.includes(key)) merged.push(key);
+  return merged.slice(-limit);
+}
