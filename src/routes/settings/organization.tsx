@@ -1,20 +1,22 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { Copy, FolderTree } from 'lucide-react';
+import { Copy, FolderTree, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useConfirm } from '@/components/confirm-dialog';
 import { DuplicatesDialog } from '@/components/duplicates-dialog';
+import { ScanFailuresDialog } from '@/components/scan-failures-dialog';
 import { SETTINGS_SELECT_CLASS, SettingsSection } from '@/components/settings-section';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { useOrganizationOffer } from '@/hooks/use-organization-offer';
 import { useLibrary } from '@/hooks/use-library';
 import { useSettings } from '@/hooks/use-settings';
 import { duplicateGroups } from '@/lib/library-editions';
 import { fileNameExample, levelChoices, setLevel, structureExample } from '@/lib/library-structure';
 import { cn } from '@/lib/utils';
 import { FILE_NAME_FIELDS, MAX_FILE_NAME_TEMPLATE_LENGTH, fileNameTemplateError } from '@/shared/file-name-template';
-import type { LibraryEntry, ScanProgress } from '@/shared/library';
+import type { LibraryEntry, ScanFailure, ScanProgress } from '@/shared/library';
 import {
   MAX_LIBRARY_LEVELS,
   isLibraryStructure,
@@ -31,17 +33,23 @@ export const Route = createFileRoute('/settings/organization')({
  * each user's own choice (Paramètres › Bibliothèque).
  */
 function OrganizationSettingsPage() {
-  const { t } = useTranslation('settings', { keyPrefix: 'library' });
+  const { t, i18n } = useTranslation('settings', { keyPrefix: 'library' });
   const { settings, update } = useSettings();
   const { t: tLibrary } = useTranslation('library');
   const library = useLibrary();
   const { confirm, dialog: confirmDialog } = useConfirm();
+  const offerOrganization = useOrganizationOffer(confirm);
   // The groups found, frozen when the dialog opens.
   const [duplicates, setDuplicates] = useState<LibraryEntry[][] | null>(null);
   const [duplicatesStatus, setDuplicatesStatus] = useState<string | null>(null);
   const [progress, setProgress] = useState<ScanProgress | null>(null);
   // Whether this page started the run, to show its progress here (a run started elsewhere only disables the controls).
   const [running, setRunning] = useState(false);
+  // The files the last resynchronization couldn't open (`total` is the exact count), shown in a dialog on request.
+  const [failures, setFailures] = useState<{ list: ScanFailure[]; total: number } | null>(null);
+  const [failuresOpen, setFailuresOpen] = useState(false);
+  const [resyncRunning, setResyncRunning] = useState(false);
+  const [resyncStatus, setResyncStatus] = useState<{ message: string; error?: boolean } | null>(null);
   const [organizeStatus, setOrganizeStatus] = useState<{ message: string; error?: boolean } | null>(null);
   // A resynchronization or an organization: either one blocks the other.
   const busy = progress !== null;
@@ -79,6 +87,33 @@ function OrganizationSettingsPage() {
     if (result.failed > 0) parts.push(t('organizeAllFailed', { count: result.failed }));
     setOrganizeStatus({ message: parts.join(' · ') });
   };
+
+  const resync = async () => {
+    setResyncStatus(null);
+    setFailures(null);
+    setResyncRunning(true);
+    setProgress({ phase: 'scanning', processed: 0, total: 0, currentFile: '' });
+    const result = await window.tankobon.library.resync();
+    setProgress(null);
+    setResyncRunning(false);
+    if (result.status === 'error') {
+      setResyncStatus({ message: result.message, error: true });
+      return;
+    }
+    if (result.failed > 0) setFailures({ list: result.failures, total: result.failed });
+    const parts = [t('resyncDone', { added: result.added, removed: result.removed })];
+    if (result.failed > 0) parts.push(t('resyncFailed', { count: result.failed }));
+    if (result.nfoWritten > 0) parts.push(t('resyncNfoWritten', { count: result.nfoWritten }));
+    if (result.coversExtracted > 0) parts.push(t('resyncCoversExtracted', { count: result.coversExtracted }));
+    if (result.unreachable > 0) parts.push(t('resyncUnreachable', { count: result.unreachable }));
+    setResyncStatus({ message: parts.join(' · ') });
+    parts.push(...(await offerOrganization(result.organization)));
+    setResyncStatus({ message: parts.join(' · ') });
+  };
+
+  const lastResync = settings.lastResyncAt
+    ? t('lastResync', { date: new Date(settings.lastResyncAt).toLocaleString(i18n.language) })
+    : t('neverResynced');
 
   const findDuplicates = () => {
     const groups = duplicateGroups(library ?? []);
@@ -163,8 +198,47 @@ function OrganizationSettingsPage() {
         </div>
         {duplicatesStatus && <p className="text-sm text-muted-foreground">{duplicatesStatus}</p>}
       </SettingsSection>
+      <SettingsSection title={t('resync')}>
+        <p className="text-sm text-muted-foreground">{t('resyncHint')}</p>
+        <div>
+          <Button variant="outline" onClick={() => void resync()} disabled={busy}>
+            <RefreshCw />
+            {resyncRunning ? t('resyncRunning') : t('resyncButton')}
+          </Button>
+        </div>
+        {progress && progress.phase === 'importing' && resyncRunning && (
+          <Progress value={progress.processed} max={progress.total} label={t('resyncRunning')} />
+        )}
+        {resyncStatus && (
+          <p className={cn('text-sm', resyncStatus.error ? 'text-destructive' : 'text-muted-foreground')}>
+            {resyncStatus.message}
+          </p>
+        )}
+        {failures && (
+          <div>
+            <Button variant="outline" size="sm" onClick={() => setFailuresOpen(true)}>
+              {t('resyncShowFailures')}
+            </Button>
+          </div>
+        )}
+        <p className="text-sm text-muted-foreground">{lastResync}</p>
+        <div className="flex items-center gap-2">
+          <input
+            id="resync-on-startup"
+            type="checkbox"
+            checked={settings.resyncOnStartup}
+            onChange={(event) => update('resyncOnStartup', event.target.checked)}
+          />
+          <label htmlFor="resync-on-startup" className="text-sm">
+            {t('resyncOnStartup')}
+          </label>
+        </div>
+      </SettingsSection>
       {duplicates && <DuplicatesDialog groups={duplicates} onClose={() => setDuplicates(null)} />}
       {confirmDialog}
+      {failures && failuresOpen && (
+        <ScanFailuresDialog failures={failures.list} total={failures.total} onClose={() => setFailuresOpen(false)} />
+      )}
     </>
   );
 }
