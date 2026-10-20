@@ -12,6 +12,10 @@ const nav: Translation<typeof en> = {
   about: 'À propos',
   expandSidebar: 'Développer le panneau latéral',
   collapseSidebar: 'Réduire le panneau latéral',
+  syncRunning: 'Synchronisation…',
+  syncProgress: 'Synchronisation… {{processed}} / {{total}}',
+  syncLast: 'Dernière synchronisation : {{date}}',
+  syncNever: 'Jamais synchronisée',
 };
 
 export default nav;
