@@ -99,6 +99,10 @@ const settings: Translation<typeof en> = {
     structureHint: 'Le groupement par lettre et l’année ne peuvent être que le premier niveau. Une BD sans année ni auteur va dans un dossier « Inconnu », une BD sans série dans un dossier à son titre. Changer l’arborescence ne déplace rien : « Organiser toute la bibliothèque… » range les BD à leur nouvelle place.',
     fileName: 'Nom des fichiers',
     fileNamePlaceholder: 'Nom d’origine, par exemple {series} - T{volume} - {title}',
+    sidecarCovers: 'Garder chaque vignette à côté de sa BD',
+    sidecarCoversHint: 'Coché, la vignette est enregistrée à côté de chaque BD (« Nom.cover.webp »), si bien qu’un dossier partagé transporte ses vignettes. Décoché, les vignettes sont extraites et gardées uniquement dans le cache local de cette machine (celles déjà présentes à côté des BD restent utilisées).',
+    writeNfo: 'Écrire un fichier d’informations (.nfo) à côté de chaque BD',
+    writeNfoHint: 'Coché, une resynchronisation et l’enregistrement d’une recherche écrivent le .nfo de la BD. Décoché, aucun n’est créé ni remplacé (ceux qui existent sont toujours lus).',
     fileNameHint: 'Champs : {{fields}}. Vide, les fichiers gardent leur nom d’origine ; l’extension est toujours conservée. Une série, un tome, une année ou un auteur manquant donne « Inconnu », et les caractères qu’un nom de fichier ne peut pas contenir deviennent « _ ». Le modifier ne renomme rien à lui seul : « Organiser toute la bibliothèque… » renomme les BD.',
     fileNameErrors: {
       separator: 'Un nom de fichier ne peut pas contenir « / » ni « \\ » : les dossiers viennent de l’arborescence ci-dessus.',

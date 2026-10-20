@@ -72,6 +72,7 @@ export function registerDataIpc(
       const counts = applyImport(db, libraryRepo, settingsRepo, readingListRepo, data);
       // The settings were replaced, the language with them.
       applyMainLanguage(settingsRepo.getAll().language);
+      decoder.setSidecarCovers(settingsRepo.getAll().librarySidecarCovers);
       notify({ scope: 'library' });
       notify({ scope: 'readingLists' });
       notify({ scope: 'settings' });

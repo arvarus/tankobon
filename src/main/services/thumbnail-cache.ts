@@ -60,6 +60,8 @@ export class ThumbnailCache {
   private readonly inFlight = new Map<string, Promise<Uint8Array<ArrayBuffer> | null>>();
   /** Books whose file couldn't be opened this session, so they aren't reopened on every request. */
   private readonly failed = new Set<string>();
+  /** Whether new covers go beside the comic (else only to the local cache). */
+  sidecars = true;
 
   constructor(
     private readonly directory: string,
@@ -187,8 +189,8 @@ export class ThumbnailCache {
         return null;
       }
       const thumbnail = await renderThumbnail(page.data);
-      // Beside the comic when its folder accepts it (read-only share, full disk…), else in the local cache.
-      if (!(await this.writeAtomically(coverSidecarPath(filePath), thumbnail).catch(() => false))) {
+      // Beside the comic when the setting is on and its folder accepts it (read-only share, full disk…), else in the local cache.
+      if (!this.sidecars || !(await this.writeAtomically(coverSidecarPath(filePath), thumbnail).catch(() => false))) {
         await mkdir(this.directory, { recursive: true });
         await this.writeAtomically(this.fileFor(filePath), thumbnail);
       }

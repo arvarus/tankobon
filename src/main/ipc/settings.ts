@@ -1,4 +1,5 @@
 import { MAIN_PROCESS_SETTINGS, isApiKeySetting, isSettingKey, isValidSetting, pickApiKeys, toPublicSettings } from '../../shared/settings';
+import type { DecoderClient } from '../decoder/decoder-client';
 import type { SettingsRepository } from '../db/settings-repository';
 import { applyMainLanguage } from '../language';
 import type { NotifyDataChange } from './data-changes';
@@ -19,7 +20,7 @@ function keyArg(key: unknown) {
   return key;
 }
 
-export function registerSettingsIpc(repo: SettingsRepository, notify: NotifyDataChange): void {
+export function registerSettingsIpc(repo: SettingsRepository, notify: NotifyDataChange, decoder: DecoderClient): void {
   // The API keys only go to the Métadonnées page, through their own channel.
   handle(SETTINGS_CHANNELS.getAll, args(), () => toPublicSettings(repo.getAll()));
 
@@ -35,6 +36,7 @@ export function registerSettingsIpc(repo: SettingsRepository, notify: NotifyData
       }
       repo.set(key, value);
       if (key === 'language') applyMainLanguage(String(value));
+      if (key === 'librarySidecarCovers') decoder.setSidecarCovers(value === true);
       // The API keys never reach the store: nothing public changed.
       if (!isApiKeySetting(key)) notify({ scope: 'settings', values: { [key]: value } });
     },

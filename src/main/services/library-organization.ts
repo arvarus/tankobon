@@ -242,6 +242,7 @@ export function createResynchronizer(
         const summary = await resyncLibrary(repo, organizer.watchedFolders(folders.list()), onProgress, (filePath) =>
           decoder.inspect(filePath),
           async (filePath) => !(await decoder.thumbnail(filePath, undefined, true)) && (await decoder.thumbnail(filePath)) !== null,
+          settings.getAll().libraryWriteNfo,
         );
         const organization = await organizer.afterAdd(summary.addedEntries);
         const finishedAt = new Date().toISOString();

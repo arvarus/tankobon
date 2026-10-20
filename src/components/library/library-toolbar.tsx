@@ -1,4 +1,4 @@
-import { Copy, FileQuestion, Layers, Search, X } from 'lucide-react';
+import { Copy, Eraser, FileQuestion, Layers, Search, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { ViewModePicker } from '@/components/book-row';
@@ -24,6 +24,7 @@ export function LibraryToolbar({
   sort,
   onSortChange,
   onFindDuplicates,
+  onCleanup,
 }: {
   filters: LibraryFilters;
   onChange: (filters: LibraryFilters) => void;
@@ -37,6 +38,7 @@ export function LibraryToolbar({
   sort: LibrarySort;
   onSortChange: (sort: LibrarySort) => void;
   onFindDuplicates: () => void;
+  onCleanup: () => void;
 }) {
   const { t } = useTranslation('library');
   const active = hasActiveFilters(filters);
@@ -101,6 +103,10 @@ export function LibraryToolbar({
           aria-label={t('duplicates')}
         >
           <Copy />
+        </Button>
+
+        <Button variant="outline" size="icon" onClick={onCleanup} title={t('cleanup')} aria-label={t('cleanup')}>
+          <Eraser />
         </Button>
 
         {active && (

@@ -83,6 +83,17 @@ describe('resyncLibrary', () => {
     await expect(readFile(path.join(alone, 'c.nfo'))).rejects.toThrow();
   });
 
+  it('writes no .nfo when asked not to', async () => {
+    const root = await tree(['a.cbz']);
+    const repo = repository();
+    repo.register(path.join(root, 'a.cbz'), 'a', 10, 10, 0);
+
+    const summary = await resyncLibrary(repo, [root], noProgress, inspect, async () => false, false);
+
+    expect(summary.nfoWritten).toBe(0);
+    await expect(readFile(path.join(root, 'a.nfo'))).rejects.toThrow();
+  });
+
   it('removes a standalone entry whose file is gone from a directory that still exists', async () => {
     const root = await tree(['a.cbz']);
     const alone = await tree(['present.cbz']);
