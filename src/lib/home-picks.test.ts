@@ -4,7 +4,7 @@ import { pickRandomUnread } from '@/lib/home-picks';
 import type { LibraryEntry } from '@/shared/library';
 
 function entry(id: string, overrides: Partial<LibraryEntry> = {}): LibraryEntry {
-  return { id, tags: [], pageCount: 10, currentPage: 0, ...overrides } as LibraryEntry;
+  return { id, series: null, volume: null, tags: [], pageCount: 10, currentPage: 0, ...overrides } as LibraryEntry;
 }
 
 describe('pickRandomUnread', () => {
@@ -31,5 +31,14 @@ describe('pickRandomUnread', () => {
   it('returns nothing for an empty or fully read library', () => {
     expect(pickRandomUnread([], 5)).toEqual([]);
     expect(pickRandomUnread([entry('a', { tags: ['Lu'] })], 5)).toEqual([]);
+  });
+
+  it('proposes only the next unread volume of a series', () => {
+    const book = (id: string, volume: string, overrides: Partial<LibraryEntry> = {}) =>
+      entry(id, { series: 'Saga', volume, title: id, ...overrides });
+    const library = [book('v3', '3'), book('v1', '1'), book('v2', '2'), entry('solo')];
+    expect(pickRandomUnread(library, 5).map((e) => e.id).sort()).toEqual(['solo', 'v1']);
+    const read = [book('v3', '3'), book('v1', '1', { tags: ['Lu'] }), book('v2', '2', { tags: ['Lu'] })];
+    expect(pickRandomUnread(read, 5).map((e) => e.id)).toEqual(['v3']);
   });
 });
