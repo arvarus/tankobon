@@ -25,6 +25,8 @@ import type {
   OrganizeResult,
   PickOrganizationFolderResult,
   RelinkFolderResult,
+  CleanupAnalysisResult,
+  CleanupResult,
   RemoveEntryResult,
   RemoveEntriesResult,
   UnlinkedFolder,
@@ -88,6 +90,10 @@ export interface LibraryApi {
   countUnorganized(): Promise<UnorganizedCountResult>;
   /** Moves every library comic not in its place yet into the organized folder (its own subfolder each), whenever it was added. Reports through `onScanProgress`; an error result when the organization is off, its folder unreachable, or a resynchronization or another organization is running. */
   organizeAll(): Promise<OrganizeResult>;
+  /** First step of cleaning the books: lists the files that are not images in the CBZ of `ids` (the whole library when empty), grouped by extension, without touching anything. Progress goes over `onScanProgress`. The result's `token` is what `applyCleanup()` takes. */
+  analyzeCleanup(ids: string[]): Promise<CleanupAnalysisResult>;
+  /** Second step: rewrites the archives of the analysis `token` without those files, except the kinds whose extension (`.xml`, empty for none) is in `keptExtensions`. The original is replaced only once the new archive has been checked. The token works once. */
+  applyCleanup(token: string, keptExtensions: string[]): Promise<CleanupResult>;
   /** The folders added with `addFolder`, which `resync` walks again, in the order they were added. */
   listFolders(): Promise<string[]>;
   /** Forgets one of those folders (a path returned by `listFolders`); its comics stay in the library. */
@@ -291,6 +297,8 @@ const api: TankobonApi = {
     organize: (token) => ipcRenderer.invoke('library:organize', token),
     countUnorganized: () => ipcRenderer.invoke('library:count-unorganized'),
     organizeAll: () => ipcRenderer.invoke('library:organize-all'),
+    analyzeCleanup: (ids) => ipcRenderer.invoke('library:analyze-cleanup', ids),
+    applyCleanup: (token, keptExtensions) => ipcRenderer.invoke('library:apply-cleanup', token, keptExtensions),
     onScanProgress: (listener) => {
       const handler = (_event: Electron.IpcRendererEvent, progress: ScanProgress) => listener(progress);
       ipcRenderer.on('library:scan-progress', handler);

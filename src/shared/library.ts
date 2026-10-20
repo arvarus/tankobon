@@ -225,3 +225,54 @@ export interface RemoveEntriesResult {
   /** Files that could not be deleted (already gone, no permission); their entries were removed anyway. */
   filesFailed: number;
 }
+
+/** One kind of non-image file found in the archives while cleaning the books, grouped by extension. */
+export interface CleanupGroup {
+  /** Lower-cased extension with its dot (`.xml`), empty for a name without extension. */
+  extension: string;
+  /** How many files of that kind the books hold. */
+  files: number;
+  /** In how many books. */
+  books: number;
+  /** Total size in bytes of those files, uncompressed. */
+  size: number;
+  /** A few of the file names, to recognize the kind. */
+  examples: string[];
+}
+
+/**
+ * Outcome of `library.analyzeCleanup()`: what removing the non-image files from the archives would
+ * delete. Nothing is touched yet; `token` is what `library.applyCleanup()` takes to do it.
+ */
+export type CleanupAnalysisResult =
+  | { status: 'error'; message: string }
+  | {
+      status: 'ok';
+      /** Opaque handle of the analysis; works once, the latest ones only. */
+      token: string;
+      /** The kinds of files found, biggest first (empty when the books are already clean). */
+      groups: CleanupGroup[];
+      /** Books analyzed. */
+      scanned: number;
+      /** Books holding at least one non-image file. */
+      booksWithJunk: number;
+      /** Books left out: not a CBZ (RAR and PDF can't be rewritten) or a cloud placeholder not downloaded. */
+      skipped: number;
+      /** Books that could not be read. */
+      failed: number;
+    };
+
+/** Outcome of `library.applyCleanup()`. */
+export type CleanupResult =
+  | { status: 'error'; message: string }
+  | {
+      status: 'ok';
+      /** Books rewritten without the removed files. */
+      cleaned: number;
+      /** Files removed from the archives. */
+      filesRemoved: number;
+      /** Disk space gained, in bytes. */
+      bytesFreed: number;
+      /** Books that could not be rewritten (left as they were). */
+      failed: number;
+    };

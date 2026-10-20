@@ -3,6 +3,7 @@
  * @module
  */
 import type { ArchiveInfo, ComicPage } from '../../shared/comic';
+import type { CleanedArchive, JunkEntry } from '../services/cbz-cleaner';
 import { currentLanguage, t, type Language } from '../../shared/i18n';
 import type {
   ArchiveSummary,
@@ -36,7 +37,7 @@ interface Pending {
 export const OPEN_TIMEOUT_MS = 60_000;
 
 /** The calls bounded by a timeout: the ones that parse a whole file on untrusted input. */
-const TIMED_METHODS: ReadonlySet<DecoderMethod> = new Set<DecoderMethod>(['open', 'inspect', 'measure']);
+const TIMED_METHODS: ReadonlySet<DecoderMethod> = new Set<DecoderMethod>(['open', 'inspect', 'measure', 'listJunk']);
 
 /**
  * Calls into the decoder process, started on the first call. When it dies (a native crash, an
@@ -84,6 +85,16 @@ export class DecoderClient {
   /** Averages a file's page dimensions; see `DecoderMethods.measure`. */
   measure(filePath: string): Promise<PageSizeAverage | null> {
     return this.call('measure', filePath);
+  }
+
+  /** The non-image files of a CBZ, null for another format; see `DecoderMethods.listJunk`. */
+  listJunk(filePath: string): Promise<JunkEntry[] | null> {
+    return this.call('listJunk', filePath);
+  }
+
+  /** Rewrites a CBZ without the entries `names`; see `DecoderMethods.cleanArchive`. */
+  cleanArchive(filePath: string, names: string[]): Promise<CleanedArchive> {
+    return this.call('cleanArchive', filePath, names);
   }
 
   /** A book's thumbnail, generated when missing (unless `cachedOnly`); null when it has no cover. */

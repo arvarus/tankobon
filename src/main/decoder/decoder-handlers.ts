@@ -2,6 +2,8 @@
  * What the decoder process does for each `DecoderMethods` call. Free of Electron, so it runs under Vitest.
  * @module
  */
+import { listJunkEntries, removeEntries } from '../services/cbz-cleaner';
+import { comicFormat } from '../../shared/comic';
 import { ComicService, openArchive } from '../services/comic-service';
 import { measureArchive } from '../services/image-stats';
 import { ThumbnailCache } from '../services/thumbnail-cache';
@@ -38,6 +40,8 @@ export function createDecoderHandlers(thumbnailsDirectory: string): DecoderHandl
         await archive.close();
       }
     },
+    listJunk: (filePath) => (comicFormat(filePath) === 'CBZ' ? listJunkEntries(filePath) : Promise.resolve(null)),
+    cleanArchive: (filePath, names) => removeEntries(filePath, names),
     thumbnail: (filePath, archiveId, cachedOnly) =>
       cachedOnly
         ? thumbnails.read(filePath)
