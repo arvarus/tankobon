@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { collapseEditions, duplicateGroups, editionGroups, editionKey } from './library-editions';
+import {
+  collapseEditions,
+  duplicateGroupKey,
+  duplicateGroups,
+  editionGroups,
+  editionKey,
+  rememberIgnoredGroups,
+} from './library-editions';
 import type { LibraryEntry } from '@/shared/library';
 
 function entry(id: string, overrides: Partial<LibraryEntry> = {}): LibraryEntry {
@@ -85,5 +92,22 @@ describe('duplicateGroups', () => {
 
   it('is empty when every book is in one file per format', () => {
     expect(duplicateGroups([entry('a'), entry('b', { path: '/comics/b.pdf' })])).toEqual([]);
+  });
+});
+
+describe('duplicateGroupKey', () => {
+  it('does not depend on the order of the entries, and changes when a file joins the group', () => {
+    expect(duplicateGroupKey([entry('b'), entry('a')])).toBe(duplicateGroupKey([entry('a'), entry('b')]));
+    expect(duplicateGroupKey([entry('a'), entry('b'), entry('c')])).not.toBe(duplicateGroupKey([entry('a'), entry('b')]));
+  });
+});
+
+describe('rememberIgnoredGroups', () => {
+  it('adds new keys once and keeps the newest within the limit', () => {
+    const ab = [entry('a'), entry('b')];
+    const cd = [entry('c'), entry('d')];
+    const once = rememberIgnoredGroups([], [ab], 10);
+    expect(rememberIgnoredGroups(once, [ab], 10)).toEqual(once);
+    expect(rememberIgnoredGroups(once, [cd], 1)).toEqual([duplicateGroupKey(cd)]);
   });
 });
