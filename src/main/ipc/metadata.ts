@@ -51,7 +51,7 @@ export function registerMetadataIpc(
       const updated = libraryRepo.updateMetadata(id, update);
       if (!updated) return null;
       notify({ scope: 'library', upserted: [updated] });
-      await writeNfo(updated);
+      if (settingsRepo.getAll().libraryWriteNfo) await writeNfo(updated);
       await decoder.thumbnail(updated.path).catch(() => null);
       return updated;
     },

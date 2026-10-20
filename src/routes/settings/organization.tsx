@@ -96,6 +96,28 @@ function OrganizationSettingsPage() {
         </p>
         <StructureEditor disabled={busy} />
         <FileNameEditor disabled={busy} />
+        <div className="flex flex-col gap-1">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={settings.librarySidecarCovers}
+              onChange={(event) => update('librarySidecarCovers', event.target.checked)}
+            />
+            {t('sidecarCovers')}
+          </label>
+          <p className="text-sm text-muted-foreground">{t('sidecarCoversHint')}</p>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={settings.libraryWriteNfo}
+              onChange={(event) => update('libraryWriteNfo', event.target.checked)}
+            />
+            {t('writeNfo')}
+          </label>
+          <p className="text-sm text-muted-foreground">{t('writeNfoHint')}</p>
+        </div>
         <p className="text-sm text-muted-foreground">{t('organizeAllHint')}</p>
         <div>
           <Button

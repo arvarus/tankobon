@@ -134,6 +134,7 @@ app.whenReady().then(() => {
   // The thumbnails are a cache, so they stay in userData even when the database lives elsewhere.
   const decoder = new DecoderClient(spawnDecoderProcess, path.join(app.getPath('userData'), 'thumbnails'));
   onMainLanguageApplied((language) => decoder.setLanguage(language));
+  decoder.setSidecarCovers(settingsRepo.getAll().librarySidecarCovers);
   // Before anything can show a dialog or return an error message.
   onMainLanguageApplied(() => applyAppMenu(isDevMode));
   applyMainLanguage(settingsRepo.getAll().language);
@@ -170,7 +171,7 @@ app.whenReady().then(() => {
   );
   registerReadingListIpc(readingListRepo, broadcastDataChange);
   registerStatsIpc(statsRepo);
-  registerSettingsIpc(settingsRepo, broadcastDataChange);
+  registerSettingsIpc(settingsRepo, broadcastDataChange, decoder);
   registerUserIpc(userRepo, settingsRepo, broadcastDataChange);
   registerDataIpc(db, libraryRepo, settingsRepo, readingListRepo, decoder, broadcastDataChange, imageScanner);
   // The comics the OS asks to open are opened by token, like those picked in the reader's dialog.

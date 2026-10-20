@@ -53,7 +53,7 @@ describe('DecoderClient', () => {
     await client.open('/b.cbz');
 
     expect(channels).toHaveLength(1);
-    expect(channels[0].received[0]).toEqual({ type: 'init', thumbnailsDirectory: '/cache', language: 'fr' });
+    expect(channels[0].received[0]).toEqual({ type: 'init', thumbnailsDirectory: '/cache', language: 'fr', sidecarCovers: true });
     expect(channels[0].received).toHaveLength(3);
   });
 
@@ -132,7 +132,7 @@ describe('DecoderClient', () => {
 
     channels[0].die();
     await client.open('/b.cbz');
-    expect(channels[1].received[0]).toEqual({ type: 'init', thumbnailsDirectory: '/cache', language: 'en' });
+    expect(channels[1].received[0]).toEqual({ type: 'init', thumbnailsDirectory: '/cache', language: 'en', sidecarCovers: true });
   });
 
   it('kills the process on dispose', async () => {

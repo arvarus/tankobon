@@ -229,6 +229,17 @@ export interface AppSettings {
    */
   libraryFileName: string;
   /**
+   * Whether a book's cover thumbnail is kept beside it (`<name>.cover.webp`), so a shared library
+   * folder carries its covers. Off, the covers are extracted and kept in this machine's local cache
+   * only; covers already beside the books are still read.
+   */
+  librarySidecarCovers: boolean;
+  /**
+   * Whether a `.nfo` file describing the book is written beside it (when a resynchronization finds
+   * none and when a lookup is saved). Off, no `.nfo` is created or replaced; existing ones are still read.
+   */
+  libraryWriteNfo: boolean;
+  /**
    * The templates the user read file names with in the lookup dialog (`parseFileName()`, written like
    * `libraryFileName`), most recent first, at most {@link MAX_FILE_NAME_RULES}: offered again next time.
    */
@@ -270,6 +281,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   libraryOrganizationFolder: '',
   libraryStructure: [],
   libraryFileName: '',
+  librarySidecarCovers: true,
+  libraryWriteNfo: true,
   fileNameRules: [],
 };
 
@@ -287,6 +300,8 @@ export const SHARED_SETTINGS: readonly (keyof AppSettings)[] = [
   'libraryOrganization',
   'libraryStructure',
   'libraryFileName',
+  'librarySidecarCovers',
+  'libraryWriteNfo',
 ];
 
 /** Whether `key` is shared by every user (see {@link SHARED_SETTINGS}) rather than set per user. */
@@ -361,6 +376,8 @@ export const SETTING_VALIDATORS: SettingValidators = {
   libraryOrganizationFolder: isString,
   libraryStructure: isLibraryStructure,
   libraryFileName: isFileNameTemplate,
+  librarySidecarCovers: isBoolean,
+  libraryWriteNfo: isBoolean,
   fileNameRules: (value): value is string[] =>
     Array.isArray(value) && value.length <= MAX_FILE_NAME_RULES && value.every((rule) => isFileNameTemplate(rule) && rule !== ''),
 };
