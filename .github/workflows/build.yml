@@ -41,7 +41,9 @@ jobs:
       fail-fast: false
       matrix:
         # Squirrel installer on Windows, ZIP on macOS (Apple silicon), deb + rpm on Linux.
-        os: [windows-latest, macos-latest, ubuntu-latest]
+        # Linux is pinned: a newer rpm than 4.18 (ubuntu-latest) makes electron-installer-redhat's spec fail
+        # with "cp: cannot stat 'usr/*'" (rpm builds in a per-package build directory).
+        os: [windows-latest, macos-latest, ubuntu-24.04]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
