@@ -285,9 +285,6 @@ function SecondChance({ section }: { section: ResolvedHomeSection }) {
       <h2 id="second-chance" className="text-lg font-medium">
         {t("secondChance.title")}
       </h2>
-      <p className="text-sm text-muted-foreground">
-        {t("secondChance.description")}
-      </p>
       {entries.length === 0 ? (
         <p className="mt-3 text-sm text-muted-foreground">
           {t("secondChance.empty")}
