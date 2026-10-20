@@ -122,6 +122,8 @@ export default {
     organizeAllDone_other: '{{count}} comics moved',
     organizeAllFailed_one: '{{count}} could not be moved',
     organizeAllFailed_other: '{{count}} could not be moved',
+    duplicates: 'Find duplicates…',
+    duplicatesHint: 'Lists the books held as several files of the same format (same series and volume, or same title), so you can keep one file of each and remove the others from the library.',
   },
   metadata: {
     intro: 'The “Look up details” action of a library comic queries these services to find its series, volume, release date, language and authors. Only the search text is sent to them, and only when you start a search.',

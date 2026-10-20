@@ -1,17 +1,20 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { FolderTree } from 'lucide-react';
+import { Copy, FolderTree } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useConfirm } from '@/components/confirm-dialog';
+import { DuplicatesDialog } from '@/components/duplicates-dialog';
 import { SETTINGS_SELECT_CLASS, SettingsSection } from '@/components/settings-section';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { useLibrary } from '@/hooks/use-library';
 import { useSettings } from '@/hooks/use-settings';
+import { duplicateGroups } from '@/lib/library-editions';
 import { fileNameExample, levelChoices, setLevel, structureExample } from '@/lib/library-structure';
 import { cn } from '@/lib/utils';
 import { FILE_NAME_FIELDS, MAX_FILE_NAME_TEMPLATE_LENGTH, fileNameTemplateError } from '@/shared/file-name-template';
-import type { ScanProgress } from '@/shared/library';
+import type { LibraryEntry, ScanProgress } from '@/shared/library';
 import {
   MAX_LIBRARY_LEVELS,
   isLibraryStructure,
@@ -30,7 +33,12 @@ export const Route = createFileRoute('/settings/organization')({
 function OrganizationSettingsPage() {
   const { t } = useTranslation('settings', { keyPrefix: 'library' });
   const { settings, update } = useSettings();
+  const { t: tLibrary } = useTranslation('library');
+  const library = useLibrary();
   const { confirm, dialog: confirmDialog } = useConfirm();
+  // The groups found, frozen when the dialog opens.
+  const [duplicates, setDuplicates] = useState<LibraryEntry[][] | null>(null);
+  const [duplicatesStatus, setDuplicatesStatus] = useState<string | null>(null);
   const [progress, setProgress] = useState<ScanProgress | null>(null);
   // Whether this page started the run, to show its progress here (a run started elsewhere only disables the controls).
   const [running, setRunning] = useState(false);
@@ -70,6 +78,15 @@ function OrganizationSettingsPage() {
     const parts = [t('organizeAllDone', { count: result.moved })];
     if (result.failed > 0) parts.push(t('organizeAllFailed', { count: result.failed }));
     setOrganizeStatus({ message: parts.join(' · ') });
+  };
+
+  const findDuplicates = () => {
+    const groups = duplicateGroups(library ?? []);
+    if (groups.length === 0) setDuplicatesStatus(tLibrary('duplicatesNone'));
+    else {
+      setDuplicatesStatus(null);
+      setDuplicates(groups);
+    }
   };
 
   return (
@@ -115,7 +132,16 @@ function OrganizationSettingsPage() {
             {organizeStatus.message}
           </p>
         )}
+        <p className="text-sm text-muted-foreground">{t('duplicatesHint')}</p>
+        <div>
+          <Button variant="outline" onClick={findDuplicates} disabled={library === null}>
+            <Copy />
+            {t('duplicates')}
+          </Button>
+        </div>
+        {duplicatesStatus && <p className="text-sm text-muted-foreground">{duplicatesStatus}</p>}
       </SettingsSection>
+      {duplicates && <DuplicatesDialog groups={duplicates} onClose={() => setDuplicates(null)} />}
       {confirmDialog}
     </>
   );

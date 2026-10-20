@@ -85,7 +85,6 @@ const library: Translation<typeof en> = {
   viewMedium: 'Intermédiaire : couverture et informations de base',
   viewCompact: 'Compact : titre, volume et série',
   viewGrid: 'Vignettes : couvertures côte à côte avec série, titre et volume',
-  duplicates: 'Rechercher les doublons (plusieurs fichiers du même livre et du même format)',
   duplicatesNone: 'Aucun doublon trouvé.',
   duplicatesTitle: 'Doublons',
   duplicatesIntro_one: '{{count}} livre existe en plusieurs fichiers du même format. Choisissez celui à garder ; les autres quittent la bibliothèque.',

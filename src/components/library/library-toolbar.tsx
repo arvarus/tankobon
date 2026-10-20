@@ -1,4 +1,4 @@
-import { Copy, FileQuestion, Layers, Search, X } from 'lucide-react';
+import { FileQuestion, Layers, Search, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { ViewModePicker } from '@/components/book-row';
@@ -23,7 +23,6 @@ export function LibraryToolbar({
   onGroupedChange,
   sort,
   onSortChange,
-  onFindDuplicates,
 }: {
   filters: LibraryFilters;
   onChange: (filters: LibraryFilters) => void;
@@ -36,7 +35,6 @@ export function LibraryToolbar({
   onGroupedChange: (grouped: boolean) => void;
   sort: LibrarySort;
   onSortChange: (sort: LibrarySort) => void;
-  onFindDuplicates: () => void;
 }) {
   const { t } = useTranslation('library');
   const active = hasActiveFilters(filters);
@@ -91,16 +89,6 @@ export function LibraryToolbar({
           aria-label={t('groupBySeries')}
         >
           <Layers />
-        </Button>
-
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={onFindDuplicates}
-          title={t('duplicates')}
-          aria-label={t('duplicates')}
-        >
-          <Copy />
         </Button>
 
         {active && (

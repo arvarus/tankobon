@@ -83,7 +83,6 @@ export default {
   viewMedium: 'Medium: cover and basic information',
   viewCompact: 'Compact: title, volume and series',
   viewGrid: 'Grid: covers side by side with series, title and volume',
-  duplicates: 'Find duplicates (several files of the same book and format)',
   duplicatesNone: 'No duplicates found.',
   duplicatesTitle: 'Duplicates',
   duplicatesIntro_one: '{{count}} book exists as several files of the same format. Choose the one to keep; the others leave the library.',
