@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented here. This file is maintained by [release-please](https://github.com/googleapis/release-please) from the [Conventional Commits](https://www.conventionalcommits.org/) merged into `master`: don't edit released entries by hand. New versions are inserted above the previous ones.
 
+## [0.15.0](https://github.com/pprb/tankobon/compare/v0.14.0...v0.15.0) (2026-10-20)
+
+
+### Features
+
+* **home:** choose a single row or wrapping lines for each section ([#174](https://github.com/pprb/tankobon/issues/174)) ([7250142](https://github.com/pprb/tankobon/commit/725014239afbf53d2a07b2efdd2cac945e1cdadb))
+* **home:** remove the explanatory text of the second chance block ([#173](https://github.com/pprb/tankobon/issues/173)) ([22c1b2e](https://github.com/pprb/tankobon/commit/22c1b2e19113c0b0b6fbe68c56646a04808ff529))
+* **home:** suggest only the next unread volume of each series ([#175](https://github.com/pprb/tankobon/issues/175)) ([7713d28](https://github.com/pprb/tankobon/commit/7713d282a7a9f58610e8e286a2f263a982bce646))
+* **library:** keep the search and filters when leaving the page ([#170](https://github.com/pprb/tankobon/issues/170)) ([43863ce](https://github.com/pprb/tankobon/commit/43863ce5c7a623ad8aea377e76244cb8046049d2))
+* **library:** list the files a resynchronization could not open ([#171](https://github.com/pprb/tankobon/issues/171)) ([fab2824](https://github.com/pprb/tankobon/commit/fab2824c442e90608673b0669ffa343ed80a775d))
+* **settings:** move the resynchronization to the shared library's organization page ([#172](https://github.com/pprb/tankobon/issues/172)) ([cd7e275](https://github.com/pprb/tankobon/commit/cd7e2753db88a0e6934ac59cf7af14066f4a1eb9))
+
+
+### Bug Fixes
+
+* **ci:** pin the Linux build runner to ubuntu-24.04 ([#168](https://github.com/pprb/tankobon/issues/168)) ([d0756d5](https://github.com/pprb/tankobon/commit/d0756d5bf45cffdeeddc253e498ffda7b42c0fff))
+
 ## [0.14.0](https://github.com/pprb/tankobon/compare/v0.13.0...v0.14.0) (2026-10-20)
 
 
