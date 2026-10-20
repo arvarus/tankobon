@@ -75,7 +75,12 @@ describe('createLibraryCleaner', () => {
 
   it('counts a book that cannot be read as failed', async () => {
     const { cleaner, decoder } = setup();
-    vi.mocked(decoder.listJunk).mockRejectedValueOnce(new Error('broken'));
+    // Targeted by path: the books are registered at the same instant, so `list()` order is not stable.
+    const listJunk = vi.mocked(decoder.listJunk).getMockImplementation()!;
+    vi.mocked(decoder.listJunk).mockImplementation(async (file: string) => {
+      if (file === '/lib/a.cbz') throw new Error('broken');
+      return listJunk(file);
+    });
     expect(await cleaner.analyze([], noProgress)).toMatchObject({ status: 'ok', failed: 1, booksWithJunk: 0 });
   });
 
