@@ -91,8 +91,16 @@ export function letterFolderName(next: string): string {
 /** What the organization reads of a library entry to place its file. */
 export type OrganizedEntry = Pick<
   LibraryEntry,
-  'id' | 'path' | 'title' | 'series' | 'volume' | 'releaseDate' | 'credits'
+  'id' | 'path' | 'title' | 'series' | 'volume' | 'releaseDate' | 'language' | 'credits'
 >;
+
+/**
+ * Whether the entry has a fiche (the same rule as `hasFiche()`, which lives in the renderer): a
+ * series, volume, release date, language or credit, as brought by a lookup, an `.nfo` or a manual edit.
+ */
+function hasFiche(entry: OrganizedEntry): boolean {
+  return Boolean(entry.series || entry.volume || entry.releaseDate || entry.language) || entry.credits.length > 0;
+}
 
 /**
  * The author a comic is filed under: its first writer, else the first person credited, as
@@ -166,7 +174,8 @@ export interface OrganizationTarget {
 
 /**
  * Where the organization puts a comic, best first. Its name is the original file name, or the one
- * {@link templatedStem} gives when the target has a file name template, the extension being kept.
+ * {@link templatedStem} gives when the target has a file name template and the entry has a fiche, the
+ * extension being kept.
  * Without a structure, a single place: `<root>/<name> (<library id>)/<name>.<extension>` (see
  * {@link organizedFolderName}). With one, the file goes in the last level's folder under that name,
  * or, when another file has that name there, `<name> (<library id>).<extension>`. A comic at any of
@@ -174,8 +183,11 @@ export interface OrganizationTarget {
  */
 export function organizedPaths(target: OrganizationTarget, entry: OrganizedEntry): string[] {
   const extension = path.extname(entry.path);
+  // Without a fiche the template would fill its fields with "Unknown": the original name is kept.
   const stem =
-    target.fileName === '' ? originalStem(entry.path, entry.id) : templatedStem(target.fileName, entry, extension);
+    target.fileName === '' || !hasFiche(entry)
+      ? originalStem(entry.path, entry.id)
+      : templatedStem(target.fileName, entry, extension);
   if (target.structure.length === 0) {
     return [path.join(target.root, folderNameOf(stem, entry.id), `${stem}${extension}`)];
   }
