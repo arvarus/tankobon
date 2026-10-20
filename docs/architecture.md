@@ -301,6 +301,8 @@ The whole library is in the [data store](#renderer-data-store) and is filtered c
 
 In the grid, `gridLines()` (`src/lib/library-groups.ts`, pure and tested) cuts the same rows into `CardsRow`s of as many books as fit the width (`useGridColumns()`, from a `ResizeObserver` on the scroll area, cards at least 150 px wide), a series heading keeping its own line, so the virtualizer still sees one list of lines of varying height; `BookCard` (`src/components/library/book-card.tsx`) draws a book.
 
+The search, tag and rating filters are page state seeded from `rememberedFilters()` (`src/lib/library-filters-memory.ts`, a module variable, so they survive leaving and returning to the page but not a restart, and are dropped when another user is active).
+
 The route (`src/routes/library.tsx`) keeps the page state and the virtualized rows; the toolbar and its parts (`LibraryToolbar`, `SortPicker`, `RatingFilterPicker`), the `SelectionBar`, the `ScanProgressBar` and the `SeriesHeader` are components of `src/components/library/`.
 
 The library page (`src/routes/library.tsx`, at `/library`) draws only the rows near the viewport (`@tanstack/react-virtual`, which measures each row since their height varies with wrapping tags and the optional metadata line), inside its own scroll container below the toolbar; it filters with `useDeferredValue` so the search field never waits for the list, and scrolls back to the top when the filters change. A row scrolled out of view is unmounted, with its local state (a half-typed tag).
