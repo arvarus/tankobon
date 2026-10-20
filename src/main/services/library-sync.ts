@@ -6,7 +6,7 @@
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 
-import type { ScanProgress } from '../../shared/library';
+import { MAX_REPORTED_FAILURES, type ScanFailure, type ScanProgress } from '../../shared/library';
 import type { ArchiveSummary } from '../decoder/protocol';
 import type { LibraryRepository } from '../db/library-repository';
 import { isOnlineOnly } from './cloud-files';
@@ -21,6 +21,8 @@ export interface ResyncSummary {
   removed: number;
   /** Files that couldn't be opened. */
   failed: number;
+  /** The first `MAX_REPORTED_FAILURES` of those files, with the reason. */
+  failures: ScanFailure[];
   /** `.nfo` sidecars created for comics that had none. */
   nfoWritten: number;
   /** Cover thumbnails created for comics that had none. */
@@ -80,7 +82,7 @@ export async function resyncLibrary(
   extractCover: (filePath: string) => Promise<boolean> = async () => false,
   writeNfos = true,
 ): Promise<ResyncSummary> {
-  const summary: ResyncSummary = { added: 0, removed: 0, failed: 0, nfoWritten: 0, coversExtracted: 0, unreachable: 0, removedEntries: [], addedEntries: [] };
+  const summary: ResyncSummary = { added: 0, removed: 0, failed: 0, failures: [], nfoWritten: 0, coversExtracted: 0, unreachable: 0, removedEntries: [], addedEntries: [] };
   // Each folder reports its own `done`; the caller only wants the one after the last.
   const forward = (progress: ScanProgress) => {
     if (progress.phase !== 'done') onProgress(progress);
@@ -95,6 +97,7 @@ export async function resyncLibrary(
     const scanned = await scanIntoLibrary(repo, folder, forward, inspect);
     summary.added += scanned.added;
     summary.failed += scanned.failed;
+    summary.failures.push(...scanned.failures.slice(0, MAX_REPORTED_FAILURES - summary.failures.length));
     summary.addedEntries.push(...scanned.addedEntries);
 
     const found = new Set(await collectComicFiles(folder));

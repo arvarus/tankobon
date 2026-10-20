@@ -6,7 +6,7 @@ import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import { isSupportedComicFile } from '../../shared/comic';
-import type { ScanProgress } from '../../shared/library';
+import { MAX_REPORTED_FAILURES, type ScanFailure, type ScanProgress } from '../../shared/library';
 import type { ArchiveSummary } from '../decoder/protocol';
 import type { LibraryRepository } from '../db/library-repository';
 import { readNfoFor } from './nfo';
@@ -16,6 +16,8 @@ export interface ScanSummary {
   added: number;
   skipped: number;
   failed: number;
+  /** The first `MAX_REPORTED_FAILURES` files that failed, with the reason. */
+  failures: ScanFailure[];
   total: number;
   /** The entries this scan created, for the library organization. */
   addedEntries: { id: string; path: string }[];
@@ -67,7 +69,7 @@ export async function scanIntoLibrary(
   onProgress({ phase: 'scanning', processed: 0, total: 0, currentFile: directory });
   const files = await collectComicFiles(directory);
 
-  const summary: ScanSummary = { added: 0, skipped: 0, failed: 0, total: files.length, addedEntries: [] };
+  const summary: ScanSummary = { added: 0, skipped: 0, failed: 0, failures: [], total: files.length, addedEntries: [] };
 
   for (const [index, filePath] of files.entries()) {
     onProgress({ phase: 'importing', processed: index, total: files.length, currentFile: filePath });
@@ -90,8 +92,11 @@ export async function scanIntoLibrary(
         const nfo = await readNfoFor(filePath);
         if (nfo) repo.updateMetadata(id, nfo);
       }
-    } catch {
+    } catch (error) {
       summary.failed += 1;
+      if (summary.failures.length < MAX_REPORTED_FAILURES) {
+        summary.failures.push({ path: filePath, reason: error instanceof Error ? error.message : String(error) });
+      }
     }
   }
 
