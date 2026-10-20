@@ -62,7 +62,7 @@ export default {
       'The library records its comics relative to their folder, so it can be opened from another computer or another path. These folders were added elsewhere: say where each one is on this computer to open its comics.',
     relinkFolder: 'Locate this folder…',
     resync: 'Resynchronization',
-    resyncHint: 'Adds the new comics found in these folders and removes from the library the comics whose file no longer exists, including those added one by one (with their progress, rating, tags and reading-list places). Comic files are never touched (a missing .nfo sidecar is written next to each comic), and a folder or directory that can’t be read (unplugged drive) is skipped.',
+    resyncHint: 'Adds the new comics found in your folders (Settings › Library) and removes from the library the comics whose file no longer exists, including those added one by one (with their progress, rating, tags and reading-list places). Comic files are never touched (a missing .nfo sidecar is written next to each comic), and a folder or directory that can’t be read (unplugged drive) is skipped.',
     resyncButton: 'Resynchronize now',
     resyncRunning: 'Resynchronizing…',
     resyncOnStartup: 'Resynchronize the library at startup',

@@ -1,15 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { FolderOpen, FolderX, RefreshCw } from 'lucide-react';
+import { FolderOpen, FolderX } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { useConfirm } from '@/components/confirm-dialog';
 import { SettingsSection } from '@/components/settings-section';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { useOrganizationOffer } from '@/hooks/use-organization-offer';
 import { useSettings } from '@/hooks/use-settings';
-import { cn } from '@/lib/utils';
 import type { ScanProgress, UnlinkedFolder } from '@/shared/library';
 
 export const Route = createFileRoute('/settings/library')({
@@ -17,17 +13,13 @@ export const Route = createFileRoute('/settings/library')({
 });
 
 function LibrarySettingsPage() {
-  const { t, i18n } = useTranslation('settings', { keyPrefix: 'library' });
-  const { settings, update } = useSettings();
-  const { confirm, dialog: confirmDialog } = useConfirm();
-  const offerOrganization = useOrganizationOffer(confirm);
+  const { t } = useTranslation('settings', { keyPrefix: 'library' });
+  const { settings } = useSettings();
   const [folders, setFolders] = useState<string[] | null>(null);
   const [unlinked, setUnlinked] = useState<UnlinkedFolder[]>([]);
   const [progress, setProgress] = useState<ScanProgress | null>(null);
   const [status, setStatus] = useState<{ message: string; error?: boolean } | null>(null);
-  // Whether this page started the run, to show its progress in its own section (null: one started elsewhere, at launch).
-  const [run, setRun] = useState<'resync' | null>(null);
-  // A resynchronization (or an organization started elsewhere) is running.
+  // A resynchronization or an organization is running (started here, elsewhere or at launch).
   const resyncing = progress !== null;
 
   // Read again when the organized folder changes: choosing it adds it to the list.
@@ -56,7 +48,7 @@ function LibrarySettingsPage() {
     }
   };
 
-  // Also shows a resynchronization started at launch, or one started from another window.
+  // Shows a run started anywhere, to keep the folders from changing under it.
   useEffect(() => window.tankobon.library.onScanProgress((p) => setProgress(p.phase === 'done' ? null : p)), []);
 
   const removeFolder = async (folder: string) => {
@@ -64,33 +56,8 @@ function LibrarySettingsPage() {
     setFolders((list) => list?.filter((f) => f !== folder) ?? list);
   };
 
-  const resync = async () => {
-    setStatus(null);
-    setRun('resync');
-    setProgress({ phase: 'scanning', processed: 0, total: 0, currentFile: '' });
-    const result = await window.tankobon.library.resync();
-    setProgress(null);
-    setRun(null);
-    if (result.status === 'error') {
-      setStatus({ message: result.message, error: true });
-      return;
-    }
-    const parts = [t('resyncDone', { added: result.added, removed: result.removed })];
-    if (result.failed > 0) parts.push(t('resyncFailed', { count: result.failed }));
-    if (result.nfoWritten > 0) parts.push(t('resyncNfoWritten', { count: result.nfoWritten }));
-    if (result.coversExtracted > 0) parts.push(t('resyncCoversExtracted', { count: result.coversExtracted }));
-    if (result.unreachable > 0) parts.push(t('resyncUnreachable', { count: result.unreachable }));
-    setStatus({ message: parts.join(' · ') });
-    parts.push(...(await offerOrganization(result.organization)));
-    setStatus({ message: parts.join(' · ') });
-  };
-
   // The folder is set by the main process (it is where files get moved): the renderer only opens the dialog.
   const pickOrganizationFolder = () => void window.tankobon.library.pickOrganizationFolder();
-
-  const lastResync = settings.lastResyncAt
-    ? t('lastResync', { date: new Date(settings.lastResyncAt).toLocaleString(i18n.language) })
-    : t('neverResynced');
 
   return (
     <>
@@ -132,33 +99,7 @@ function LibrarySettingsPage() {
         </SettingsSection>
       )}
 
-      <SettingsSection title={t('resync')}>
-        <p className="text-sm text-muted-foreground">{t('resyncHint')}</p>
-        <div>
-          <Button variant="outline" onClick={() => void resync()} disabled={resyncing || folders?.length === 0}>
-            <RefreshCw />
-            {resyncing ? t('resyncRunning') : t('resyncButton')}
-          </Button>
-        </div>
-        {progress && progress.phase === 'importing' && run === 'resync' && (
-          <Progress value={progress.processed} max={progress.total} label={t('resyncRunning')} />
-        )}
-        {status && (
-          <p className={cn('text-sm', status.error ? 'text-destructive' : 'text-muted-foreground')}>{status.message}</p>
-        )}
-        <p className="text-sm text-muted-foreground">{lastResync}</p>
-        <div className="flex items-center gap-2">
-          <input
-            id="resync-on-startup"
-            type="checkbox"
-            checked={settings.resyncOnStartup}
-            onChange={(event) => update('resyncOnStartup', event.target.checked)}
-          />
-          <label htmlFor="resync-on-startup" className="text-sm">
-            {t('resyncOnStartup')}
-          </label>
-        </div>
-      </SettingsSection>
+      {status && <p className="text-sm text-destructive">{status.message}</p>}
 
       <SettingsSection title={t('organizationFolder')}>
         <p className="text-sm text-muted-foreground">{t('organizationFolderHint')}</p>
@@ -174,7 +115,6 @@ function LibrarySettingsPage() {
           </Button>
         </div>
       </SettingsSection>
-      {confirmDialog}
     </>
   );
 }
