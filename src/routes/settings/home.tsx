@@ -6,6 +6,7 @@ import { SettingsSection } from "@/components/settings-section";
 import { Button } from "@/components/ui/button";
 import { useSettings } from "@/hooks/use-settings";
 import {
+  HOME_SECTION_LAYOUTS,
   HOME_SECTION_MAX_COUNT,
   HOME_SECTION_MIN_COUNT,
 } from "@/shared/settings";
@@ -89,6 +90,31 @@ function HomeSettingsPage() {
                     );
                   }}
                 />
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                {t("layout")}
+                <select
+                  className="h-8 rounded-md border bg-background px-2"
+                  value={section.layout}
+                  aria-label={t("layoutNamed", {
+                    name: t(`sections.${section.id}`),
+                  })}
+                  onChange={(event) =>
+                    update(
+                      "homeSections",
+                      setHomeSectionOptions(settings.homeSections, section.id, {
+                        layout: event.target
+                          .value as (typeof HOME_SECTION_LAYOUTS)[number],
+                      }),
+                    )
+                  }
+                >
+                  {HOME_SECTION_LAYOUTS.map((layout) => (
+                    <option key={layout} value={layout}>
+                      {t(`layouts.${layout}`)}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label className="flex items-center gap-2 text-sm">
                 <input

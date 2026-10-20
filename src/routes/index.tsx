@@ -71,7 +71,7 @@ function ContinueReading({ section }: { section: ResolvedHomeSection }) {
           {t("continueReadingEmpty")}
         </p>
       ) : (
-        <BookCarousel>
+        <BookCarousel layout={section.layout}>
           {books.map((entry) => (
             <li key={entry.id} className="w-32 shrink-0">
               <Link
@@ -125,7 +125,7 @@ function RecentlyAdded({ section }: { section: ResolvedHomeSection }) {
             {t("recentlyAddedEmpty")}
           </p>
         ) : (
-          <BookCarousel>
+          <BookCarousel layout={section.layout}>
             {recent.map((entry) => (
               <li key={entry.id} className="w-32 shrink-0">
                 <Link
@@ -172,7 +172,7 @@ function Favorites({ section }: { section: ResolvedHomeSection }) {
           {t("favorites.empty")}
         </p>
       ) : (
-        <BookCarousel>
+        <BookCarousel layout={section.layout}>
           {favorites.map((entry) => (
             <li key={entry.id} className="w-32 shrink-0">
               <Link
@@ -246,7 +246,7 @@ function Suggestions({ section }: { section: ResolvedHomeSection }) {
           {t("suggestions.empty")}
         </p>
       ) : (
-        <BookCarousel>
+        <BookCarousel layout={section.layout}>
           {shown.map((entry) => (
             <li key={entry.id} className="w-32 shrink-0">
               <Link
@@ -293,7 +293,7 @@ function SecondChance({ section }: { section: ResolvedHomeSection }) {
           {t("secondChance.empty")}
         </p>
       ) : (
-        <BookCarousel>
+        <BookCarousel layout={section.layout}>
           {entries.map((entry) => (
             <li key={entry.id} className="w-32 shrink-0">
               <Link

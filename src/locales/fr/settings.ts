@@ -185,6 +185,12 @@ const settings: Translation<typeof en> = {
     count: "Livres affichés",
     countNamed: "Nombre de livres affichés dans « {{name}} »",
     hideWhenEmpty: "Masquer si vide",
+    layout: "Affichage",
+    layoutNamed: "Affichage de « {{name}} »",
+    layouts: {
+      row: "Une seule ligne (flèches)",
+      wrap: "Retour à la ligne",
+    },
     countHint: "Chaque section affiche entre 3 et 20 livres, que les flèches font défiler quand ils ne tiennent pas tous. Décoché, « Masquer si vide » affiche un message au lieu de cacher une section vide.",
     moveUp: 'Monter',
     moveDown: 'Descendre',

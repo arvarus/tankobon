@@ -183,6 +183,12 @@ export default {
     count: "Books shown",
     countNamed: "Number of books shown in “{{name}}”",
     hideWhenEmpty: "Hide when empty",
+    layout: "Display",
+    layoutNamed: "Display of “{{name}}”",
+    layouts: {
+      row: "Single row (arrows)",
+      wrap: "Wrapping lines",
+    },
     countHint: "Each section shows between 3 and 20 books, scrolled with arrows when they don't all fit. Turned off, “Hide when empty” shows a message instead of hiding an empty section.",
     moveUp: 'Move up',
     moveDown: 'Move down',

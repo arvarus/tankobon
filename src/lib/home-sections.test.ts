@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   HOME_SECTION_DEFAULT_COUNT,
+  HOME_SECTION_DEFAULT_LAYOUT,
   HOME_SECTION_HIDE_WHEN_EMPTY_DEFAULT,
   HOME_SECTIONS,
   isHomeSections,
@@ -22,6 +23,7 @@ const all = HOME_SECTIONS.map((id) => ({
   visible: true,
   count: HOME_SECTION_DEFAULT_COUNT,
   hideWhenEmpty: HOME_SECTION_HIDE_WHEN_EMPTY_DEFAULT[id],
+  layout: HOME_SECTION_DEFAULT_LAYOUT,
 }));
 const ids = (sections: readonly HomeSectionSetting[]) =>
   sections.map((section) => section.id);
@@ -76,7 +78,12 @@ describe("home sections", () => {
     expect(old).toMatchObject({
       count: HOME_SECTION_DEFAULT_COUNT,
       hideWhenEmpty: true,
+      layout: "row",
     });
+    const [wrapped] = resolveHomeSections([
+      { id: "favorites", visible: true, layout: "wrap" },
+    ]);
+    expect(wrapped.layout).toBe("wrap");
   });
 
   it("clamps the count between 3 and 20", () => {
@@ -112,6 +119,12 @@ describe("home sections", () => {
       ]),
     ).toBe(false);
     expect(isHomeSections("favorites")).toBe(false);
+    expect(
+      isHomeSections([{ id: "favorites", visible: true, layout: "wrap" }]),
+    ).toBe(true);
+    expect(
+      isHomeSections([{ id: "favorites", visible: true, layout: "grid" }]),
+    ).toBe(false);
     expect(
       isHomeSections([
         { id: "favorites", visible: true, count: 3, hideWhenEmpty: true },
