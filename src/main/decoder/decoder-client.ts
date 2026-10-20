@@ -53,6 +53,7 @@ export class DecoderClient {
   private readonly pending = new Map<number, Pending>();
   private nextId = 1;
   private language: Language = currentLanguage();
+  private sidecarCovers = true;
 
   /** `spawn` starts a decoder process; `thumbnailsDirectory` is where its thumbnail cache lives. */
   constructor(
@@ -112,6 +113,12 @@ export class DecoderClient {
     this.channel?.post({ type: 'language', language });
   }
 
+  /** Whether the covers it makes go beside the comics (`AppSettings.librarySidecarCovers`). */
+  setSidecarCovers(enabled: boolean): void {
+    this.sidecarCovers = enabled;
+    this.channel?.post({ type: 'sidecarCovers', enabled });
+  }
+
   /** Stops the decoder process (app quit); a later call would start another one. */
   dispose(): void {
     this.channel?.kill();
@@ -141,7 +148,7 @@ export class DecoderClient {
     this.channel = channel;
     channel.onResponse((response) => this.settle(response));
     channel.onExit(() => this.handleExit(channel));
-    channel.post({ type: 'init', thumbnailsDirectory: this.thumbnailsDirectory, language: this.language });
+    channel.post({ type: 'init', thumbnailsDirectory: this.thumbnailsDirectory, language: this.language, sidecarCovers: this.sidecarCovers });
     return channel;
   }
 

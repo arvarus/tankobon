@@ -59,10 +59,11 @@ export type DecoderRequest = {
   [M in DecoderMethod]: { type: 'request'; id: number; method: M; args: Parameters<DecoderMethods[M]> };
 }[DecoderMethod];
 
-/** Settings the decoder needs; sent first on every (re)start, and `language` again whenever it changes. */
+/** Settings the decoder needs; sent first on every (re)start, and `language` / `sidecarCovers` again whenever they change. */
 export type DecoderControl =
-  | { type: 'init'; thumbnailsDirectory: string; language: Language }
-  | { type: 'language'; language: Language };
+  | { type: 'init'; thumbnailsDirectory: string; language: Language; sidecarCovers: boolean }
+  | { type: 'language'; language: Language }
+  | { type: 'sidecarCovers'; enabled: boolean };
 
 /** What the main process sends: a call or a control message. */
 export type DecoderInbound = DecoderRequest | DecoderControl;

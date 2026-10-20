@@ -10,7 +10,7 @@ import { applyLanguage } from '../../shared/i18n';
 import { createDecoderHandlers, type DecoderHandlers } from './decoder-handlers';
 import type { DecoderInbound, DecoderRequest, DecoderResponse } from './protocol';
 
-let handlers: DecoderHandlers | undefined;
+let handlers: (DecoderHandlers & { setSidecarCovers(enabled: boolean): void }) | undefined;
 
 async function run(request: DecoderRequest): Promise<DecoderResponse> {
   try {
@@ -34,9 +34,11 @@ function serve(port: MessagePortMain): void {
     const message = data as DecoderInbound;
     if (message.type === 'init') {
       applyLanguage(message.language);
-      handlers = createDecoderHandlers(message.thumbnailsDirectory);
+      handlers = createDecoderHandlers(message.thumbnailsDirectory, message.sidecarCovers);
     } else if (message.type === 'language') {
       applyLanguage(message.language);
+    } else if (message.type === 'sidecarCovers') {
+      handlers?.setSidecarCovers(message.enabled);
     } else {
       void run(message).then((response) => port.postMessage(response));
     }

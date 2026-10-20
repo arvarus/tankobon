@@ -185,6 +185,20 @@ describe('ThumbnailCache', () => {
     expect(calls.opened).toBe(1);
   });
 
+  it('keeps the cover in the local cache only when sidecars are turned off, but still reads existing ones', async () => {
+    const folder = join(dir, 'library');
+    await mkdir(folder);
+    const comic = join(folder, 'a.cbz');
+    const cache = new ThumbnailCache(join(dir, 'cache'), fakeOpener({ [comic]: [cover] }).open);
+    cache.sidecars = false;
+
+    const generated = await cache.ensure(comic);
+
+    expect(await readdir(folder)).toEqual([]);
+    expect(await readdir(join(dir, 'cache'))).toEqual([thumbnailKey(comic) + '.webp']);
+    expect(await cache.read(comic)).toEqual(generated);
+  });
+
   it('falls back to the local cache when the comic folder cannot be written to', async () => {
     const comic = join(dir, 'missing-folder', 'a.cbz');
     const cache = new ThumbnailCache(join(dir, 'cache'), fakeOpener({ [comic]: [cover] }).open);

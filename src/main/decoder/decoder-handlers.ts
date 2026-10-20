@@ -13,10 +13,17 @@ export type DecoderHandlers = {
 };
 
 /** Builds the handlers around one `ComicService` (the open archives) and one `ThumbnailCache`. */
-export function createDecoderHandlers(thumbnailsDirectory: string): DecoderHandlers {
+export function createDecoderHandlers(
+  thumbnailsDirectory: string,
+  sidecarCovers = true,
+): DecoderHandlers & { setSidecarCovers(enabled: boolean): void } {
   const service = new ComicService();
   const thumbnails = new ThumbnailCache(thumbnailsDirectory);
+  thumbnails.sidecars = sidecarCovers;
   return {
+    setSidecarCovers: (enabled) => {
+      thumbnails.sidecars = enabled;
+    },
     open: (filePath) => service.open(filePath),
     readPage: (id, index) => service.readPage(id, index),
     close: (id) => service.close(id),
