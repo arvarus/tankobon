@@ -97,6 +97,10 @@ export default {
     structureHint: 'The letter grouping and the year can only be the first level. A comic with no year or author goes into an “Unknown” folder, one with no series into a folder named after its title. Changing the tree moves nothing by itself: “Organize the whole library…” moves the comics to their new place.',
     fileName: 'File name',
     fileNamePlaceholder: 'Original name, for example {series} - T{volume} - {title}',
+    sidecarCovers: 'Keep each cover beside its comic',
+    sidecarCoversHint: 'Checked, the thumbnail is saved next to each comic (“Name.cover.webp”), so a shared folder carries its covers. Unchecked, covers are extracted and kept in this machine’s local cache only (covers already beside the comics are still used).',
+    writeNfo: 'Write an information file (.nfo) beside each comic',
+    writeNfoHint: 'Checked, a resynchronization and the saving of a lookup write the comic’s .nfo. Unchecked, none is created or replaced (existing ones are still read).',
     fileNameHint: 'Fields: {{fields}}. Left empty, files keep their original name; the extension is always kept. A missing series, volume, year or author gives “Unknown”, and the characters a file name can’t hold become “_”. Changing it renames nothing by itself: “Organize the whole library…” renames the comics.',
     fileNameErrors: {
       separator: 'A file name can’t contain “/” or “\\”: the folders come from the tree above.',

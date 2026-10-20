@@ -3,6 +3,7 @@
  * @module
  */
 import type { ArchiveInfo, ComicPage } from '../../shared/comic';
+import type { CleanedArchive, JunkEntry } from '../services/cbz-cleaner';
 import { currentLanguage, t, type Language } from '../../shared/i18n';
 import type {
   ArchiveSummary,
@@ -36,7 +37,7 @@ interface Pending {
 export const OPEN_TIMEOUT_MS = 60_000;
 
 /** The calls bounded by a timeout: the ones that parse a whole file on untrusted input. */
-const TIMED_METHODS: ReadonlySet<DecoderMethod> = new Set<DecoderMethod>(['open', 'inspect', 'measure']);
+const TIMED_METHODS: ReadonlySet<DecoderMethod> = new Set<DecoderMethod>(['open', 'inspect', 'measure', 'listJunk']);
 
 /**
  * Calls into the decoder process, started on the first call. When it dies (a native crash, an
@@ -53,6 +54,7 @@ export class DecoderClient {
   private readonly pending = new Map<number, Pending>();
   private nextId = 1;
   private language: Language = currentLanguage();
+  private sidecarCovers = true;
 
   /** `spawn` starts a decoder process; `thumbnailsDirectory` is where its thumbnail cache lives. */
   constructor(
@@ -86,6 +88,16 @@ export class DecoderClient {
     return this.call('measure', filePath);
   }
 
+  /** The non-image files of a CBZ, null for another format; see `DecoderMethods.listJunk`. */
+  listJunk(filePath: string): Promise<JunkEntry[] | null> {
+    return this.call('listJunk', filePath);
+  }
+
+  /** Rewrites a CBZ without the entries `names`; see `DecoderMethods.cleanArchive`. */
+  cleanArchive(filePath: string, names: string[]): Promise<CleanedArchive> {
+    return this.call('cleanArchive', filePath, names);
+  }
+
   /** A book's thumbnail, generated when missing (unless `cachedOnly`); null when it has no cover. */
   thumbnail(filePath: string, archiveId?: string, cachedOnly?: boolean): Promise<Uint8Array<ArrayBuffer> | null> {
     return this.call('thumbnail', filePath, archiveId, cachedOnly);
@@ -110,6 +122,12 @@ export class DecoderClient {
   setLanguage(language: Language): void {
     this.language = language;
     this.channel?.post({ type: 'language', language });
+  }
+
+  /** Whether the covers it makes go beside the comics (`AppSettings.librarySidecarCovers`). */
+  setSidecarCovers(enabled: boolean): void {
+    this.sidecarCovers = enabled;
+    this.channel?.post({ type: 'sidecarCovers', enabled });
   }
 
   /** Stops the decoder process (app quit); a later call would start another one. */
@@ -141,7 +159,7 @@ export class DecoderClient {
     this.channel = channel;
     channel.onResponse((response) => this.settle(response));
     channel.onExit(() => this.handleExit(channel));
-    channel.post({ type: 'init', thumbnailsDirectory: this.thumbnailsDirectory, language: this.language });
+    channel.post({ type: 'init', thumbnailsDirectory: this.thumbnailsDirectory, language: this.language, sidecarCovers: this.sidecarCovers });
     return channel;
   }
 

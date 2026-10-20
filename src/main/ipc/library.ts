@@ -19,6 +19,7 @@ import type { SettingsRepository } from '../db/settings-repository';
 import { isOnlineOnly } from '../services/cloud-files';
 import type { DecoderClient } from '../decoder/decoder-client';
 import type { ImageStatsScanner } from '../services/image-stats-scanner';
+import type { LibraryCleaner } from '../services/library-cleanup';
 import { NOTHING_ORGANIZED, type LibraryOrganizer, type Resynchronizer } from '../services/library-organization';
 import { openErrorMessage } from '../services/open-error';
 import { scanIntoLibrary } from '../services/library-scanner';
@@ -66,6 +67,8 @@ export const LIBRARY_CHANNELS = {
   organize: 'library:organize',
   countUnorganized: 'library:count-unorganized',
   organizeAll: 'library:organize-all',
+  analyzeCleanup: 'library:analyze-cleanup',
+  applyCleanup: 'library:apply-cleanup',
 } as const;
 
 /** Sends the state of the background measure to every open window (one being closed is skipped). */
@@ -86,6 +89,7 @@ export function registerLibraryIpc(
   notify: NotifyDataChange,
   imageScanner: ImageStatsScanner,
   organizer: LibraryOrganizer,
+  cleaner: LibraryCleaner,
 ): void {
   /** Announces the new state of entries a handler just wrote (the ones that still exist). */
   const notifyUpserted = (...ids: string[]) => {
@@ -203,6 +207,32 @@ export function registerLibraryIpc(
         event.sender.send(LIBRARY_CHANNELS.scanProgress, progress);
       }
     }),
+  );
+
+  // Both steps report over the scan channel, which the library page already follows.
+  handle(
+    LIBRARY_CHANNELS.analyzeCleanup,
+    args((ids) => expectStringArray(ids, 'ids')),
+    (event, ids) =>
+      cleaner.analyze(ids, (progress) => {
+        if (!event.sender.isDestroyed()) {
+          event.sender.send(LIBRARY_CHANNELS.scanProgress, progress);
+        }
+      }),
+  );
+
+  handle(
+    LIBRARY_CHANNELS.applyCleanup,
+    args(
+      (token) => expectNonEmptyString(token, 'token', 100),
+      (kept) => expectStringArray(kept, 'keptExtensions'),
+    ),
+    (event, token, kept) =>
+      cleaner.apply(token, kept, (progress) => {
+        if (!event.sender.isDestroyed()) {
+          event.sender.send(LIBRARY_CHANNELS.scanProgress, progress);
+        }
+      }),
   );
 
   handle(LIBRARY_CHANNELS.listFolders, args(), () => folders.list());

@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 
 import { AddToListDialog } from '@/components/add-to-list-dialog';
 import { BookDetails, BookRating, BookTags } from '@/components/book-row';
+import { CleanupDialog } from '@/components/cleanup-dialog';
 import { BookEditDialog } from '@/components/book-edit-dialog';
 import { useConfirm } from '@/components/confirm-dialog';
 import { BookCard } from '@/components/library/book-card';
@@ -66,6 +67,8 @@ function LibraryPage() {
   const [scanStatus, setScanStatus] = useState<string | null>(null);
   const [lookupEntry, setLookupEntry] = useState<LibraryEntry | null>(null);
   const [editEntry, setEditEntry] = useState<LibraryEntry | null>(null);
+  // Ids the cleanup dialog works on (empty: the whole library); null while it is closed.
+  const [cleanupIds, setCleanupIds] = useState<string[] | null>(null);
   const [listEntries, setListEntries] = useState<LibraryEntry[] | null>(null);
   // Ids of the books ticked for a group action; kept across filter changes, so a selection can be
   // built from several searches. `anchor` is the book ticked last, the start of a Shift-click range.
@@ -237,6 +240,7 @@ function LibraryPage() {
           onGroupedChange={(next) => update('libraryGroupBySeries', next)}
           sort={sort}
           onSortChange={(next) => update('librarySort', next)}
+          onCleanup={() => setCleanupIds(selection.map((entry) => entry.id))}
         />
       )}
 
@@ -418,6 +422,7 @@ function LibraryPage() {
         <MetadataDialog entry={lookupEntry} onClose={() => setLookupEntry(null)} onApplied={replaceEntry} />
       )}
       {editEntry && <BookEditDialog entry={editEntry} onClose={() => setEditEntry(null)} onSaved={replaceEntry} />}
+      {cleanupIds && <CleanupDialog ids={cleanupIds} onClose={() => setCleanupIds(null)} />}
       {listEntries && <AddToListDialog entries={listEntries} onClose={() => setListEntries(null)} />}
       {confirmDialog}
     </div>

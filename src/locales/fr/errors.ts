@@ -16,6 +16,8 @@ const errors: Translation<typeof en> = {
     imageTooLarge: "Image trop grande pour être affichée : {{entry}} ({{width}} × {{height}} px)",
     fileNotFound: 'Fichier introuvable : il a été déplacé ou supprimé.',
     openFailed: "Impossible d'ouvrir ce fichier : {{message}}",
+    cleanupChanged: "L’archive a changé depuis l’analyse : {{path}}",
+    cleanupVerifyFailed: "L’archive nettoyée n’a pas passé la vérification, l’original est conservé : {{path}}",
   },
   decoder: {
     crashed: "Fichier illisible : le décodeur s'est arrêté de façon inattendue.",
@@ -34,6 +36,8 @@ const errors: Translation<typeof en> = {
     organizationOff: "L'organisation de la bibliothèque est désactivée, ou n'a pas de dossier.",
     organizationFolderUnreachable: 'Le dossier organisé est inaccessible : {{folder}}',
     organizationExpired: 'Ces BD ne peuvent plus être déplacées d’ici : ajoutez-les à nouveau ou resynchronisez.',
+    cleanupExpired: 'Cette analyse n’est plus disponible : relancez-la.',
+    cleanupRunning: 'Un nettoyage des livres est déjà en cours.',
     organizeRunning: 'Une resynchronisation ou une organisation de la bibliothèque est déjà en cours.',
     trashFailed: "Le livre a été retiré de la bibliothèque, mais son fichier n'a pas pu être mis à la corbeille : {{message}}",
   },

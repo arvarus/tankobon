@@ -15,6 +15,8 @@ export default {
     imageTooLarge: 'Image too large to be displayed: {{entry}} ({{width}} × {{height}} px)',
     fileNotFound: 'File not found: it has been moved or deleted.',
     openFailed: 'Unable to open this file: {{message}}',
+    cleanupChanged: 'The archive changed since the analysis: {{path}}',
+    cleanupVerifyFailed: 'The cleaned archive did not pass the check, the original was kept: {{path}}',
   },
   decoder: {
     crashed: 'The file could not be read: the decoder stopped unexpectedly.',
@@ -33,6 +35,8 @@ export default {
     organizationOff: 'The library organization is off, or has no folder.',
     organizationFolderUnreachable: 'The organized folder can’t be reached: {{folder}}',
     organizationExpired: 'These comics can no longer be moved from here: add them again or resynchronize.',
+    cleanupExpired: 'This analysis is no longer available: run it again.',
+    cleanupRunning: 'A cleanup of the books is already running.',
     organizeRunning: 'A resynchronization or an organization of the library is already running.',
     trashFailed: 'The book was removed from the library, but its file could not be moved to the trash: {{message}}',
   },

@@ -70,7 +70,7 @@ async function isMissing(filePath: string): Promise<boolean> {
  * is still readable, so a vanished drive or folder keeps them. Comics inside the folders whose cover
  * is missing get it extracted (`extractCover`, which says whether it made one; a cloud placeholder is
  * skipped, since reading it would download it). Comics inside the folders that have no
- * `.nfo` sidecar get one written from their library information; no other file on disk is touched.
+ * `.nfo` sidecar get one written from their library information (unless `writeNfos` is off); no other file on disk is touched.
  */
 export async function resyncLibrary(
   repo: LibraryRepository,
@@ -78,6 +78,7 @@ export async function resyncLibrary(
   onProgress: (progress: ScanProgress) => void,
   inspect: (filePath: string) => Promise<ArchiveSummary>,
   extractCover: (filePath: string) => Promise<boolean> = async () => false,
+  writeNfos = true,
 ): Promise<ResyncSummary> {
   const summary: ResyncSummary = { added: 0, removed: 0, failed: 0, nfoWritten: 0, coversExtracted: 0, unreachable: 0, removedEntries: [], addedEntries: [] };
   // Each folder reports its own `done`; the caller only wants the one after the last.
@@ -109,7 +110,7 @@ export async function resyncLibrary(
 
   // Comics inside the walked folders get the `.nfo` they lack (an existing one is never touched).
   const inFolders = repo.list().filter((entry) => folders.some((folder) => isInside(folder, entry.path)));
-  for (const [index, entry] of inFolders.entries()) {
+  for (const [index, entry] of writeNfos ? inFolders.entries() : []) {
     onProgress({ phase: 'importing', processed: index, total: inFolders.length, currentFile: entry.path });
     if (await writeNfoIfMissing(entry)) summary.nfoWritten += 1;
   }

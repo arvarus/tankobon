@@ -242,10 +242,20 @@ function entry(fields: Partial<OrganizedEntry> = {}): OrganizedEntry {
     series: 'Tintin',
     volume: '20',
     releaseDate: '1960-01',
+    language: null,
     credits: [credit('', 'Hergé', 'writer')],
     ...fields,
   };
 }
+
+describe('organizedPaths without a fiche', () => {
+  it('keeps the original file name when the template has nothing to fill it with', () => {
+    const bare = entry({ series: null, volume: null, releaseDate: null, credits: [] });
+    const target = { root: '/org', structure: [], fileName: '{series} - T{volume}' };
+    expect(organizedPaths(target, bare)).toEqual([`/org/Tintin au Tibet (${ID})/Tintin au Tibet.cbz`]);
+    expect(organizedPaths(target, entry())[0]).toBe(`/org/Tintin - T20 (${ID})/Tintin - T20.cbz`);
+  });
+});
 
 describe('safeFolderName', () => {
   it('replaces the characters Windows refuses and trims the ends', () => {
