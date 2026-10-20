@@ -36,7 +36,7 @@ function suggestable(library: readonly LibraryEntry[]): LibraryEntry[] {
 /**
  * Up to `count` distinct books drawn at random among those not finished yet (see `isFinished()`;
  * a book already started still counts as unread), keeping only the next unread volume of each
- * series (see {@link suggestable}). Fewer are returned when the library holds
+ * series. Fewer are returned when the library holds
  * fewer. `random` is injectable for tests and returns a number in [0, 1) like `Math.random`.
  */
 export function pickRandomUnread(
