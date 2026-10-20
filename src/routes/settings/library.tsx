@@ -4,13 +4,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useConfirm } from '@/components/confirm-dialog';
+import { ScanFailuresDialog } from '@/components/scan-failures-dialog';
 import { SettingsSection } from '@/components/settings-section';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useOrganizationOffer } from '@/hooks/use-organization-offer';
 import { useSettings } from '@/hooks/use-settings';
 import { cn } from '@/lib/utils';
-import type { ScanProgress, UnlinkedFolder } from '@/shared/library';
+import type { ScanFailure, ScanProgress, UnlinkedFolder } from '@/shared/library';
 
 export const Route = createFileRoute('/settings/library')({
   component: LibrarySettingsPage,
@@ -25,6 +26,9 @@ function LibrarySettingsPage() {
   const [unlinked, setUnlinked] = useState<UnlinkedFolder[]>([]);
   const [progress, setProgress] = useState<ScanProgress | null>(null);
   const [status, setStatus] = useState<{ message: string; error?: boolean } | null>(null);
+  // The files the last resynchronization couldn't open (`total` is the exact count), shown in a dialog on request.
+  const [failures, setFailures] = useState<{ list: ScanFailure[]; total: number } | null>(null);
+  const [failuresOpen, setFailuresOpen] = useState(false);
   // Whether this page started the run, to show its progress in its own section (null: one started elsewhere, at launch).
   const [run, setRun] = useState<'resync' | null>(null);
   // A resynchronization (or an organization started elsewhere) is running.
@@ -66,6 +70,7 @@ function LibrarySettingsPage() {
 
   const resync = async () => {
     setStatus(null);
+    setFailures(null);
     setRun('resync');
     setProgress({ phase: 'scanning', processed: 0, total: 0, currentFile: '' });
     const result = await window.tankobon.library.resync();
@@ -75,6 +80,7 @@ function LibrarySettingsPage() {
       setStatus({ message: result.message, error: true });
       return;
     }
+    if (result.failed > 0) setFailures({ list: result.failures, total: result.failed });
     const parts = [t('resyncDone', { added: result.added, removed: result.removed })];
     if (result.failed > 0) parts.push(t('resyncFailed', { count: result.failed }));
     if (result.nfoWritten > 0) parts.push(t('resyncNfoWritten', { count: result.nfoWritten }));
@@ -146,6 +152,13 @@ function LibrarySettingsPage() {
         {status && (
           <p className={cn('text-sm', status.error ? 'text-destructive' : 'text-muted-foreground')}>{status.message}</p>
         )}
+        {failures && (
+          <div>
+            <Button variant="outline" size="sm" onClick={() => setFailuresOpen(true)}>
+              {t('resyncShowFailures')}
+            </Button>
+          </div>
+        )}
         <p className="text-sm text-muted-foreground">{lastResync}</p>
         <div className="flex items-center gap-2">
           <input
@@ -175,6 +188,9 @@ function LibrarySettingsPage() {
         </div>
       </SettingsSection>
       {confirmDialog}
+      {failures && failuresOpen && (
+        <ScanFailuresDialog failures={failures.list} total={failures.total} onClose={() => setFailuresOpen(false)} />
+      )}
     </>
   );
 }

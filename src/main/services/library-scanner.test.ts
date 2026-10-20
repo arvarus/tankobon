@@ -111,6 +111,7 @@ describe('scanIntoLibrary', () => {
 
     expect(summary).toMatchObject({ added: 1, skipped: 1, failed: 1, total: 3 });
     expect(summary.addedEntries.map((entry) => entry.path)).toHaveLength(1);
+    expect(summary.failures).toEqual([{ path: path.join(root, 'c.cbz'), reason: 'crashed' }]);
     // The known file is never opened.
     expect(inspected).toEqual(['b.cbz', 'c.cbz']);
     expect(repo.list().find((entry) => entry.title === 'b')).toMatchObject({ pageCount: 12, fileCount: 13 });
