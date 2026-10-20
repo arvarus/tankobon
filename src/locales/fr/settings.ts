@@ -128,6 +128,8 @@ const settings: Translation<typeof en> = {
     organizeAllDone_other: '{{count}} BD déplacées',
     organizeAllFailed_one: "{{count}} n'a pas pu être déplacée",
     organizeAllFailed_other: "{{count}} n'ont pas pu être déplacées",
+    duplicates: 'Rechercher les doublons…',
+    duplicatesHint: 'Liste les livres présents en plusieurs fichiers du même format (même série et même tome, ou même titre), pour n’en garder qu’un fichier et retirer les autres de la bibliothèque.',
   },
   metadata: {
     intro: "L'action « Rechercher les infos » d'une BD de la bibliothèque interroge ces services pour retrouver sa série, son tome, sa date de sortie, sa langue et ses auteurs. Seul le texte de la recherche leur est envoyé, et seulement quand tu lances une recherche.",
