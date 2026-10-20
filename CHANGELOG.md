@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented here. This file is maintained by [release-please](https://github.com/googleapis/release-please) from the [Conventional Commits](https://www.conventionalcommits.org/) merged into `master`: don't edit released entries by hand. New versions are inserted above the previous ones.
 
+## [0.14.0](https://github.com/pprb/tankobon/compare/v0.13.0...v0.14.0) (2026-10-20)
+
+
+### Features
+
+* **library:** clean books of their non-image files ([#163](https://github.com/pprb/tankobon/issues/163)) ([0bcd36a](https://github.com/pprb/tankobon/commit/0bcd36a806e12fe3576ae971c71adf25e09e5098))
+* **library:** keep the original file name when the book has no fiche ([#161](https://github.com/pprb/tankobon/issues/161)) ([d4f41ad](https://github.com/pprb/tankobon/commit/d4f41ad5901624a6dd3c167478dd25f130630542))
+* **library:** move the duplicate search to the organization settings ([#164](https://github.com/pprb/tankobon/issues/164)) ([99a9e38](https://github.com/pprb/tankobon/commit/99a9e38fa6dab46dc3a225c8eb971542f9ec1364))
+* **library:** remember kept duplicate groups and stop offering them again ([#165](https://github.com/pprb/tankobon/issues/165)) ([e8daad8](https://github.com/pprb/tankobon/commit/e8daad8be615e0c651581eb72fbff09e549cd0d1))
+* **library:** show the synchronization state in the sidebar ([#160](https://github.com/pprb/tankobon/issues/160)) ([d54fcb3](https://github.com/pprb/tankobon/commit/d54fcb3d4fcce081f2a0235b3cb45faf1563b107))
+* **organization:** add settings for cover and .nfo sidecars ([#162](https://github.com/pprb/tankobon/issues/162)) ([2d9dec5](https://github.com/pprb/tankobon/commit/2d9dec51d5368d401d7393a056995a288661a9a8))
+
 ## [0.13.0](https://github.com/pprb/tankobon/compare/v0.12.0...v0.13.0) (2026-10-19)
 
 
