@@ -6,11 +6,10 @@
 import { createWriteStream } from 'node:fs';
 import { rename, rm } from 'node:fs/promises';
 import { pipeline } from 'node:stream/promises';
-import StreamZip from 'node-stream-zip';
 import { ZipFile } from 'yazl';
 
 import { t } from '../../shared/i18n';
-import { CbzArchive } from './cbz-archive';
+import { CbzArchive, openZip } from './cbz-archive';
 import { isPageEntry } from './comic-archive';
 
 /** A file of an archive that is not a page. */
@@ -33,7 +32,7 @@ export interface CleanedArchive {
  * image at all: emptying it would not be a cleanup.
  */
 export async function listJunkEntries(filePath: string): Promise<JunkEntry[]> {
-  const zip = new StreamZip.async({ file: filePath });
+  const zip = openZip(filePath);
   try {
     const files = Object.values(await zip.entries()).filter((entry) => !entry.isDirectory);
     if (!files.some((entry) => isPageEntry(entry.name))) {
@@ -55,7 +54,7 @@ export async function listJunkEntries(filePath: string): Promise<JunkEntry[]> {
 export async function removeEntries(filePath: string, names: readonly string[]): Promise<CleanedArchive> {
   const remove = new Set(names);
   const temporary = `${filePath}.cleaning.tmp`;
-  const zip = new StreamZip.async({ file: filePath });
+  const zip = openZip(filePath);
   try {
     const files = Object.values(await zip.entries()).filter((entry) => !entry.isDirectory);
     const present = new Set(files.map((entry) => entry.name));
@@ -69,8 +68,9 @@ export async function removeEntries(filePath: string, names: readonly string[]):
     const out = new ZipFile();
     const written = pipeline(out.outputStream, createWriteStream(temporary));
     for (const entry of kept) {
+      // yazl refuses a backslash in a name; Windows tools write them as separators.
       out.addReadStreamLazy(
-        entry.name,
+        entry.name.replaceAll('\\', '/'),
         { mtime: new Date(entry.time), compress: !isPageEntry(entry.name) },
         (callback) => {
           zip.stream(entry.name).then(
@@ -104,7 +104,7 @@ async function verify(original: string, rewritten: string, fileCount: number): P
     throw error;
   });
   try {
-    const samePages = before.pages.length === after.pages.length && before.pages.every((page, i) => page === after.pages[i]);
+    const samePages = before.pages.length === after.pages.length && before.pages.every((page, i) => page.replaceAll('\\', '/') === after.pages[i]);
     if (!samePages || after.fileCount !== fileCount) {
       throw new Error(t('errors:archive.cleanupVerifyFailed', { path: original }));
     }

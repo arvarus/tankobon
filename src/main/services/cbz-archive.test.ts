@@ -126,6 +126,15 @@ describe('CbzArchive', () => {
     await archive.close();
   });
 
+  it('reads entries named with a Windows separator', async () => {
+    const mixed = join(dir, 'mixed.cbz');
+    await writeFile(mixed, buildZip({ 'Book/Book\\001.jpg': Buffer.alloc(100, 1) }));
+    const archive = await CbzArchive.open(mixed);
+    expect(archive.pages).toEqual(['Book/Book\\001.jpg']);
+    expect((await archive.readPage(0)).data).toHaveLength(100);
+    await archive.close();
+  });
+
   it('lists sorted pages and counts every file', async () => {
     const archive = await CbzArchive.open(file);
     expect(archive.pages).toEqual(['001.jpg', '002.jpg']);
