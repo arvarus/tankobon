@@ -15,10 +15,10 @@ import {
   thumbnailKey,
 } from './thumbnail-cache';
 
-async function png(width: number, height: number): Promise<Uint8Array<ArrayBuffer>> {
+async function png(width: number, height: number, color = '#c0392b'): Promise<Uint8Array<ArrayBuffer>> {
   const canvas = createCanvas(width, height);
   const context = canvas.getContext('2d');
-  context.fillStyle = '#c0392b';
+  context.fillStyle = color;
   context.fillRect(0, 0, width, height);
   return new Uint8Array(await canvas.encode('png'));
 }
@@ -226,6 +226,47 @@ describe('ThumbnailCache', () => {
     expect(generated).not.toBeNull();
     expect(await readdir(join(dir, 'cache'))).toEqual([thumbnailKey(comic) + '.webp']);
     expect(await cache.read(comic)).toEqual(generated);
+  });
+
+  it('replaces the cover with a chosen picture, shrunk to the thumbnail size', async () => {
+    const folder = join(dir, 'library');
+    await mkdir(folder);
+    const comic = join(folder, 'a.cbz');
+    const { open } = fakeOpener({ [comic]: [cover] });
+    const cache = new ThumbnailCache(join(dir, 'cache'), open);
+    const generated = await cache.ensure(comic);
+
+    await cache.replace(comic, await png(480, 720, '#2980b9'));
+
+    const replaced = await cache.read(comic);
+    expect(replaced).not.toEqual(generated);
+    expect(await size(replaced!)).toEqual([THUMBNAIL_MAX_WIDTH, THUMBNAIL_MAX_HEIGHT]);
+    expect(await readdir(folder)).toEqual(['a.cover.webp']);
+  });
+
+  it('keeps the current cover when the chosen picture is not an image', async () => {
+    const comic = join(dir, 'a.cbz');
+    const cache = new ThumbnailCache(join(dir, 'cache'), fakeOpener({ [comic]: [cover] }).open);
+    const generated = await cache.ensure(comic);
+
+    await expect(cache.replace(comic, new Uint8Array([1, 2, 3]))).rejects.toThrow();
+
+    expect(await cache.read(comic)).toEqual(generated);
+  });
+
+  it('removes an older sidecar when the new cover can only go to the local cache', async () => {
+    const folder = join(dir, 'library');
+    await mkdir(folder);
+    const comic = join(folder, 'a.cbz');
+    const cache = new ThumbnailCache(join(dir, 'cache'), fakeOpener({ [comic]: [cover] }).open);
+    await cache.ensure(comic);
+    cache.sidecars = false;
+
+    await cache.replace(comic, await png(480, 720));
+
+    expect(await readdir(folder)).toEqual([]);
+    expect(await readdir(join(dir, 'cache'))).toEqual([thumbnailKey(comic) + '.webp']);
+    expect(await cache.read(comic)).not.toBeNull();
   });
 
   it('removes a book thumbnail', async () => {

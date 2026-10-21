@@ -37,6 +37,7 @@ import type {
   UnorganizedCountResult,
   ScanProgress,
   ScanResult,
+  SetCoverResult,
 } from './shared/library';
 import type { MetadataPageResult, MetadataQuery, MetadataSearchResult } from './shared/metadata';
 import type { ReadingList, ReadingListAddResult, ReadingListOrderResult, ReadingListResult } from './shared/reading-list';
@@ -129,6 +130,8 @@ export interface LibraryApi {
   updateMetadataMany(ids: string[], update: MetadataUpdate): Promise<number>;
   /** Cover thumbnail (first page, shrunk) of a library entry as WebP bytes, generated and cached first when missing; null if the entry is unknown or unreadable. */
   thumbnail(id: string): Promise<Uint8Array<ArrayBuffer> | null>;
+  /** Replaces the cover thumbnail of a library entry with `image` (PNG, JPEG or WebP, at most 8 MiB, already cropped to the cover's 2:3 proportions by the caller); the main process shrinks it to the thumbnail size and writes it beside the comic (or in the local cache). A picture that can't be decoded comes back as an error result and leaves the current cover as it was. */
+  setCover(id: string, image: Uint8Array): Promise<SetCoverResult>;
 }
 
 /** Reading lists (ordered piles of library entries), as `window.tankobon.readingLists`. */
@@ -340,6 +343,7 @@ const api: TankobonApi = {
     updateMetadata: (id, update) => ipcRenderer.invoke('library:update-metadata', id, update),
     updateMetadataMany: (ids, update) => ipcRenderer.invoke('library:update-metadata-many', ids, update),
     thumbnail: (id) => ipcRenderer.invoke('library:thumbnail', id),
+    setCover: (id, image) => ipcRenderer.invoke('library:set-cover', id, image),
   },
   readingLists: {
     list: () => ipcRenderer.invoke('reading-lists:list'),
