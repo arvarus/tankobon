@@ -49,3 +49,38 @@ export function disabledControls(
 export function scrollEdgeAfterTurn(previousPage: number, page: number): 'top' | 'bottom' {
   return page < previousPage ? 'bottom' : 'top';
 }
+
+/** What `pageTurnForKey()` reads of a `keydown` event (a `KeyboardEvent` fits). */
+export interface PageTurnKeyEvent {
+  key: string;
+  defaultPrevented: boolean;
+  ctrlKey: boolean;
+  altKey: boolean;
+  metaKey: boolean;
+  target: EventTarget | { tagName?: string; isContentEditable?: boolean } | null;
+}
+
+/**
+ * Which page turn a key press asks for, or `null` when it is not the reader's: a key already handled
+ * elsewhere, one pressed with Ctrl/Alt/Meta (`Alt+←` is "back", not "previous page"), one typed in a
+ * field or a list (arrows pick an option there), and Space on a button or a link, where it activates
+ * the control.
+ */
+export function pageTurnForKey(event: PageTurnKeyEvent): 'advance' | 'retreat' | null {
+  if (event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey) return null;
+  const target = event.target as { tagName?: string; isContentEditable?: boolean } | null;
+  const tag = target?.tagName?.toUpperCase();
+  if (target?.isContentEditable || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return null;
+  switch (event.key) {
+    case 'ArrowRight':
+    case 'PageDown':
+      return 'advance';
+    case ' ':
+      return tag === 'BUTTON' || tag === 'A' || tag === 'SUMMARY' ? null : 'advance';
+    case 'ArrowLeft':
+    case 'PageUp':
+      return 'retreat';
+    default:
+      return null;
+  }
+}
