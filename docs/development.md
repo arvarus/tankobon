@@ -18,7 +18,7 @@ Every text file uses LF. `.editorconfig` tells editors so, and `.gitattributes` 
 | `npm run dev` | The same, in [development mode](#development-mode): the app also restarts by itself when main-process code changes, and opens DevTools. |
 | `npm run lint` | ESLint (flat config: `typescript-eslint`, `import-x`, `react-hooks`, `react-refresh`). |
 | `npm run typecheck` | `tsc --noEmit`. |
-| `npm test` | Vitest, once (`node` environment, no DOM). |
+| `npm test` | Vitest, once (`node` environment; a test that renders a component or a hook opts into jsdom, see [Testing components and hooks](#testing-components-and-hooks)). |
 | `npm run test:e2e` | Playwright smoke tests of the packaged app (run `npm run package` first; on a headless Linux, prefix with `xvfb-run`). See [Smoke tests](#smoke-tests-of-the-packaged-app). |
 | `npm run package` | `electron-forge package`: builds the app into `out/`. |
 | `npm run make` | `electron-forge make`: builds installers for the current platform (Squirrel, ZIP on macOS, deb, rpm). |
@@ -69,9 +69,18 @@ Four other workflows run on GitHub:
 
 Dependabot (`.github/dependabot.yml`) opens one pull request a week, titled `ci(deps): bump …`, when the GitHub Actions used by these workflows have new versions.
 
+## Testing components and hooks
+
+Logic stays pure and in `src/lib/` where it can, but a hook or a component has behaviour of its own (an effect, a retry button). Such a test is `*.test.tsx`, starts with `// @vitest-environment jsdom` (the rest of the suite keeps the faster `node` environment) and uses `@testing-library/react`:
+
+- `window.tankobon` doesn't exist in jsdom: the test installs the few methods it needs (`Object.assign(window, { tankobon: { … } })`) with `vi.fn`.
+- jsdom has no `IntersectionObserver`/`ResizeObserver`: stub them with `vi.stubGlobal` (`src/components/reader/continuous-page.test.tsx` shows both), and `URL.createObjectURL`.
+- A component using `useTranslation()` is wrapped in `<I18nextProvider i18n={i18n}>` (`@/shared/i18n`), the language set with `applyLanguage()`.
+- Examples: `src/hooks/use-comic.test.tsx` (reopening a book the decoder lost, with a guard against looping) and `src/components/reader/continuous-page.test.tsx`.
+
 ## Smoke tests of the packaged app
 
-Vitest runs in a `node` environment with no DOM, so the React components (the reader above all) are only covered through their pure helpers in `src/lib/`. `npm run test:e2e` completes that with a few [Playwright](https://playwright.dev) tests against the *packaged* app (`out/`, built by `npm run package`), which also catches what only breaks once packaged (see [Build gotchas](./architecture.md#build-gotchas)). They are not part of `npm test`: they need the package and a display, so on a headless Linux run `xvfb-run npm run test:e2e`.
+Vitest runs in a `node` environment by default, so most React components are covered through their pure helpers in `src/lib/` (a few have their own tests, see below). `npm run test:e2e` completes that with a few [Playwright](https://playwright.dev) tests against the *packaged* app (`out/`, built by `npm run package`), which also catches what only breaks once packaged (see [Build gotchas](./architecture.md#build-gotchas)). They are not part of `npm test`: they need the package and a display, so on a headless Linux run `xvfb-run npm run test:e2e`.
 
 What they cover (`e2e/smoke.e2e.ts`): the app starts and `window.tankobon` exists; a CBZ opens from the library in single-page mode and its progress is saved; the continuous mode follows the scroll, saves the last page and resumes on the saved page without reporting page 1 over it; a book opened from a reading list offers the list's next book on its last page.
 
