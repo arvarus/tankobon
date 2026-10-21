@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { useImageUpscaler } from '@/hooks/use-image-upscaler';
 import type { NextInList } from '@/hooks/use-next-in-list';
 import { useReadingPace } from '@/hooks/use-reading-pace';
-import { directionalControls, disabledControls, scrollEdgeAfterTurn } from '@/lib/reader-navigation';
+import { directionalControls, disabledControls, pageTurnForKey, scrollEdgeAfterTurn } from '@/lib/reader-navigation';
 import { cn } from '@/lib/utils';
 import { createWheelPager } from '@/lib/wheel-pager';
 import type { ComicInfo } from '@/shared/comic';
@@ -174,19 +174,11 @@ export function SinglePageReader({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      switch (event.key) {
-        case 'ArrowRight':
-        case 'PageDown':
-        case ' ':
-          event.preventDefault();
-          advance();
-          break;
-        case 'ArrowLeft':
-        case 'PageUp':
-          event.preventDefault();
-          retreat();
-          break;
-      }
+      const turn = pageTurnForKey(event);
+      if (turn === null) return;
+      event.preventDefault();
+      if (turn === 'advance') advance();
+      else retreat();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
