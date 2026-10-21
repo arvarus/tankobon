@@ -1,0 +1,38 @@
+// @vitest-environment jsdom
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { StrictMode } from 'react';
+import { I18nextProvider } from 'react-i18next';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+
+import { applyLanguage, i18n } from '@/shared/i18n';
+import { CleanupDialog } from './cleanup-dialog';
+
+beforeAll(() => applyLanguage('fr'));
+afterEach(cleanup);
+
+describe('CleanupDialog', () => {
+  // StrictMode runs the mount effect twice in development; the main process refuses a second analysis while
+  // the first one runs, so asking twice showed "a cleanup is already running" on a dialog that had just opened.
+  it('asks for the analysis once, even when the effect runs twice, and shows its result', async () => {
+    let calls = 0;
+    const analyzeCleanup = vi.fn(async () => {
+      calls += 1;
+      if (calls > 1) return { status: 'error' as const, message: 'Un nettoyage est déjà en cours.' };
+      return { status: 'ok' as const, token: 't', groups: [], scanned: 3, booksWithJunk: 0, skipped: 0, failed: 0 };
+    });
+    Object.assign(window, { tankobon: { library: { analyzeCleanup } } });
+
+    render(
+      <StrictMode>
+        <I18nextProvider i18n={i18n}>
+          <CleanupDialog ids={[]} onClose={vi.fn()} />
+        </I18nextProvider>
+      </StrictMode>,
+    );
+
+    await waitFor(() => expect(screen.queryByText(/déjà en cours/)).toBeNull());
+    await waitFor(() => expect(screen.queryByText(/Analyse des archives/)).toBeNull());
+    expect(analyzeCleanup).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/déjà en cours/)).toBeNull();
+  });
+});
