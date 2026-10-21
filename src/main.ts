@@ -159,6 +159,7 @@ app.whenReady().then(() => {
     broadcastDataChange,
     imageScanner,
     organizer,
+    activeUser,
   );
   registerLibraryIpc(
     libraryRepo,
@@ -170,6 +171,7 @@ app.whenReady().then(() => {
     imageScanner,
     organizer,
     createLibraryCleaner(libraryRepo, decoder, broadcastDataChange, organizer.lock),
+    activeUser,
   );
   registerReadingListIpc(readingListRepo, broadcastDataChange);
   registerStatsIpc(statsRepo);

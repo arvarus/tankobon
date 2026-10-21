@@ -288,6 +288,38 @@ describe('library organization and resynchronization', () => {
       expect(notify).toHaveBeenCalledWith({ scope: 'readingLists' });
     });
 
+    it('leaves the date and the organization alone when the app was switched to another user meanwhile', async () => {
+      const source = await folderWith(['a.cbz']);
+      const root = await folderWith([]);
+      folders.add(source);
+      configure('always', root);
+      let user = 'first';
+      // The user is switched while the first file is being opened.
+      const switching = {
+        ...decoder,
+        inspect: async (...args: Parameters<typeof decoder.inspect>) => {
+          user = 'second';
+          return decoder.inspect(...args);
+        },
+      };
+      const resync = createResynchronizer(
+        repo,
+        folders,
+        settings,
+        switching as unknown as DecoderClient,
+        notify,
+        imageScanner as unknown as ImageStatsScanner,
+        organizer,
+        () => user,
+      );
+
+      const result = await resync.run();
+
+      expect(result).toMatchObject({ status: 'ok', added: 1, organization: NOTHING_ORGANIZED });
+      expect(settings.getAll().lastResyncAt).toBe('');
+      expect(repo.list()[0].path.startsWith(root)).toBe(false);
+    });
+
     it('refuses to run while the lock is held, and releases it when it is done', async () => {
       organizer.lock.tryStart('organize');
       expect((await resynchronizer().run()).status).toBe('error');

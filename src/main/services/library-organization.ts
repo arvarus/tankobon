@@ -245,22 +245,27 @@ export function createResynchronizer(
   notify: LibraryNotifier,
   imageScanner: ImageStatsScanner,
   organizer: LibraryOrganizer,
+  // Who the run is for: the date and the organization are the user's who started it, not whoever is active at the end.
+  activeUser: () => string = () => '',
 ): Resynchronizer {
   return {
     async run(onProgress = () => undefined) {
       if (!organizer.lock.tryStart('resync')) return { status: 'error', message: organizer.lock.busyMessage() };
+      const startedBy = activeUser();
       try {
         const summary = await resyncLibrary(repo, organizer.watchedFolders(folders.list()), onProgress, (filePath) =>
           decoder.inspect(filePath),
           async (filePath) => !(await decoder.thumbnail(filePath, undefined, true)) && (await decoder.thumbnail(filePath)) !== null,
           settings.getAll().libraryWriteNfo,
         );
-        const organization = await organizer.afterAdd(summary.addedEntries);
+        // The user switched meanwhile: the organized folder and the date are now another user's settings.
+        const sameUser = activeUser() === startedBy;
+        const organization = sameUser ? await organizer.afterAdd(summary.addedEntries) : NOTHING_ORGANIZED;
         const finishedAt = new Date().toISOString();
-        settings.set('lastResyncAt', finishedAt);
+        if (sameUser) settings.set('lastResyncAt', finishedAt);
 
         notify({ scope: 'library' });
-        notify({ scope: 'settings', values: { lastResyncAt: finishedAt } });
+        if (sameUser) notify({ scope: 'settings', values: { lastResyncAt: finishedAt } });
         void imageScanner.kick();
         if (summary.removed > 0) {
           // The removed books left the reading lists they were in, and their covers are useless.
