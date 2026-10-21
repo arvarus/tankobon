@@ -6,7 +6,7 @@
  * a value that doesn't fit its field is dropped.
  * @module
  */
-import { readFile, stat, writeFile } from 'node:fs/promises';
+import { readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { CREDIT_ROLES, type CreditInput, type CreditRole, type LibraryEntry, type MetadataUpdate } from '../../shared/library';
@@ -248,10 +248,16 @@ export function buildNfo(entry: Pick<LibraryEntry, 'title' | 'series' | 'volume'
  * anyway.
  */
 export async function writeNfo(entry: Parameters<typeof buildNfo>[0] & { path: string }): Promise<boolean> {
+  const target = nfoPathFor(entry.path);
+  // Written aside then renamed: `rename` replaces a symbolic link itself, where `writeFile` would write
+  // through it into whatever it points at (a link planted in a folder of comics).
+  const temporary = `${target}.${process.pid}.tmp`;
   try {
-    await writeFile(nfoPathFor(entry.path), buildNfo(entry), 'utf8');
+    await writeFile(temporary, buildNfo(entry), { encoding: 'utf8', flag: 'wx' });
+    await rename(temporary, target);
     return true;
   } catch {
+    await rm(temporary, { force: true }).catch(() => undefined);
     return false;
   }
 }
