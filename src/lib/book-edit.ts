@@ -6,6 +6,7 @@
  */
 import { t } from '@/shared/i18n';
 import type { CreditInput, LibraryEntry, MetadataUpdate } from '@/shared/library';
+import { isValidReleaseDate } from '@/shared/release-date';
 
 /** One credit row of the form. */
 export interface CreditRow extends CreditInput {
@@ -59,23 +60,6 @@ export function entryToForm(entry: LibraryEntry): BookForm {
     language: entry.language ?? '',
     credits: entry.credits.map((credit) => newCreditRow(credit)),
   };
-}
-
-const DATE_PATTERN = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/;
-
-/** Whether `value` is a `YYYY`, `YYYY-MM` or `YYYY-MM-DD` date that exists. */
-export function isValidReleaseDate(value: string): boolean {
-  const match = DATE_PATTERN.exec(value);
-  if (!match) return false;
-  const [, year, month, day] = match;
-  if (month === undefined) return true;
-  const m = Number(month);
-  if (m < 1 || m > 12) return false;
-  if (day === undefined) return true;
-  const d = Number(day);
-  // Day 0 of the next month is the last day of this one.
-  const daysInMonth = new Date(Date.UTC(Number(year), m, 0)).getUTCDate();
-  return d >= 1 && d <= daysInMonth;
 }
 
 /**

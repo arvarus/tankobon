@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { entryToForm, formToUpdate, isValidForm, isValidReleaseDate, newCreditRow, validateForm } from './book-edit';
+import { entryToForm, formToUpdate, isValidForm, newCreditRow, validateForm } from './book-edit';
 import type { LibraryEntry } from '@/shared/library';
 
 function entry(overrides: Partial<LibraryEntry> = {}): LibraryEntry {
@@ -66,23 +66,6 @@ describe('entryToForm', () => {
     const form = entryToForm(credited);
     expect(form.credits.map((row) => row.lastName)).toEqual(['Díaz Canales', 'Guarnido']);
     expect(new Set(form.credits.map((row) => row.key)).size).toBe(2);
-  });
-});
-
-describe('isValidReleaseDate', () => {
-  it('accepts the three precisions', () => {
-    expect(isValidReleaseDate('2003')).toBe(true);
-    expect(isValidReleaseDate('2003-11')).toBe(true);
-    expect(isValidReleaseDate('2004-02-29')).toBe(true);
-  });
-
-  it('refuses malformed or impossible dates', () => {
-    expect(isValidReleaseDate('03')).toBe(false);
-    expect(isValidReleaseDate('2003/11')).toBe(false);
-    expect(isValidReleaseDate('2003-13')).toBe(false);
-    expect(isValidReleaseDate('2003-00')).toBe(false);
-    expect(isValidReleaseDate('2003-02-29')).toBe(false);
-    expect(isValidReleaseDate('2003-04-31')).toBe(false);
   });
 });
 

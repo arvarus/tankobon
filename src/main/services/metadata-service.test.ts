@@ -165,6 +165,17 @@ describe('searchMetadata', () => {
     expect(fetch.mock.calls[0][1]).toMatchObject({ headers: { 'User-Agent': 'Tankobon/test' } });
   });
 
+  it('drops a release date that does not exist instead of storing it', async () => {
+    const fetch = fakeFetch([
+      [/\/search\/.*resources=volume/, comicVineOk([{ id: 2 }])],
+      [/\/issues\//, comicVineOk([])],
+      [/\/search\/.*resources=issue.*query=X-Men\+141/, comicVineOk([{ ...issue, store_date: '2024-99-99' }])],
+      [/\/issue\/4000-6\//, comicVineOk({})],
+    ]);
+    const result = await searchMetadata({ text: 'X-Men', volume: '141' }, { ...settings, googleBooksEnabled: false }, http(fetch));
+    expect(result.status === 'ok' && result.candidates[0].releaseDate).toBeNull();
+  });
+
   it('falls back to a plain issue search when the series has no such issue', async () => {
     const fetch = fakeFetch([
       [/\/search\/.*resources=volume/, comicVineOk([{ id: 2 }])],
