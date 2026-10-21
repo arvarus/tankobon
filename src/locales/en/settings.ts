@@ -107,7 +107,7 @@ export default {
     sidecarCoversHint: 'Checked, the thumbnail is saved next to each comic (“Name.cover.webp”), so a shared folder carries its covers. Unchecked, covers are extracted and kept in this machine’s local cache only (covers already beside the comics are still used).',
     writeNfo: 'Write an information file (.nfo) beside each comic',
     writeNfoHint: 'Checked, a resynchronization and the saving of a lookup write the comic’s .nfo. Unchecked, none is created or replaced (existing ones are still read).',
-    fileNameHint: 'Fields: {{fields}}. Left empty, files keep their original name; the extension is always kept. A missing series, volume, year or author gives “Unknown”, and the characters a file name can’t hold become “_”. Changing it renames nothing by itself: “Organize the whole library…” renames the comics.',
+    fileNameHint: 'Fields: {{fields}}. {volume:2} pads a whole-number volume with zeros (from {volume:1} to {volume:4}): 7 gives 07, while other volumes (HS, 12.1…) stay as they are. Left empty, files keep their original name; the extension is always kept. A missing series, volume, year or author gives “Unknown”, and the characters a file name can’t hold become “_”. Changing it renames nothing by itself: “Organize the whole library…” renames the comics.',
     fileNameErrors: {
       separator: 'A file name can’t contain “/” or “\\”: the folders come from the tree above.',
       braces: 'Unknown field: use {{fields}}.',
