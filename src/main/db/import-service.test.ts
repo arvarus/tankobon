@@ -1,10 +1,13 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { applyLanguage } from '../../shared/i18n';
 import { DEFAULT_SETTINGS } from '../../shared/settings';
 import { buildExport } from './export-service';
-import { applyImport, parseExport } from './import-service';
+import { applyImport, parseExport, readExportFile } from './import-service';
 import { LibraryRepository } from './library-repository';
 import { ReadingListRepository } from './reading-list-repository';
 import { migrate } from './schema';
@@ -321,5 +324,19 @@ describe('applyImport', () => {
     expect(libraryRepo.list().map((entry) => entry.path)).toEqual(['/comics/local.cbz']);
     expect(readingListRepo.list()).toEqual([]);
     expect(db.isTransaction).toBe(false);
+  });
+});
+
+describe('readExportFile', () => {
+  it('reads a file, and refuses one above the limit before reading it', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'tankobon-import-'));
+    try {
+      const file = join(dir, 'export.json');
+      await writeFile(file, '{"version":1}');
+      expect(await readExportFile(file)).toBe('{"version":1}');
+      await expect(readExportFile(file, 5)).rejects.toThrow('trop volumineux');
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });

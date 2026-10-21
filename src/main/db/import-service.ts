@@ -3,6 +3,7 @@
  * @module
  */
 import { randomUUID } from 'node:crypto';
+import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 
@@ -54,6 +55,17 @@ function toPageSize(width: unknown, height: unknown): Pick<LibraryEntry, 'avgPag
   const w = Math.trunc(toNumber(width, 0));
   const h = Math.trunc(toNumber(height, 0));
   return w > 0 && h > 0 ? { avgPageWidth: w, avgPageHeight: h } : { avgPageWidth: null, avgPageHeight: null };
+}
+
+/** Largest export file read, in bytes (a 20 000-book library is about 20 MB). */
+export const MAX_IMPORT_BYTES = 256 * 1024 * 1024;
+
+/** The text of an export file picked by the user, refused above `maxBytes` before it is read into memory. */
+export async function readExportFile(filePath: string, maxBytes = MAX_IMPORT_BYTES): Promise<string> {
+  if ((await stat(filePath)).size > maxBytes) {
+    throw new Error(t('errors:import.tooLarge'));
+  }
+  return readFile(filePath, 'utf-8');
 }
 
 /**

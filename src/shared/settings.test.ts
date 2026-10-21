@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_SETTINGS,
   MAX_PAGE_SPACING,
+  MAX_SETTING_TEXT,
   SETTING_VALIDATORS,
   isLibraryStructure,
   isSettingKey,
@@ -33,6 +34,14 @@ describe('SETTING_VALIDATORS', () => {
     expect(isValidSetting('readingListView', 'grid')).toBe(false);
     expect(isValidSetting('librarySort', 'random')).toBe(false);
     expect(isValidSetting('comicVineApiKey', null)).toBe(false);
+  });
+
+  it('refuses a key or a folder path of absurd length', () => {
+    const huge = 'x'.repeat(MAX_SETTING_TEXT + 1);
+    for (const key of ['comicVineApiKey', 'googleBooksApiKey', 'lastScanFolder', 'libraryOrganizationFolder'] as const) {
+      expect(isValidSetting(key, huge)).toBe(false);
+      expect(isValidSetting(key, 'x'.repeat(MAX_SETTING_TEXT))).toBe(true);
+    }
   });
 
   it('accepts in-range values', () => {

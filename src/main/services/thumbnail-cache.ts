@@ -5,7 +5,7 @@
  */
 import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { createHash } from 'node:crypto';
-import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { ComicPage } from '../../shared/comic';
@@ -76,6 +76,8 @@ export class ThumbnailCache {
   async read(filePath: string): Promise<Uint8Array<ArrayBuffer> | null> {
     const sidecar = coverSidecarPath(filePath);
     try {
+      // `stat` first: it does not download a placeholder, and spares `attrib` for the many books without a sidecar.
+      await stat(sidecar);
       if (!(await isOnlineOnly(sidecar))) {
         return new Uint8Array(await readFile(sidecar));
       }

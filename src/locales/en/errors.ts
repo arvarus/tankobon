@@ -43,6 +43,7 @@ export default {
   import: {
     notJson: 'Unreadable file: this is not valid JSON.',
     notExport: 'Unrecognised file: this is not a Tankōbon export (version 1).',
+    tooLarge: 'This file is too large to be a Tankōbon export.',
   },
   readingLists: {
     notFound: 'Reading list not found.',
