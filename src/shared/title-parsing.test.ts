@@ -1,37 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatPersonName, guessQueryFromTitle, splitPersonName, splitSeriesTitle } from './title-parsing';
-
-describe('guessQueryFromTitle', () => {
-  it.each([
-    ['Blacksad_T02_Arctic-Nation (2003)', 'Blacksad', '2'],
-    ['Astérix - Tome 03 - Astérix et les Goths', 'Astérix', '3'],
-    ['Batman 012 (2016) (Digital) [Zone-Empire]', 'Batman', '12'],
-    ['Batman.012.2016', 'Batman', '12'],
-    ['X-Men #141', 'X-Men', '141'],
-    ['Naruto Vol. 1', 'Naruto', '1'],
-    ['One Piece v. n°45', 'One Piece v', '45'],
-    ['Saga 12.5', 'Saga', '12.5'],
-  ])('reads %j as series %j, volume %j', (title, text, volume) => {
-    expect(guessQueryFromTitle(title)).toEqual({ text, volume });
-  });
-
-  it('keeps the whole cleaned title when there is no number', () => {
-    expect(guessQueryFromTitle('Maus [Integrale] (1986)')).toEqual({ text: 'Maus', volume: null });
-  });
-
-  it('ignores a year that is not in brackets', () => {
-    expect(guessQueryFromTitle('Watchmen 1986')).toEqual({ text: 'Watchmen 1986', volume: null });
-  });
-
-  it('falls back to the text after the number when nothing precedes it', () => {
-    expect(guessQueryFromTitle('03 - Le Lotus bleu')).toEqual({ text: 'Le Lotus bleu', volume: '3' });
-  });
-
-  it('does not take a word ending in t for a volume marker', () => {
-    expect(guessQueryFromTitle('Le Chat 2')).toEqual({ text: 'Le Chat', volume: '2' });
-  });
-});
+import { formatPersonName, splitPersonName, splitSeriesTitle } from './title-parsing';
 
 describe('splitSeriesTitle', () => {
   it('splits series, volume and title around an explicit marker', () => {

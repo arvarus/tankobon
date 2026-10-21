@@ -4,7 +4,6 @@
  * @module
  */
 import type { PersonName } from './library';
-import type { MetadataQuery } from './metadata';
 
 /** An explicit volume marker followed by its number: "T03", "Tome 3", "Vol. 2", "n°12", "#5". */
 const VOLUME_MARKER = /(?:\b(?:tome|t|vol(?:ume)?|no)\.?|n°|#)\s*(\d+(?:[.,]\d+)?[a-z]?)\b/i;
@@ -19,32 +18,6 @@ function clean(value: string): string {
 /** "03" → "3", "12.5" → "12.5", "000" → "0". */
 function normalizeVolume(volume: string): string {
   return volume.replace(',', '.').replace(/^0+(?=\d)/, '');
-}
-
-/**
- * Guesses what to search for from a file-name-derived title: tags in brackets ("(2019)",
- * "[Digital]") and `_`/`.` word separators are dropped, then the volume is taken from an explicit
- * marker ("T03", "Vol. 2", "#12") or else from a standalone 1–3 digit number, and the text is
- * what precedes it (the series, usually).
- *
- * @example guessQueryFromTitle('Blacksad_T02_Arctic-Nation (2003)') // { text: 'Blacksad', volume: '2' }
- */
-export function guessQueryFromTitle(title: string): MetadataQuery {
-  const stripped = title
-    .replace(/\([^)]*\)|\[[^\]]*\]|\{[^}]*\}/g, ' ')
-    .replace(/[_]+/g, ' ')
-    // Dots used as word separators ("Batman.012.2016"), but not a decimal issue number ("12.5").
-    .replace(/(?<!\d)\.|\.(?!\d{1,2}\b)/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  const marker = VOLUME_MARKER.exec(stripped) ?? /(?<![\d.])\b(\d{1,3}(?:\.\d{1,2})?)\b(?![\d.])/.exec(stripped);
-  if (!marker) {
-    return { text: clean(stripped), volume: null };
-  }
-  const before = clean(stripped.slice(0, marker.index));
-  const after = clean(stripped.slice(marker.index + marker[0].length));
-  return { text: before || after, volume: normalizeVolume(marker[1]) };
 }
 
 /**

@@ -12,7 +12,6 @@ import {
   MAX_NAME_BYTES,
   letterFolderName,
   moveFile,
-  organizedFolderName,
   organizedPaths,
   organizeEntries,
   planOrganization,
@@ -60,20 +59,23 @@ const ID = '3f2a9c1e-0000-4000-8000-000000000001';
 /** The default layout, one subfolder per comic, in `root`. */
 const flat = (root: string) => ({ root, structure: [], fileName: '' });
 
-describe('organizedFolderName', () => {
+/** The subfolder of the default layout for a comic at `filePath`. */
+const folderOf = (filePath: string) => path.basename(path.dirname(organizedPaths(flat('/org'), entry({ path: filePath }))[0]));
+
+describe('default layout subfolder', () => {
   it('is the file name without its extension, then the id', () => {
-    expect(organizedFolderName('/comics/Astérix T01.cbz', ID)).toBe(`Astérix T01 (${ID})`);
+    expect(folderOf('/comics/Astérix T01.cbz')).toBe(`Astérix T01 (${ID})`);
   });
 
   it('cuts a long name to fit the OS limit, never splitting a character', () => {
-    const name = organizedFolderName(`/comics/${'é'.repeat(300)}.cbz`, ID);
+    const name = folderOf(`/comics/${'é'.repeat(300)}.cbz`);
     expect(Buffer.byteLength(name)).toBeLessThanOrEqual(MAX_NAME_BYTES);
     expect(name.endsWith(` (${ID})`)).toBe(true);
     expect(name).not.toContain('�');
   });
 
   it('drops the trailing spaces and dots left by a cut', () => {
-    const name = organizedFolderName(`/comics/${'a'.repeat(214)}. ${'b'.repeat(50)}.cbz`, ID);
+    const name = folderOf(`/comics/${'a'.repeat(214)}. ${'b'.repeat(50)}.cbz`);
     expect(name).toBe(`${'a'.repeat(214)} (${ID})`);
   });
 });
