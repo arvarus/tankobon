@@ -14,7 +14,7 @@ export default defineConfig({
   title: 'Tankōbon',
   description: 'Digital comics, BD and manga library manager and reader.',
   lang: 'en-US',
-  // Published on GitHub Pages at https://pprb.github.io/tankobon/.
+  // Published on GitHub Pages at https://arvarus.github.io/tankobon/.
   base: '/tankobon/',
   cleanUrls: true,
   lastUpdated: true,
@@ -44,9 +44,9 @@ export default defineConfig({
       },
     ],
     search: { provider: 'local' },
-    socialLinks: [{ icon: 'github', link: 'https://github.com/pprb/tankobon' }],
+    socialLinks: [{ icon: 'github', link: 'https://github.com/arvarus/tankobon' }],
     editLink: {
-      pattern: 'https://github.com/pprb/tankobon/edit/master/docs/:path',
+      pattern: 'https://github.com/arvarus/tankobon/edit/master/docs/:path',
       text: 'Edit this page on GitHub',
     },
   },
