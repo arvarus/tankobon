@@ -2,10 +2,14 @@ import { BookImage } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { createTaskQueue } from '@/lib/cover-queue';
 import { cn } from '@/lib/utils';
 
+/** The covers asked for from the main process, a few at a time, newest first: see `cover-queue.ts`. */
+const coverQueue = createTaskQueue(4);
+
 /**
- * Cover thumbnail of a library entry. It is only requested once the row comes near the viewport,
+ * Cover thumbnail of a library entry. It is only requested while the row is near the viewport (a request not started yet is cancelled when it leaves),
  * since a missing thumbnail makes the main process open the archive; until then, and for a book
  * without one, a placeholder icon keeps the row's layout.
  */
@@ -17,28 +21,32 @@ export function BookCover({ entryId, title, className }: { entryId: string; titl
 
   useEffect(() => {
     const element = ref.current;
-    if (!element || near) return;
+    if (!element) return;
+    // Both ways: a row scrolled far away stops waiting for its cover.
     const observer = new IntersectionObserver(
       (records) => {
-        if (records.some((record) => record.isIntersecting)) setNear(true);
+        const last = records[records.length - 1];
+        if (last) setNear(last.isIntersecting);
       },
       { rootMargin: '400px 0px' },
     );
     observer.observe(element);
     return () => observer.disconnect();
-  }, [near]);
+  }, []);
 
   useEffect(() => {
     if (!near) return;
     let objectUrl: string | null = null;
     let cancelled = false;
-    void window.tankobon.library.thumbnail(entryId).then((bytes) => {
+    const cancelRequest = coverQueue.enqueue(async () => {
+      const bytes = await window.tankobon.library.thumbnail(entryId);
       if (cancelled || !bytes) return;
       objectUrl = URL.createObjectURL(new Blob([bytes], { type: 'image/webp' }));
       setUrl(objectUrl);
     });
     return () => {
       cancelled = true;
+      cancelRequest();
       if (objectUrl) URL.revokeObjectURL(objectUrl);
       setUrl(null);
     };
