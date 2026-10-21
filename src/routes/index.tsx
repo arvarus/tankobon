@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { BookCarousel } from "@/components/book-carousel";
 import { BookCover } from "@/components/book-cover";
 import { BookRating } from "@/components/book-row";
+import { BookTile } from "@/components/book-tile";
 import { Button } from "@/components/ui/button";
 import { useLibrary } from "@/hooks/use-library";
 import { useSettings } from "@/hooks/use-settings";
@@ -127,23 +128,7 @@ function RecentlyAdded({ section }: { section: ResolvedHomeSection }) {
         ) : (
           <BookCarousel layout={section.layout}>
             {recent.map((entry) => (
-              <li key={entry.id} className="w-32 shrink-0">
-                <Link
-                  to="/reader"
-                  search={{ book: entry.id }}
-                  aria-label={t("openBook", { title: entry.title })}
-                  className="block rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
-                >
-                  <BookCover
-                    entryId={entry.id}
-                    title={entry.title}
-                    className="aspect-[2/3] w-full"
-                  />
-                  <span className="mt-1 line-clamp-2 text-sm">
-                    {entry.title}
-                  </span>
-                </Link>
-              </li>
+              <BookTile key={entry.id} entry={entry} />
             ))}
           </BookCarousel>
         )}
@@ -174,19 +159,10 @@ function Favorites({ section }: { section: ResolvedHomeSection }) {
       ) : (
         <BookCarousel layout={section.layout}>
           {favorites.map((entry) => (
-            <li key={entry.id} className="w-32 shrink-0">
-              <Link
-                to="/reader"
-                search={{ book: entry.id }}
-                aria-label={t("openBook", { title: entry.title })}
-                className="block rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
-              >
-                <BookCover
-                  entryId={entry.id}
-                  title={entry.title}
-                  className="aspect-[2/3] w-full"
-                />
-                <span className="mt-1 line-clamp-2 text-sm">{entry.title}</span>
+            <BookTile
+              key={entry.id}
+              entry={entry}
+              extra={
                 <span
                   className="mt-0.5 flex gap-0.5"
                   role="img"
@@ -200,8 +176,8 @@ function Favorites({ section }: { section: ResolvedHomeSection }) {
                     />
                   ))}
                 </span>
-              </Link>
-            </li>
+              }
+            />
           ))}
         </BookCarousel>
       )}
@@ -248,21 +224,7 @@ function Suggestions({ section }: { section: ResolvedHomeSection }) {
       ) : (
         <BookCarousel layout={section.layout}>
           {shown.map((entry) => (
-            <li key={entry.id} className="w-32 shrink-0">
-              <Link
-                to="/reader"
-                search={{ book: entry.id }}
-                aria-label={t("openBook", { title: entry.title })}
-                className="block rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
-              >
-                <BookCover
-                  entryId={entry.id}
-                  title={entry.title}
-                  className="aspect-[2/3] w-full"
-                />
-                <span className="mt-1 line-clamp-2 text-sm">{entry.title}</span>
-              </Link>
-            </li>
+            <BookTile key={entry.id} entry={entry} />
           ))}
         </BookCarousel>
       )}
@@ -292,24 +254,15 @@ function SecondChance({ section }: { section: ResolvedHomeSection }) {
       ) : (
         <BookCarousel layout={section.layout}>
           {entries.map((entry) => (
-            <li key={entry.id} className="w-32 shrink-0">
-              <Link
-                to="/reader"
-                search={{ book: entry.id }}
-                aria-label={t("openBook", { title: entry.title })}
-                className="block rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
-              >
-                <BookCover
-                  entryId={entry.id}
-                  title={entry.title}
-                  className="aspect-[2/3] w-full"
-                />
-                <span className="mt-1 line-clamp-2 text-sm">{entry.title}</span>
-              </Link>
-              <div className="mt-1">
-                <BookRating entry={entry} />
-              </div>
-            </li>
+            <BookTile
+              key={entry.id}
+              entry={entry}
+              footer={
+                <div className="mt-1">
+                  <BookRating entry={entry} />
+                </div>
+              }
+            />
           ))}
         </BookCarousel>
       )}
