@@ -59,6 +59,7 @@ export const LIBRARY_CHANNELS = {
   updateRating: 'library:update-rating',
   updateTags: 'library:update-tags',
   updateMetadata: 'library:update-metadata',
+  updateMetadataMany: 'library:update-metadata-many',
   thumbnail: 'library:thumbnail',
   imageScanStatus: 'library:image-scan-status',
   /** Main → renderer, while the background measure of the pages runs. */
@@ -393,4 +394,14 @@ export function registerLibraryIpc(
     if (updated) notify({ scope: 'library', upserted: [updated] });
     return updated;
   });
+
+  handle(
+    LIBRARY_CHANNELS.updateMetadataMany,
+    args((ids) => expectStringArray(ids, 'ids'), expectMetadataUpdate),
+    (_event, ids, update) => {
+      const updated = repo.updateMetadataMany(ids, update);
+      if (updated.length > 0) notify({ scope: 'library', upserted: updated });
+      return updated.length;
+    },
+  );
 }
