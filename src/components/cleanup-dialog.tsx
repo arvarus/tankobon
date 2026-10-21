@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/components/ui/button';
@@ -22,19 +22,27 @@ export function CleanupDialog({ ids, onClose }: { ids: string[]; onClose: () => 
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // The analysis starts once per dialog, even though React's StrictMode (development) runs the effect twice: a
+  // second request would meet the first one still running and answer "a cleanup is already running". The
+  // dialog being open at the time of the answer is what counts, not which run of the effect asked.
+  const started = useRef(false);
+  const open = useRef(true);
   useEffect(() => {
-    let cancelled = false;
-    window.tankobon.library
-      .analyzeCleanup(ids)
-      .then((outcome) => {
-        if (cancelled) return;
-        if (outcome.status === 'error') setError(outcome.message);
-        else setAnalysis(outcome);
-      })
-      .catch(() => !cancelled && setError(t('library:cleanupFailed')))
-      .finally(() => !cancelled && setBusy(false));
+    open.current = true;
+    if (!started.current) {
+      started.current = true;
+      window.tankobon.library
+        .analyzeCleanup(ids)
+        .then((outcome) => {
+          if (!open.current) return;
+          if (outcome.status === 'error') setError(outcome.message);
+          else setAnalysis(outcome);
+        })
+        .catch(() => open.current && setError(t('library:cleanupFailed')))
+        .finally(() => open.current && setBusy(false));
+    }
     return () => {
-      cancelled = true;
+      open.current = false;
     };
     // Analysed once, when the dialog opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
