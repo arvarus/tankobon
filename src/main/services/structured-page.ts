@@ -8,6 +8,7 @@
 import { t } from '../../shared/i18n';
 import type { CreditInput } from '../../shared/library';
 import { type MetadataCandidate, type MetadataSource, METADATA_SOURCE_LABELS, pageSourceOf } from '../../shared/metadata';
+import { validReleaseDate } from '../../shared/release-date';
 import { splitPersonName, splitSeriesTitle } from '../../shared/title-parsing';
 import { getHtml, type HttpOptions } from './http-json';
 
@@ -83,9 +84,9 @@ function authorsOf(value: unknown): string[] {
 function isoDate(value: string | null): string | null {
   if (!value) return null;
   const iso = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?/.exec(value);
-  if (iso) return [iso[1], iso[2], iso[3]].filter(Boolean).join('-');
+  if (iso) return validReleaseDate([iso[1], iso[2], iso[3]].filter(Boolean).join('-'));
   const french = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(value);
-  return french ? `${french[3]}-${french[2]}-${french[1]}` : null;
+  return french ? validReleaseDate(`${french[3]}-${french[2]}-${french[1]}`) : null;
 }
 
 /** An absolute `https` address, or null. */

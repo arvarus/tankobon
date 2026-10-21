@@ -10,6 +10,7 @@ import { readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { CREDIT_ROLES, type CreditInput, type CreditRole, type LibraryEntry, type MetadataUpdate } from '../../shared/library';
+import { validReleaseDate } from '../../shared/release-date';
 import { splitPersonName } from '../../shared/title-parsing';
 
 /** Largest `.nfo` that is read (bytes); a bigger file is ignored. */
@@ -61,22 +62,6 @@ function attribute(attributes: string, name: string): string {
   return cleanValue(match?.[1] ?? match?.[2] ?? '');
 }
 
-const DATE_PATTERN = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/;
-
-/** A `YYYY`, `YYYY-MM` or `YYYY-MM-DD` date that exists; anything longer (a time) is cut to its date. */
-function releaseDate(value: string): string | null {
-  const day = value.slice(0, 10);
-  const match = DATE_PATTERN.exec(day);
-  if (!match) return null;
-  const [, year, month, date] = match;
-  if (month === undefined) return day;
-  const m = Number(month);
-  if (m < 1 || m > 12) return null;
-  if (date === undefined) return day;
-  const daysInMonth = new Date(Date.UTC(Number(year), m, 0)).getUTCDate();
-  return Number(date) >= 1 && Number(date) <= daysInMonth ? day : null;
-}
-
 function creditRole(attributes: string): CreditRole {
   const role = attribute(attributes, 'role').toLowerCase();
   return (CREDIT_ROLES as readonly string[]).includes(role) ? (role as CreditRole) : 'author';
@@ -98,7 +83,7 @@ export function parseNfo(text: string): MetadataUpdate | null {
   if (series) update.series = series;
   const volume = firstText(text, 'volume', 'number');
   if (volume) update.volume = volume;
-  const date = releaseDate(firstText(text, 'releasedate', 'premiered', 'year'));
+  const date = validReleaseDate(firstText(text, 'releasedate', 'premiered', 'year'));
   if (date) update.releaseDate = date;
   const language = firstText(text, 'language').toLowerCase();
   if (/^[a-z]{2,3}$/.test(language)) update.language = language;

@@ -3,6 +3,7 @@
  * @module
  */
 import { t } from '../../shared/i18n';
+import { validReleaseDate } from '../../shared/release-date';
 import {
   type MetadataCandidate,
   type MetadataPageResult,
@@ -40,6 +41,11 @@ export function rankCandidates(candidates: MetadataCandidate[], query: MetadataQ
   return [...candidates.filter(matches), ...candidates.filter((candidate) => !matches(candidate))];
 }
 
+/** The candidate with a release date that exists, or none: a source's answer is not trusted to be a date. */
+function withValidDate(candidate: MetadataCandidate): MetadataCandidate {
+  return { ...candidate, releaseDate: validReleaseDate(candidate.releaseDate) };
+}
+
 /**
  * Queries every enabled source in parallel (Comic Vine only when it has an API key) and merges
  * their results. A failing source only adds its message to `errors`; the result is an error only
@@ -72,7 +78,7 @@ export async function searchMetadata(
   }
 
   const results = await Promise.allSettled(clients.map((client) => client.search({ text, volume })));
-  const candidates = results.flatMap((result) => (result.status === 'fulfilled' ? result.value : []));
+  const candidates = results.flatMap((result) => (result.status === 'fulfilled' ? result.value.map(withValidDate) : []));
   const errors = results.flatMap((result) =>
     result.status === 'rejected' ? [result.reason instanceof Error ? result.reason.message : String(result.reason)] : [],
   );
@@ -89,7 +95,7 @@ export async function searchMetadata(
 export async function fetchMetadataPage(url: string, http: HttpOptions): Promise<MetadataPageResult> {
   try {
     const candidate = pageSourceOf(url) === 'bedetheque' ? await fetchBedethequeAlbum(url, http) : await fetchStructuredPage(url, http);
-    return { status: 'ok', candidate };
+    return { status: 'ok', candidate: withValidDate(candidate) };
   } catch (error) {
     return { status: 'error', message: error instanceof Error ? error.message : String(error) };
   }

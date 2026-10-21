@@ -45,6 +45,13 @@ describe('parseStructuredPage', () => {
     });
   });
 
+  it('drops a date that does not exist', () => {
+    const html = `<script type="application/ld+json">{"@type":"Book","name":"Blacksad","datePublished":"2024-99-99"}</script>`;
+    expect(parseStructuredPage(html, BDFUGUE, 'bdfugue').releaseDate).toBeNull();
+    const french = `<script type="application/ld+json">{"@type":"Book","name":"Blacksad","datePublished":"31/02/2024"}</script>`;
+    expect(parseStructuredPage(french, BDFUGUE, 'bdfugue').releaseDate).toBeNull();
+  });
+
   it('ignores a damaged JSON-LD block', () => {
     const html = `<script type="application/ld+json">{oops</script><meta property="og:title" content="Blacksad">`;
     expect(parseStructuredPage(html, BDFUGUE, 'bdfugue')).toMatchObject({ title: 'Blacksad', series: null, volume: null });
