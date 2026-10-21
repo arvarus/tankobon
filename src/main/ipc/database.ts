@@ -14,18 +14,24 @@ import {
   scheduleRestore,
 } from '../db/backup-service';
 import { databaseLocation } from '../db/database';
+import {
+  checkDirectoryUsable,
+  normalizeDatabaseFileName,
+  writeFileNamePointer,
+  writeLocationPointer,
+} from '../db/db-location';
 import type { SettingsRepository } from '../db/settings-repository';
-import { checkDirectoryUsable, writeLocationPointer } from '../db/db-location';
 import { openDialogFor } from './dialogs';
 import type { NotifyDataChange } from './data-changes';
 import { handle } from './handle';
-import { args, idArg } from './validate';
+import { args, expectNullableString, idArg } from './validate';
 
 // Channel names are shared with preload.ts: keep them in sync.
 export const DATABASE_CHANNELS = {
   getLocation: 'database:get-location',
   chooseLocation: 'database:choose-location',
   resetLocation: 'database:reset-location',
+  setFileName: 'database:set-file-name',
   relaunch: 'database:relaunch',
   listBackups: 'database:list-backups',
   createBackup: 'database:create-backup',
@@ -67,6 +73,24 @@ export function registerDatabaseIpc(db: DatabaseSync, settings: SettingsReposito
     writeLocationPointer(app.getPath('userData'), null);
     return databaseLocation();
   });
+
+  // Like the folder, only the pointer changes: the file already open is not renamed.
+  handle(
+    DATABASE_CHANNELS.setFileName,
+    args((value) => expectNullableString(value, 'fileName')),
+    (_event, fileName): DatabaseLocationResult => {
+      if (fileName === null) {
+        writeFileNamePointer(app.getPath('userData'), null);
+        return { status: 'changed', location: databaseLocation() };
+      }
+      const normalized = normalizeDatabaseFileName(fileName);
+      if ('error' in normalized) {
+        return { status: 'error', message: normalized.error };
+      }
+      writeFileNamePointer(app.getPath('userData'), normalized.fileName);
+      return { status: 'changed', location: databaseLocation() };
+    },
+  );
 
   handle(DATABASE_CHANNELS.relaunch, args(), () => {
     app.relaunch();

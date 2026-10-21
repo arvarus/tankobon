@@ -28,6 +28,8 @@ function DataSettingsPage() {
   // A location change only takes effect on the next start, so the app has to offer a restart.
   const [restartNeeded, setRestartNeeded] = useState(false);
   const [dbError, setDbError] = useState<string | null>(null);
+  // What is typed in the file name field; null while it shows the current name.
+  const [fileNameDraft, setFileNameDraft] = useState<string | null>(null);
   // What clearing would delete, shown in the confirmation dialog; null while it's closed.
   const [clearCounts, setClearCounts] = useState<{ entries: number; readingLists: number } | null>(null);
   const [clearing, setClearing] = useState(false);
@@ -104,6 +106,20 @@ function DataSettingsPage() {
     setDbError(null);
     setDbLocation(result.location);
     setRestartNeeded(true);
+  };
+
+  const applyFileName = async (fileName: string | null) => {
+    const result = await window.tankobon.database.setFileName(fileName);
+    if (result.status === 'error') {
+      setDbError(result.message);
+      return;
+    }
+    if (result.status === 'changed') {
+      setDbError(null);
+      setDbLocation(result.location);
+      setFileNameDraft(null);
+      setRestartNeeded(true);
+    }
   };
 
   const resetDatabaseLocation = async () => {
@@ -198,6 +214,32 @@ function DataSettingsPage() {
           )}
         </div>
         <p className="text-sm text-muted-foreground">{t('data.locationHint')}</p>
+        <form
+          className="flex flex-wrap items-center gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (fileNameDraft !== null) void applyFileName(fileNameDraft);
+          }}
+        >
+          <label className="flex items-center gap-2 text-sm">
+            {t('data.fileName')}
+            <input
+              className="h-8 w-56 rounded-md border bg-background px-2 font-mono"
+              maxLength={100}
+              value={fileNameDraft ?? dbLocation?.fileName ?? ''}
+              onChange={(event) => setFileNameDraft(event.target.value)}
+            />
+          </label>
+          <Button type="submit" variant="outline" size="sm" disabled={fileNameDraft === null || fileNameDraft === dbLocation?.fileName}>
+            {t('data.fileNameApply')}
+          </Button>
+          {dbLocation && !dbLocation.isDefaultFileName && (
+            <Button type="button" variant="outline" size="sm" onClick={() => void applyFileName(null)}>
+              {t('data.resetFileName')}
+            </Button>
+          )}
+        </form>
+        <p className="text-sm text-muted-foreground">{t('data.fileNameHint')}</p>
         {dbError && <p className="text-sm text-destructive">{dbError}</p>}
         {restartNeeded && (
           <div className="flex flex-wrap items-center gap-2">

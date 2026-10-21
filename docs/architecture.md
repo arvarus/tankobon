@@ -157,8 +157,9 @@ See [ADR 0014](./decisions/0014-achievements-evaluated-in-renderer.md). `user_ac
 
 ### Database location (`db-location.ts`)
 
-The location can't be an `AppSettings` entry, since the settings are stored *in* the database. It is a tiny `db-location.json` pointer file that always stays in `userData` ([ADR 0003](./decisions/0003-database-location-pointer-file.md)).
+The location can't be an `AppSettings` entry, since the settings are stored *in* the database. It is a tiny `db-location.json` pointer file that always stays in `userData` ([ADR 0003](./decisions/0003-database-location-pointer-file.md)); it holds the optional `directory` and the optional `fileName` of the database (`tankobon.db` by default), each field falling back to its default on its own.
 
+- The file name is validated by `normalizeDatabaseFileName()` (`.db` added when missing, at most 100 characters, none of `\ / : * ? " < > |` nor control characters, no leading dot, no trailing dot or space, no Windows reserved name), both when typed (`database:set-file-name`) and when read back from the pointer, so a hand-edited name can't point outside the folder. Like the folder, the change only rewrites the pointer: the open file is not renamed and the new name takes effect on the next start.
 - A missing or malformed pointer silently falls back to `userData` rather than throwing, so a hand-edited (or sync-mangled) file can't stop the app from starting.
 - The functions are pure (they take the `userData` path, never call `app.getPath`), which makes them testable; `database.ts` is the only bridge to Electron.
 - Changing the location only rewrites the pointer: the existing file is *not* moved, because pointing at a directory that already holds a `tankobon.db` (a synced folder, another machine) must keep that database. The open database stays open until the next start (`database:relaunch`).
