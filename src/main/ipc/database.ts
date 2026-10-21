@@ -1,12 +1,25 @@
 import { app } from 'electron';
 
-import type { DatabaseLocation, DatabaseLocationResult } from '../../shared/data';
+import type { DatabaseSync } from 'node:sqlite';
+
+import type { BackupList, BackupResult, DatabaseLocation, DatabaseLocationResult, RestoreBackupResult } from '../../shared/data';
 import { t } from '../../shared/i18n';
+import {
+  backupDirectory,
+  cancelRestore,
+  createBackup,
+  listBackups,
+  pendingRestore,
+  pruneBackups,
+  scheduleRestore,
+} from '../db/backup-service';
 import { databaseLocation } from '../db/database';
+import type { SettingsRepository } from '../db/settings-repository';
 import { checkDirectoryUsable, writeLocationPointer } from '../db/db-location';
 import { openDialogFor } from './dialogs';
+import type { NotifyDataChange } from './data-changes';
 import { handle } from './handle';
-import { args } from './validate';
+import { args, idArg } from './validate';
 
 // Channel names are shared with preload.ts: keep them in sync.
 export const DATABASE_CHANNELS = {
@@ -14,6 +27,10 @@ export const DATABASE_CHANNELS = {
   chooseLocation: 'database:choose-location',
   resetLocation: 'database:reset-location',
   relaunch: 'database:relaunch',
+  listBackups: 'database:list-backups',
+  createBackup: 'database:create-backup',
+  restoreBackup: 'database:restore-backup',
+  cancelRestore: 'database:cancel-restore',
 } as const;
 
 /**
@@ -22,7 +39,7 @@ export const DATABASE_CHANNELS = {
  * pointing at a directory that already holds a `tankobon.db` (a synced folder, another machine)
  * has to keep that database rather than overwrite it.
  */
-export function registerDatabaseIpc(): void {
+export function registerDatabaseIpc(db: DatabaseSync, settings: SettingsRepository, notify: NotifyDataChange): void {
   handle(DATABASE_CHANNELS.getLocation, args(), (): DatabaseLocation => databaseLocation());
 
   handle(DATABASE_CHANNELS.chooseLocation, args(), async (event): Promise<DatabaseLocationResult> => {
@@ -56,4 +73,40 @@ export function registerDatabaseIpc(): void {
     // `quit` (not `exit`) so main.ts's `will-quit` still closes the database cleanly.
     app.quit();
   });
+
+  handle(DATABASE_CHANNELS.listBackups, args(), (): BackupList => {
+    const { directory } = databaseLocation();
+    return {
+      directory: backupDirectory(directory),
+      backups: listBackups(directory),
+      pendingRestore: pendingRestore(app.getPath('userData')),
+    };
+  });
+
+  handle(DATABASE_CHANNELS.createBackup, args(), (): BackupResult => runBackup(db, settings, notify));
+
+  handle(DATABASE_CHANNELS.restoreBackup, args(idArg), (_event, name): RestoreBackupResult => {
+    const message = scheduleRestore(app.getPath('userData'), databaseLocation().directory, name);
+    return message === null ? { status: 'scheduled' } : { status: 'error', message };
+  });
+
+  handle(DATABASE_CHANNELS.cancelRestore, args(), () => cancelRestore(app.getPath('userData')));
+}
+
+/**
+ * Makes a copy of the database now, records the date, then deletes the copies beyond `backupKeep`. A failure
+ * (read-only folder, full disk) comes back as an error result, never thrown: the scheduler runs it unattended.
+ */
+export function runBackup(db: DatabaseSync, settings: SettingsRepository, notify: NotifyDataChange): BackupResult {
+  try {
+    const { directory } = databaseLocation();
+    const backup = createBackup(db, directory);
+    const { backupKeep } = settings.getAll();
+    pruneBackups(directory, backupKeep);
+    settings.set('lastBackupAt', backup.createdAt);
+    notify({ scope: 'settings', values: { lastBackupAt: backup.createdAt } });
+    return { status: 'created', backup };
+  } catch (error) {
+    return { status: 'error', message: t('errors:backup.failed', { message: error instanceof Error ? error.message : String(error) }) };
+  }
 }
