@@ -67,7 +67,7 @@ Four other workflows run on GitHub:
 
 **Token permissions**: each workflow declares the least `GITHUB_TOKEN` permissions it needs. `ci.yml`, `pr-title.yml` and `build.yml` default to `contents: read` at the workflow level; `build.yml` grants `contents: write` to its `release` job only (it creates the release and uploads the installers), so the `make` jobs, which run `npm ci` and third-party scripts, hold a read-only token. `docs.yml` adds `pages: write` and `id-token: write` for the Pages deployment, and `release-please.yml` needs `contents: write` and `pull-requests: write` to maintain the release pull request. A new workflow or job should start from `contents: read` and add only what it uses.
 
-Dependabot (`.github/dependabot.yml`) opens one pull request a week, titled `ci(deps): bump …`, when the GitHub Actions used by these workflows have new versions.
+Dependabot (`.github/dependabot.yml`) opens one pull request a week, titled `ci(deps): bump …`, when the GitHub Actions used by these workflows have new versions. Every action is pinned to the commit SHA of its release (`uses: actions/checkout@<sha> # v7`, the tag kept as a comment), so a moved or hijacked tag can't change what runs, notably `release-please-action`, which has `contents: write`; Dependabot updates the SHA and the comment together.
 
 ## Testing components and hooks
 
