@@ -20,6 +20,23 @@ describe('PathRoots', () => {
     expect(roots.encode(path.resolve('/data/library/one.cbz'))).toBe(path.resolve('/data/library/one.cbz'));
   });
 
+  it('stores a file whose name or first folder starts with two dots, and brings it back', () => {
+    const roots = new PathRoots();
+    roots.set('r1', lib);
+    const file = path.join(lib, '...Et alors.cbz');
+    const nested = path.join(lib, '..hidden', 'one.cbz');
+    expect(roots.encode(file)).toBe('root:r1/...Et alors.cbz');
+    expect(roots.encode(nested)).toBe('root:r1/..hidden/one.cbz');
+    expect(roots.decode(roots.encode(nested))).toBe(nested);
+  });
+
+  it('does not decode a stored path out of its folder', () => {
+    const roots = new PathRoots();
+    roots.set('r1', lib);
+    expect(roots.decode('root:r1/../../etc/x.cbz')).toBe('root:r1/../../etc/x.cbz');
+    expect(roots.decode('root:r1/a/../b.cbz')).toBe(path.join(lib, 'b.cbz'));
+  });
+
   it('prefers the deepest folder', () => {
     const roots = new PathRoots();
     roots.set('outer', lib);
