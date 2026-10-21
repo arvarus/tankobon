@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, FolderOpen, Loader2, X, ZoomIn } from 'lucid
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { bookTooltip } from '@/lib/book-tooltip';
 import { FullscreenButton } from '@/components/reader/fullscreen-button';
 import { NextInListButton } from '@/components/reader/next-in-list-button';
 import { ReaderHeader } from '@/components/reader/reader-header';
@@ -210,7 +211,7 @@ export function SinglePageReader({
   return (
     <div className="relative flex h-full flex-col" style={{ backgroundColor: settings.readerBackground }}>
       <ReaderHeader fullscreen={fullscreen}>
-        <span className="truncate font-medium" title={comic.path}>
+        <span className="truncate font-medium" title={bookTooltip(comic)}>
           {comic.title}
         </span>
         <span className="ml-auto tabular-nums text-white/60">
