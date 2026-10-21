@@ -60,9 +60,14 @@ export class UserRepository {
     return row ? fromRow(row) : null;
   }
 
+  private exists(id: string): boolean {
+    return this.db.prepare('SELECT 1 FROM users WHERE id = ?').get(id) !== undefined;
+  }
+
   /** Id of the user using the app: the last one switched to (the first user on a database that never switched). */
   activeId(): string {
-    if (this.active === null || this.get(this.active) === null) {
+    // `exists()` and not `get()`: this runs several times per repository call, and `get()` copies the avatar.
+    if (this.active === null || !this.exists(this.active)) {
       const row = this.db.prepare('SELECT id FROM users ORDER BY last_active_at DESC, created_at LIMIT 1').get() as
         | { id: string }
         | undefined;

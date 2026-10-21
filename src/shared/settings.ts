@@ -355,6 +355,9 @@ export const MAX_IGNORED_DUPLICATES = 2000;
 export const MAX_FILE_NAME_RULES = 10;
 
 const isString = (value: unknown): value is string => typeof value === 'string';
+/** Longest API key or folder path a setting keeps, in characters: stored and read back on every start. */
+export const MAX_SETTING_TEXT = 4096;
+const isShortString = (value: unknown): value is string => isString(value) && value.length <= MAX_SETTING_TEXT;
 const isBookRowView = (value: unknown): value is BookRowView =>
   value === 'full' || value === 'medium' || value === 'compact';
 const isLibraryView = (value: unknown): value is LibraryView => value === 'grid' || isBookRowView(value);
@@ -384,16 +387,16 @@ export const SETTING_VALIDATORS: SettingValidators = {
     typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= MAX_PAGE_SPACING,
   readerBackground: (value): value is string => isString(value) && /^#[0-9a-fA-F]{6}$/.test(value),
   comicVineEnabled: isBoolean,
-  comicVineApiKey: isString,
+  comicVineApiKey: isShortString,
   googleBooksEnabled: isBoolean,
-  googleBooksApiKey: isString,
+  googleBooksApiKey: isShortString,
   resyncOnStartup: isBoolean,
   checkUpdatesOnStartup: isBoolean,
   askUserOnStartup: isBoolean,
   lastResyncAt: (value): value is string => isString(value) && (value === '' || !Number.isNaN(Date.parse(value))),
-  lastScanFolder: isString,
+  lastScanFolder: isShortString,
   libraryOrganization: (value): value is LibraryOrganization => value === 'off' || value === 'ask' || value === 'always',
-  libraryOrganizationFolder: isString,
+  libraryOrganizationFolder: isShortString,
   libraryStructure: isLibraryStructure,
   libraryFileName: isFileNameTemplate,
   librarySidecarCovers: isBoolean,

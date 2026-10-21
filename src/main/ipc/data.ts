@@ -1,10 +1,10 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { writeFile } from 'node:fs/promises';
 import type { DatabaseSync } from 'node:sqlite';
 
 import type { ClearLibraryResult, ExportResult, ImportResult } from '../../shared/data';
 import { t } from '../../shared/i18n';
 import { buildExport, exportFileName } from '../db/export-service';
-import { applyImport, parseExport } from '../db/import-service';
+import { applyImport, parseExport, readExportFile } from '../db/import-service';
 import type { DecoderClient } from '../decoder/decoder-client';
 import type { LibraryRepository } from '../db/library-repository';
 import type { ImageStatsScanner } from '../services/image-stats-scanner';
@@ -68,7 +68,7 @@ export function registerDataIpc(
     }
 
     try {
-      const data = parseExport(await readFile(filePaths[0], 'utf-8'));
+      const data = parseExport(await readExportFile(filePaths[0]));
       const counts = applyImport(db, libraryRepo, settingsRepo, readingListRepo, data);
       // The settings were replaced, the language with them.
       applyMainLanguage(settingsRepo.getAll().language);
