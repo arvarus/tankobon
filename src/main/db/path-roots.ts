@@ -78,6 +78,14 @@ export function fileRootsStore(filePath: string): RootsStore {
  * has no path on this machine decodes to itself, which no file matches (the book reads as missing
  * until the folder is relinked), and encodes back to itself.
  */
+/**
+ * Whether `relative` (a result of `path.relative()`) is outside the folder it is relative to. Only a `..`
+ * segment leaves it: a name that merely starts with two dots (`...Et alors.cbz`) is inside.
+ */
+function leavesFolder(relative: string): boolean {
+  return relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative);
+}
+
 export class PathRoots implements PathCodec {
   private readonly paths: Map<string, string>;
 
@@ -101,7 +109,7 @@ export class PathRoots implements PathCodec {
     let best: { id: string; relative: string; depth: number } | null = null;
     for (const [id, folder] of this.paths) {
       const relative = path.relative(folder, filePath);
-      if (relative === '' || relative.startsWith('..') || path.isAbsolute(relative)) continue;
+      if (relative === '' || leavesFolder(relative)) continue;
       if (best === null || folder.length > best.depth) {
         best = { id, relative, depth: folder.length };
       }
@@ -115,6 +123,8 @@ export class PathRoots implements PathCodec {
     if (slash === -1) return stored;
     const folder = this.paths.get(stored.slice(ROOT_PREFIX.length, slash));
     if (folder === undefined) return stored;
-    return path.join(folder, ...stored.slice(slash + 1).split('/'));
+    const decoded = path.join(folder, ...stored.slice(slash + 1).split('/'));
+    // A database shared between machines is somebody else's input: `root:id/../../x` must not leave the folder.
+    return leavesFolder(path.relative(folder, decoded)) ? stored : decoded;
   }
 }
