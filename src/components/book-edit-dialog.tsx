@@ -2,6 +2,8 @@ import { Plus, X } from 'lucide-react';
 import { type ReactNode, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { BookCover } from '@/components/book-cover';
+import { CoverEditorDialog } from '@/components/cover-editor-dialog';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import {
@@ -40,6 +42,7 @@ export function BookEditDialog({
   // Errors only show once the user tried to save, not while the first value is being typed.
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [coverOpen, setCoverOpen] = useState(false);
   const errors = validateForm(form);
   const shown = submitted ? errors : {};
 
@@ -85,6 +88,13 @@ export function BookEditDialog({
           void save();
         }}
       >
+        <div className="flex items-center gap-3">
+          <BookCover entryId={entry.id} title={entry.title} className="h-24 w-16" />
+          <Button type="button" variant="outline" size="sm" onClick={() => setCoverOpen(true)}>
+            {t('changeCover')}
+          </Button>
+        </div>
+
         <div className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2 text-sm">
           <Field label={reviewFieldLabel('title')} error={shown.title}>
             {(props) => (
@@ -233,6 +243,7 @@ export function BookEditDialog({
           {t('common:save')}
         </Button>
       </div>
+      {coverOpen && <CoverEditorDialog entry={entry} onClose={() => setCoverOpen(false)} />}
     </Dialog>
   );
 }

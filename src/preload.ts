@@ -12,8 +12,11 @@ import type { ComicPage, OpenComicResult } from './shared/comic';
 import type { DataChange } from './shared/data-changes';
 import type {
   ClearLibraryResult,
+  BackupList,
+  BackupResult,
   DatabaseLocation,
   DatabaseLocationResult,
+  RestoreBackupResult,
   ExportResult,
   ImportResult,
 } from './shared/data';
@@ -34,6 +37,7 @@ import type {
   UnorganizedCountResult,
   ScanProgress,
   ScanResult,
+  SetCoverResult,
 } from './shared/library';
 import type { MetadataPageResult, MetadataQuery, MetadataSearchResult } from './shared/metadata';
 import type { ReadingList, ReadingListAddResult, ReadingListOrderResult, ReadingListResult } from './shared/reading-list';
@@ -126,6 +130,8 @@ export interface LibraryApi {
   updateMetadataMany(ids: string[], update: MetadataUpdate): Promise<number>;
   /** Cover thumbnail (first page, shrunk) of a library entry as WebP bytes, generated and cached first when missing; null if the entry is unknown or unreadable. */
   thumbnail(id: string): Promise<Uint8Array<ArrayBuffer> | null>;
+  /** Replaces the cover thumbnail of a library entry with `image` (PNG, JPEG or WebP, at most 8 MiB, already cropped to the cover's 2:3 proportions by the caller); the main process shrinks it to the thumbnail size and writes it beside the comic (or in the local cache). A picture that can't be decoded comes back as an error result and leaves the current cover as it was. */
+  setCover(id: string, image: Uint8Array): Promise<SetCoverResult>;
 }
 
 /** Reading lists (ordered piles of library entries), as `window.tankobon.readingLists`. */
@@ -234,8 +240,18 @@ export interface DatabaseApi {
   chooseLocation(): Promise<DatabaseLocationResult>;
   /** Points the app back at the default location; takes effect on the next start. */
   resetLocation(): Promise<DatabaseLocation>;
+  /** Names the database file (`.db` is added when missing; null goes back to `tankobon.db`); an invalid name comes back as an error result. Like the folder, it takes effect on the next start and the existing file is not renamed. */
+  setFileName(fileName: string | null): Promise<DatabaseLocationResult>;
   /** Restarts the app, e.g. to open the database from its new location. */
   relaunch(): Promise<void>;
+  /** The copies of the database kept beside it, most recent first, and the one waiting to be restored. */
+  listBackups(): Promise<BackupList>;
+  /** Makes a copy of the database now (and deletes the ones beyond the number to keep). */
+  createBackup(): Promise<BackupResult>;
+  /** Schedules the restoration of a copy (by its `name`): the database file is overwritten at the next start. */
+  restoreBackup(name: string): Promise<RestoreBackupResult>;
+  /** Cancels a restoration that has not been applied yet. */
+  cancelRestore(): Promise<void>;
 }
 
 /**
@@ -329,6 +345,7 @@ const api: TankobonApi = {
     updateMetadata: (id, update) => ipcRenderer.invoke('library:update-metadata', id, update),
     updateMetadataMany: (ids, update) => ipcRenderer.invoke('library:update-metadata-many', ids, update),
     thumbnail: (id) => ipcRenderer.invoke('library:thumbnail', id),
+    setCover: (id, image) => ipcRenderer.invoke('library:set-cover', id, image),
   },
   readingLists: {
     list: () => ipcRenderer.invoke('reading-lists:list'),
@@ -368,7 +385,12 @@ const api: TankobonApi = {
     getLocation: () => ipcRenderer.invoke('database:get-location'),
     chooseLocation: () => ipcRenderer.invoke('database:choose-location'),
     resetLocation: () => ipcRenderer.invoke('database:reset-location'),
+    setFileName: (fileName) => ipcRenderer.invoke('database:set-file-name', fileName),
     relaunch: () => ipcRenderer.invoke('database:relaunch'),
+    listBackups: () => ipcRenderer.invoke('database:list-backups'),
+    createBackup: () => ipcRenderer.invoke('database:create-backup'),
+    restoreBackup: (name) => ipcRenderer.invoke('database:restore-backup', name),
+    cancelRestore: () => ipcRenderer.invoke('database:cancel-restore'),
   },
   metadata: {
     search: (query) => ipcRenderer.invoke('metadata:search', query),

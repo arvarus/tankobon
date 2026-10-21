@@ -115,10 +115,10 @@ export function ContinuousReader({
           <select
             value={String(zoom)}
             onChange={(event) => changeZoom(Number(event.target.value))}
-            className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-white"
+            className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-white [color-scheme:dark]"
           >
             {WIDTH_OPTIONS.map((option) => (
-              <option key={option} value={option} className="text-foreground">
+              <option key={option} value={option} className="bg-neutral-900 text-white">
                 {option === 1 ? t('zoomFitWidth') : t('zoomPercent', { percent: Math.round(option * 100) })}
               </option>
             ))}

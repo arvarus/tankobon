@@ -1,8 +1,9 @@
 import { BookImage } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { createTaskQueue } from '@/lib/cover-queue';
+import { coverRevision, subscribeCoverRevisions } from '@/lib/cover-revisions';
 import { cn } from '@/lib/utils';
 
 /** The covers asked for from the main process, a few at a time, newest first: see `cover-queue.ts`. */
@@ -18,6 +19,8 @@ export function BookCover({ entryId, title, className }: { entryId: string; titl
   const ref = useRef<HTMLDivElement>(null);
   const [near, setNear] = useState(false);
   const [url, setUrl] = useState<string | null>(null);
+  // Changes when the user replaces this book's cover, which asks for the thumbnail again.
+  const revision = useSyncExternalStore(subscribeCoverRevisions, () => coverRevision(entryId));
 
   useEffect(() => {
     const element = ref.current;
@@ -50,7 +53,7 @@ export function BookCover({ entryId, title, className }: { entryId: string; titl
       if (objectUrl) URL.revokeObjectURL(objectUrl);
       setUrl(null);
     };
-  }, [near, entryId]);
+  }, [near, entryId, revision]);
 
   return (
     <div

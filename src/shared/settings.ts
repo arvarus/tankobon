@@ -2,6 +2,7 @@
  * Settings types shared between the main process and the renderer (via preload).
  * @module
  */
+import { DEFAULT_ARTICLES, isArticleList } from './articles';
 import { isFileNameTemplate } from './file-name-template';
 import { isSupportedLanguage, type LanguageSetting } from './i18n';
 
@@ -212,6 +213,12 @@ export interface AppSettings {
   askUserOnStartup: boolean;
   /** Whether the app asks GitHub at every start if a newer release exists, and offers to download it. */
   checkUpdatesOnStartup: boolean;
+  /** Days between two automatic copies of the database (1 to {@link MAX_BACKUP_INTERVAL_DAYS}); 0 turns them off. */
+  backupIntervalDays: number;
+  /** How many copies of the database are kept (1 to {@link MAX_BACKUP_KEEP}); the oldest ones are deleted. */
+  backupKeep: number;
+  /** When the last copy of the database was made (ISO 8601); empty when there has been none. */
+  lastBackupAt: string;
   /** When the last resynchronization finished (ISO 8601); empty when there has been none. */
   lastResyncAt: string;
   /**
@@ -240,6 +247,15 @@ export interface AppSettings {
    * `libraryStructure`, changing it renames nothing by itself.
    */
   libraryFileName: string;
+  /**
+   * Whether the organization files a name under its first real word: a leading article of
+   * `libraryArticles` goes to the end (`Le vent du nord` → `Vent du nord (Le)`) in the series and album
+   * folders, the `letter` level and the `{series}` and `{title}` fields of the file name. Like the tree, it
+   * moves nothing by itself.
+   */
+  libraryIgnoreArticles: boolean;
+  /** The articles `libraryIgnoreArticles` moves, edited by the user (see {@link isArticleList}). */
+  libraryArticles: string[];
   /**
    * Whether a book's cover thumbnail is kept beside it (`<name>.cover.webp`), so a shared library
    * folder carries its covers. Off, the covers are extracted and kept in this machine's local cache
@@ -292,17 +308,27 @@ export const DEFAULT_SETTINGS: AppSettings = {
   resyncOnStartup: false,
   checkUpdatesOnStartup: true,
   askUserOnStartup: false,
+  backupIntervalDays: 0,
+  backupKeep: 5,
+  lastBackupAt: '',
   lastResyncAt: '',
   lastScanFolder: '',
   libraryOrganization: 'off',
   libraryOrganizationFolder: '',
   libraryStructure: [],
   libraryFileName: '',
+  libraryIgnoreArticles: false,
+  libraryArticles: [...DEFAULT_ARTICLES],
   librarySidecarCovers: true,
   libraryWriteNfo: true,
   fileNameRules: [],
   ignoredDuplicates: [],
 };
+
+/** Longest interval, in days, between two automatic copies of the database. */
+export const MAX_BACKUP_INTERVAL_DAYS = 31;
+/** Most copies of the database that can be kept. */
+export const MAX_BACKUP_KEEP = 50;
 
 /**
  * The settings every user shares: they describe the library (where it lives, how it is laid out,
@@ -315,9 +341,14 @@ export const SHARED_SETTINGS: readonly (keyof AppSettings)[] = [
   'googleBooksEnabled',
   'googleBooksApiKey',
   'checkUpdatesOnStartup',
+  'backupIntervalDays',
+  'backupKeep',
+  'lastBackupAt',
   'libraryOrganization',
   'libraryStructure',
   'libraryFileName',
+  'libraryIgnoreArticles',
+  'libraryArticles',
   'librarySidecarCovers',
   'libraryWriteNfo',
 ];
@@ -393,12 +424,19 @@ export const SETTING_VALIDATORS: SettingValidators = {
   resyncOnStartup: isBoolean,
   checkUpdatesOnStartup: isBoolean,
   askUserOnStartup: isBoolean,
+  backupIntervalDays: (value): value is number =>
+    typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= MAX_BACKUP_INTERVAL_DAYS,
+  backupKeep: (value): value is number =>
+    typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= MAX_BACKUP_KEEP,
+  lastBackupAt: (value): value is string => isString(value) && (value === '' || !Number.isNaN(Date.parse(value))),
   lastResyncAt: (value): value is string => isString(value) && (value === '' || !Number.isNaN(Date.parse(value))),
   lastScanFolder: isShortString,
   libraryOrganization: (value): value is LibraryOrganization => value === 'off' || value === 'ask' || value === 'always',
   libraryOrganizationFolder: isShortString,
   libraryStructure: isLibraryStructure,
   libraryFileName: isFileNameTemplate,
+  libraryIgnoreArticles: isBoolean,
+  libraryArticles: isArticleList,
   librarySidecarCovers: isBoolean,
   libraryWriteNfo: isBoolean,
   fileNameRules: (value): value is string[] =>
@@ -411,7 +449,7 @@ export const SETTING_VALIDATORS: SettingValidators = {
  * Settings only the main process writes: `settings:set` refuses them. The organized folder is one,
  * since the app moves files into it: the renderer never names a path (it goes through a folder dialog).
  */
-export const MAIN_PROCESS_SETTINGS: readonly (keyof AppSettings)[] = ['libraryOrganizationFolder'];
+export const MAIN_PROCESS_SETTINGS: readonly (keyof AppSettings)[] = ['libraryOrganizationFolder', 'lastBackupAt'];
 
 /** Whether `key` names a setting of {@link AppSettings}. */
 export function isSettingKey(key: unknown): key is keyof AppSettings {

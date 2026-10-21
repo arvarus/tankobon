@@ -24,13 +24,20 @@ const errors: Translation<typeof en> = {
     timeout: 'Fichier illisible : la lecture a pris trop de temps et a été abandonnée.',
   },
   database: {
+    invalidFileName: 'Le nom du fichier doit se terminer par .db, faire au plus {{max}} caractères et éviter les caractères \\ / : * ? " < > | ainsi que les noms réservés par Windows.',
     notWritable: "Impossible d'écrire dans {{directory}}.",
+  },
+  backup: {
+    notFound: "Cette sauvegarde n'existe plus.",
+    failed: 'Impossible de sauvegarder la base : {{message}}',
   },
   data: {
     exportFailed: "Impossible d'écrire l'export : {{message}}",
     clearFailed: 'Impossible de vider la bibliothèque : {{message}}',
   },
   library: {
+    coverUnknownBook: 'Ce livre est introuvable.',
+    coverFailed: 'Impossible de changer la couverture : {{message}}',
     resyncRunning: 'Une resynchronisation est déjà en cours.',
     unknownFolder: 'Ce dossier ne fait pas partie de la bibliothèque.',
     organizationOff: "L'organisation de la bibliothèque est désactivée, ou n'a pas de dossier.",
