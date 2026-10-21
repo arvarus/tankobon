@@ -1,5 +1,5 @@
 import { ArrowLeft, Globe, Loader2, Search, Square } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useReducer, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
@@ -15,6 +15,7 @@ import {
   reviewToUpdate,
 } from '@/lib/metadata-review';
 import { hasFiche } from '@/lib/library-filter';
+import { INITIAL_LOOKUP, lookupReducer } from '@/lib/metadata-lookup';
 import { initialLookupQuery, offeredRules, queryFromRule, rememberRule } from '@/lib/lookup-query';
 import { cn, formatLanguage } from '@/lib/utils';
 import { fileNameTemplateError } from '@/shared/file-name-template';
@@ -33,13 +34,6 @@ type Mode = 'api' | 'site';
 
 /** The APIs the user can tick, in display order. */
 const API_SOURCES: MetadataApiSource[] = ['comicvine', 'googlebooks'];
-
-type Step =
-  | { kind: 'options' }
-  | { kind: 'searching' }
-  | { kind: 'results'; candidates: MetadataCandidate[]; errors: string[] }
-  | { kind: 'error'; message: string }
-  | { kind: 'review'; candidates: MetadataCandidate[]; review: MetadataReview };
 
 const INPUT_CLASS =
   'h-8 rounded-md border bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
@@ -83,45 +77,37 @@ export function MetadataDialog({
   );
   const [unticked, setUnticked] = useState<Set<MetadataApiSource>>(new Set());
   const sources = enabledSources.filter((source) => !unticked.has(source));
-  // Nothing is searched until the user asks: the dialog opens on the options.
-  const [step, setStep] = useState<Step>({ kind: 'options' });
+  // Nothing is searched until the user asks: the dialog opens on the options. Only the awaited search
+  // may update the dialog, so an earlier, slower answer never shows stale results; stopping a search
+  // (or closing the dialog) abandons it.
+  const [{ step }, dispatch] = useReducer(lookupReducer, INITIAL_LOOKUP);
   const [applying, setApplying] = useState(false);
-
-  // Only the latest search may update the dialog: an earlier, slower one would show stale results,
-  // and stopping one (or closing the dialog) invalidates it the same way.
-  const latestSearch = useRef(0);
-  useEffect(
-    () => () => {
-      latestSearch.current += 1;
-    },
-    [],
-  );
+  const searchCount = useRef(0);
 
   const runSearch = async () => {
-    const id = ++latestSearch.current;
-    setStep({ kind: 'searching' });
+    const id = ++searchCount.current;
+    dispatch({ type: 'searchStarted', id });
     if (mode === 'site') {
       const result = await window.tankobon.metadata.fromPage(pageUrl.trim());
-      if (id !== latestSearch.current) return;
-      setStep(
-        result.status === 'ok'
-          ? { kind: 'review', candidates: [result.candidate], review: buildReview(entry, result.candidate) }
-          : { kind: 'error', message: result.message },
-      );
+      dispatch({
+        type: 'searchDone',
+        id,
+        step:
+          result.status === 'ok'
+            ? { kind: 'review', candidates: [result.candidate], review: buildReview(entry, result.candidate) }
+            : { kind: 'error', message: result.message },
+      });
       return;
     }
     const result = await window.tankobon.metadata.search({ ...query, sources });
-    if (id !== latestSearch.current) return;
-    setStep(
-      result.status === 'ok'
-        ? { kind: 'results', candidates: result.candidates, errors: result.errors }
-        : { kind: 'error', message: result.message },
-    );
-  };
-
-  const stop = () => {
-    latestSearch.current += 1;
-    setStep({ kind: 'options' });
+    dispatch({
+      type: 'searchDone',
+      id,
+      step:
+        result.status === 'ok'
+          ? { kind: 'results', candidates: result.candidates, errors: result.errors }
+          : { kind: 'error', message: result.message },
+    });
   };
 
   const canSearch = mode === 'site' ? pageSourceOf(pageUrl) !== null : query.text.trim() !== '' && sources.length > 0;
@@ -159,7 +145,7 @@ export function MetadataDialog({
             disabled={step.kind === 'searching'}
             onClick={() => {
               setMode(value);
-              setStep({ kind: 'options' });
+              dispatch({ type: 'reset' });
             }}
           >
             {value === 'api' ? <Search /> : <Globe />}
@@ -264,7 +250,7 @@ export function MetadataDialog({
         )}
         <div className="flex gap-2">
           {step.kind === 'searching' ? (
-            <Button type="button" size="sm" variant="outline" onClick={stop}>
+            <Button type="button" size="sm" variant="outline" onClick={() => dispatch({ type: 'reset' })}>
               <Square />
               {t('stop')}
             </Button>
@@ -289,26 +275,17 @@ export function MetadataDialog({
           <CandidateList
             candidates={step.candidates}
             errors={step.errors}
-            onPick={(candidate) =>
-              setStep({ kind: 'review', candidates: step.candidates, review: buildReview(entry, candidate) })
-            }
+            onPick={(candidate) => dispatch({ type: 'picked', review: buildReview(entry, candidate) })}
           />
         )}
         {step.kind === 'review' && (
-          <ReviewForm
-            review={step.review}
-            onChange={(review) => setStep({ ...step, review })}
-          />
+          <ReviewForm review={step.review} onChange={(review) => dispatch({ type: 'reviewChanged', review })} />
         )}
       </div>
 
       {step.kind === 'review' && (
         <div className="flex justify-between gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setStep({ kind: 'results', candidates: step.candidates, errors: [] })}
-          >
+          <Button variant="ghost" size="sm" onClick={() => dispatch({ type: 'backToResults' })}>
             <ArrowLeft />
             {t('otherResults')}
           </Button>
