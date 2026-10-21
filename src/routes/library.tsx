@@ -138,6 +138,11 @@ function LibraryPage() {
       setScan(null);
       return;
     }
+    if (result.status === 'error') {
+      setScan(null);
+      setScanStatus(result.message);
+      return;
+    }
     const parts = [t('scanAdded', { count: result.added, directory: result.directory })];
     if (result.skipped > 0) parts.push(t('scanSkipped', { count: result.skipped }));
     if (result.failed > 0) parts.push(t('scanFailed', { count: result.failed }));

@@ -38,13 +38,17 @@ export interface LibraryDecoder {
 /** Announces a write to every window (`data:changed`); what the IPC layer passes as `notify`. */
 export type LibraryNotifier = (change: DataChange) => void;
 
+/** What can hold the {@link LibraryRunLock}. */
+export type LibraryRun = 'resync' | 'organize' | 'add' | 'cleanup';
+
 /**
- * Lets one long run over the library files at a time (a resynchronization, or organizing the whole
- * library): moving files while a walk registers them could register a file twice.
+ * Lets one long run over the library files at a time (a resynchronization, adding a file or a folder,
+ * organizing, cleaning the books): moving or rewriting files while a walk registers them could register
+ * a file twice, or recreate one that just moved.
  */
 export interface LibraryRunLock {
   /** Takes the lock for `run`; false when another run holds it. */
-  tryStart(run: 'resync' | 'organize'): boolean;
+  tryStart(run: LibraryRun): boolean;
   /** Releases the lock. */
   end(): void;
   /** The translated refusal for a run that couldn't start. */
@@ -53,7 +57,7 @@ export interface LibraryRunLock {
 
 /** A free {@link LibraryRunLock}; one is shared by the organizer and the resynchronizer. */
 export function createLibraryRunLock(): LibraryRunLock {
-  let holder: 'resync' | 'organize' | null = null;
+  let holder: LibraryRun | null = null;
   return {
     tryStart(run) {
       if (holder) return false;
@@ -64,7 +68,8 @@ export function createLibraryRunLock(): LibraryRunLock {
       holder = null;
     },
     busyMessage() {
-      return holder === 'resync' ? t('errors:library.resyncRunning') : t('errors:library.organizeRunning');
+      if (holder === 'resync') return t('errors:library.resyncRunning');
+      return holder === 'cleanup' ? t('errors:library.cleanupRunning') : t('errors:library.organizeRunning');
     },
   };
 }
@@ -185,8 +190,14 @@ export function createLibraryOrganizer(
       if (!ids) return { status: 'error', message: t('errors:library.organizationExpired') };
       const usable = await usableRoot();
       if (!('target' in usable)) return usable;
-      offers.delete(token);
-      return { status: 'ok', ...(await move(usable.target, ids)) };
+      // The offer is kept when another run holds the lock: the user can accept it again.
+      if (!lock.tryStart('organize')) return { status: 'error', message: lock.busyMessage() };
+      try {
+        offers.delete(token);
+        return { status: 'ok', ...(await move(usable.target, ids)) };
+      } finally {
+        lock.end();
+      }
     },
 
     async countUnorganized() {

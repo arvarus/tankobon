@@ -169,7 +169,7 @@ app.whenReady().then(() => {
     broadcastDataChange,
     imageScanner,
     organizer,
-    createLibraryCleaner(libraryRepo, decoder, broadcastDataChange),
+    createLibraryCleaner(libraryRepo, decoder, broadcastDataChange, organizer.lock),
   );
   registerReadingListIpc(readingListRepo, broadcastDataChange);
   registerStatsIpc(statsRepo);

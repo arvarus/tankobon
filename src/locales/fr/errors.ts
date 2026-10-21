@@ -38,7 +38,7 @@ const errors: Translation<typeof en> = {
     organizationExpired: 'Ces BD ne peuvent plus être déplacées d’ici : ajoutez-les à nouveau ou resynchronisez.',
     cleanupExpired: 'Cette analyse n’est plus disponible : relancez-la.',
     cleanupRunning: 'Un nettoyage des livres est déjà en cours.',
-    organizeRunning: 'Une resynchronisation ou une organisation de la bibliothèque est déjà en cours.',
+    organizeRunning: 'Une autre opération sur les fichiers de la bibliothèque (ajout, resynchronisation ou organisation) est déjà en cours.',
     trashFailed: "Le livre a été retiré de la bibliothèque, mais son fichier n'a pas pu être mis à la corbeille : {{message}}",
   },
   import: {

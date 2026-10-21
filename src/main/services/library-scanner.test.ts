@@ -88,6 +88,26 @@ describe('scanIntoLibrary', () => {
     expect(entries).toHaveLength(2);
   });
 
+  it('does not count a file another run registered while it was being opened', async () => {
+    const root = await tree(['a.cbz']);
+    const db = new DatabaseSync(':memory:');
+    migrate(db);
+    const repo = new LibraryRepository(db);
+
+    const summary = await scanIntoLibrary(
+      repo,
+      root,
+      () => undefined,
+      async (filePath) => {
+        repo.register(filePath, 'a', 1, 1, 1);
+        return { pageCount: 12, fileCount: 13 };
+      },
+    );
+
+    expect(summary).toMatchObject({ added: 0, skipped: 1, failed: 0 });
+    expect(summary.addedEntries).toEqual([]);
+  });
+
   it('registers what `inspect` reports, skips known files and counts a failing file apart', async () => {
     const root = await tree(['a.cbz', 'b.cbz', 'c.cbz']);
     const db = new DatabaseSync(':memory:');
