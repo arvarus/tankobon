@@ -27,6 +27,7 @@ const reader: Translation<typeof en> = {
   upscaleUnavailable: 'Amélioration indisponible',
   upscale: 'Améliorer (IA)',
   pageUnreadable: 'Page illisible',
+  retry: 'Réessayer',
   pageAlt: 'Page {{page}}',
   previousPage: 'Page précédente',
   nextPage: 'Page suivante',

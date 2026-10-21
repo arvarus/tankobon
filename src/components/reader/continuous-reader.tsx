@@ -23,6 +23,8 @@ interface ContinuousReaderProps {
   pickAndOpen: () => void;
   close: () => void;
   onActivePage: (index: number) => void;
+  /** Opens the book again at a page: the way out of a page that failed to load. */
+  onRetry: (page: number) => void;
   fullscreen: boolean;
   toggleFullscreen: () => void;
   background: string;
@@ -35,6 +37,7 @@ export function ContinuousReader({
   pickAndOpen,
   close,
   onActivePage,
+  onRetry,
   fullscreen,
   toggleFullscreen,
   background,
@@ -133,7 +136,7 @@ export function ContinuousReader({
       <div ref={scrollRef} role="region" aria-label={t('pages')} className="min-h-0 flex-1 overflow-auto [overflow-anchor:none]">
         <div ref={columnRef} className="mx-auto flex flex-col items-center" style={{ rowGap: spacing, width: `${zoom * 100}%` }}>
           {Array.from({ length: comic.pageCount }, (_, index) => (
-            <ContinuousPage key={index} comicId={comic.id} index={index} onActive={handleActive} scrollRef={scrollRef} pinnedRef={pinnedRef} />
+            <ContinuousPage key={index} comicId={comic.id} index={index} onActive={handleActive} onRetry={() => onRetry(visiblePage)} scrollRef={scrollRef} pinnedRef={pinnedRef} />
           ))}
         </div>
       </div>
