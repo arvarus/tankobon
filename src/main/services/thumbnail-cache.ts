@@ -20,6 +20,9 @@ export const THUMBNAIL_MAX_WIDTH = 240;
 /** See `THUMBNAIL_MAX_WIDTH`. */
 export const THUMBNAIL_MAX_HEIGHT = 360;
 
+/** How long `storeFromArchive()` waits for its turn in the queue, in milliseconds. */
+export const STORE_MAX_WAIT_MS = 10_000;
+
 const THUMBNAIL_EXTENSION = '.webp';
 const WEBP_QUALITY = 80;
 
@@ -113,13 +116,32 @@ export class ThumbnailCache {
 
   /**
    * Generates the thumbnail of a book from an archive the caller has open (a folder scan), unless it
-   * is already cached. Never throws: a book without a cover only goes without a thumbnail.
+   * is already cached. Never throws: a book without a cover only goes without a thumbnail. The caller
+   * is a timed decoder call (`inspect`), so the wait in the queue is bounded by `maxWaitMs`: past it the
+   * cover is given up (the queued generation then does nothing) and made later, on demand or by the next
+   * resynchronization, rather than letting the queue's backlog of covers cost the scan its own deadline.
    */
-  async storeFromArchive(archive: ComicArchive): Promise<void> {
+  async storeFromArchive(archive: ComicArchive, maxWaitMs = STORE_MAX_WAIT_MS): Promise<void> {
     if (await this.read(archive.path)) {
       return;
     }
-    await this.enqueue(() => this.generate(archive.path, () => archive.readPage(0)));
+    let abandoned = false;
+    const queued = this.enqueue(async () => {
+      if (abandoned) return null;
+      return this.generate(archive.path, () => archive.readPage(0));
+    });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const deadline = new Promise<void>((resolve) => {
+      timer = setTimeout(() => {
+        abandoned = true;
+        resolve();
+      }, maxWaitMs);
+    });
+    try {
+      await Promise.race([queued, deadline]);
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   /**
