@@ -1,7 +1,7 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { crc32 } from 'node:zlib';
+import { crc32, deflateRawSync } from 'node:zlib';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { applyLanguage } from '../../shared/i18n';
@@ -75,6 +75,40 @@ describe('CbzArchive', () => {
     const big = join(dir, 'big.cbz');
     await writeFile(big, zip);
     const archive = await CbzArchive.open(big);
+    await expect(archive.readPage(0)).rejects.toThrow('trop volumineuse');
+    await archive.close();
+  });
+
+  it('refuses a page that inflates past the ceiling whatever size the archive declares', async () => {
+    // A streaming writer sets the "data descriptor" flag and leaves the local header's CRC and sizes at 0;
+    // node-stream-zip then trusts the central directory, which here lies about the size (1 000 bytes).
+    const data = deflateRawSync(Buffer.alloc(201 * 1024 * 1024));
+    const name = Buffer.from('001.jpg');
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0);
+    local.writeUInt16LE(20, 4);
+    local.writeUInt16LE(0x08, 6);
+    local.writeUInt16LE(8, 8); // deflate
+    local.writeUInt16LE(name.length, 26);
+    const central = Buffer.alloc(46);
+    central.writeUInt32LE(0x02014b50, 0);
+    central.writeUInt16LE(20, 4);
+    central.writeUInt16LE(20, 6);
+    central.writeUInt16LE(0x08, 8);
+    central.writeUInt16LE(8, 10);
+    central.writeUInt32LE(data.length, 20);
+    central.writeUInt32LE(1000, 24);
+    central.writeUInt16LE(name.length, 28);
+    const centralDir = Buffer.concat([central, name]);
+    const end = Buffer.alloc(22);
+    end.writeUInt32LE(0x06054b50, 0);
+    end.writeUInt16LE(1, 8);
+    end.writeUInt16LE(1, 10);
+    end.writeUInt32LE(centralDir.length, 12);
+    end.writeUInt32LE(local.length + name.length + data.length, 16);
+    const bomb = join(dir, 'bomb.cbz');
+    await writeFile(bomb, Buffer.concat([local, name, data, centralDir, end]));
+    const archive = await CbzArchive.open(bomb);
     await expect(archive.readPage(0)).rejects.toThrow('trop volumineuse');
     await archive.close();
   });
