@@ -11,6 +11,7 @@ import { app } from 'electron';
 import { mkdirSync } from 'node:fs';
 
 import type { DatabaseLocation } from '../../shared/data';
+import { applyPendingRestore } from './backup-service';
 import { resolveDatabaseLocation } from './db-location';
 import { configureConnection, migrate } from './schema';
 
@@ -23,6 +24,8 @@ export function databaseLocation(): DatabaseLocation {
 export function openDatabase(): DatabaseSync {
   const { directory, filePath } = databaseLocation();
   mkdirSync(directory, { recursive: true });
+  // A restoration asked for before the last quit replaces the file now, while nothing has it open.
+  applyPendingRestore(app.getPath('userData'), directory, filePath);
   const db = new DatabaseSync(filePath);
   configureConnection(db);
   migrate(db);

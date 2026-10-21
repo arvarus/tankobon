@@ -27,6 +27,10 @@ const errors: Translation<typeof en> = {
     invalidFileName: 'Le nom du fichier doit se terminer par .db, faire au plus {{max}} caractères et éviter les caractères \\ / : * ? " < > | ainsi que les noms réservés par Windows.',
     notWritable: "Impossible d'écrire dans {{directory}}.",
   },
+  backup: {
+    notFound: "Cette sauvegarde n'existe plus.",
+    failed: 'Impossible de sauvegarder la base : {{message}}',
+  },
   data: {
     exportFailed: "Impossible d'écrire l'export : {{message}}",
     clearFailed: 'Impossible de vider la bibliothèque : {{message}}',

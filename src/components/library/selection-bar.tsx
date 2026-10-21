@@ -1,11 +1,11 @@
-import { ListPlus, X } from 'lucide-react';
+import { ListPlus, Pencil, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/components/ui/button';
 
 /**
  * Above the list: a checkbox ticking every book shown (or none), and, once books are selected,
- * their count and the group actions (add them to a reading list, clear the selection).
+ * their count and the group actions (add them to a reading list, edit them, clear the selection).
  */
 export function SelectionBar({
   selectedCount,
@@ -14,6 +14,7 @@ export function SelectionBar({
   onToggleAll,
   onClear,
   onAddToList,
+  onEdit,
 }: {
   selectedCount: number;
   shownSelected: number;
@@ -21,6 +22,7 @@ export function SelectionBar({
   onToggleAll: () => void;
   onClear: () => void;
   onAddToList: () => void;
+  onEdit: () => void;
 }) {
   const { t } = useTranslation('library');
   const all = shownSelected === shown;
@@ -43,6 +45,10 @@ export function SelectionBar({
           <Button variant="outline" size="sm" onClick={onAddToList}>
             <ListPlus />
             {t('addSelectionToList')}
+          </Button>
+          <Button variant="outline" size="sm" onClick={onEdit}>
+            <Pencil />
+            {t('editSelection')}
           </Button>
           <Button variant="ghost" size="sm" onClick={onClear}>
             <X />

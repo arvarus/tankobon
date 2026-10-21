@@ -88,6 +88,8 @@ One row per comic ever opened or scanned. The books and their metadata are commo
 
 - The manual edit form ("Modifier la fiche", `BookEditDialog` in `src/components/book-edit-dialog.tsx`) writes through the same `updateMetadata()`, with no lookup involved. Its logic is pure (`src/lib/book-edit.ts`): `validateForm()` refuses an empty title, a release date that isn't a real `YYYY`/`YYYY-MM`/`YYYY-MM-DD`, and a credit with a first name but no last name; `formToUpdate()` keeps only the fields that differ from the entry (so saving an untouched form locks nothing) and, unlike a lookup's review, compares names exactly. Since `people` matches names with `COLLATE NOCASE`, a case-only rename finds the existing person and keeps its spelling.
 
+- **Bulk edit** ("Modifier les fiches" in the library's `SelectionBar`, `BookBulkEditDialog` in `src/components/book-bulk-edit-dialog.tsx`): the same `MetadataUpdate` applied to every selected book through `library:update-metadata-many` (`updateMetadataMany()`, one transaction, unknown ids skipped, one `data:changed` carrying all the updated entries). The logic is pure (`src/lib/book-bulk-edit.ts`): `bulkCurrent()` gives the value the books share for each field or `mixed`, `bulkToUpdate()` keeps only the fields the user ticked (series, volume, release date, language, credits; never the title, which would be locked to one value for all), `validateBulkForm()` checks the ticked fields only.
+
 - The file's format (CBZ/CBR/PDF) is not stored: `comicFormat()` (`src/shared/comic.ts`) derives it from the path's extension, the same one `openArchive()` picks the decoder from, and the library row shows it.
 - `fileCount` is the archive's total entry count (all files, not just image pages); `fileSize` is the file's size on disk, computed with `fs.stat` in the IPC layer, not in `ComicArchive`.
 - `tags` is a JSON-encoded `string[]` column: no normalized tags table, a personal library doesn't need one.
@@ -161,6 +163,10 @@ The location can't be an `AppSettings` entry, since the settings are stored *in*
 - A missing or malformed pointer silently falls back to `userData` rather than throwing, so a hand-edited (or sync-mangled) file can't stop the app from starting.
 - The functions are pure (they take the `userData` path, never call `app.getPath`), which makes them testable; `database.ts` is the only bridge to Electron.
 - Changing the location only rewrites the pointer: the existing file is *not* moved, because pointing at a directory that already holds a `tankobon.db` (a synced folder, another machine) must keep that database. The open database stays open until the next start (`database:relaunch`).
+
+### Backups (`backup-service.ts`)
+
+See [ADR 0024](./decisions/0024-database-backups.md). Electron-free functions of paths: `createBackup()` runs `VACUUM INTO` a temporary file then renames it to `<database folder>/.tankobon/tankobon-AAAAMMJJ-HHMMSS.db`, `pruneBackups()` keeps the `backupKeep` most recent, `listBackups()` and `isBackupDue()` (shared settings `backupIntervalDays`, `backupKeep`, `lastBackupAt`; the last is in `MAIN_PROCESS_SETTINGS`). `runBackup()` (`src/main/ipc/database.ts`) ties them to the settings and the `data:changed` notification; `main.ts` calls it at start-up and every hour when due. Restoring is deferred: `database:restore-backup` writes `pending-restore.json` in `userData` (a backup is named, never a path: `isBackupName()`), and `openDatabase()` calls `applyPendingRestore()` before opening the file. Channels: `database:list-backups`, `database:create-backup`, `database:restore-backup`, `database:cancel-restore`.
 
 ### Export / import (`export-service.ts`, `import-service.ts`)
 

@@ -12,8 +12,11 @@ import type { ComicPage, OpenComicResult } from './shared/comic';
 import type { DataChange } from './shared/data-changes';
 import type {
   ClearLibraryResult,
+  BackupList,
+  BackupResult,
   DatabaseLocation,
   DatabaseLocationResult,
+  RestoreBackupResult,
   ExportResult,
   ImportResult,
 } from './shared/data';
@@ -122,6 +125,8 @@ export interface LibraryApi {
   updateTags(id: string, tags: string[]): Promise<void>;
   /** Writes the given metadata fields (title, series, credits…) of a library entry; resolves with the updated entry, or null if it is gone. */
   updateMetadata(id: string, update: MetadataUpdate): Promise<LibraryEntry | null>;
+  /** Writes the same metadata fields on several library entries at once (all or none); resolves with the number of entries updated (unknown ids are skipped). */
+  updateMetadataMany(ids: string[], update: MetadataUpdate): Promise<number>;
   /** Cover thumbnail (first page, shrunk) of a library entry as WebP bytes, generated and cached first when missing; null if the entry is unknown or unreadable. */
   thumbnail(id: string): Promise<Uint8Array<ArrayBuffer> | null>;
 }
@@ -236,6 +241,14 @@ export interface DatabaseApi {
   setFileName(fileName: string | null): Promise<DatabaseLocationResult>;
   /** Restarts the app, e.g. to open the database from its new location. */
   relaunch(): Promise<void>;
+  /** The copies of the database kept beside it, most recent first, and the one waiting to be restored. */
+  listBackups(): Promise<BackupList>;
+  /** Makes a copy of the database now (and deletes the ones beyond the number to keep). */
+  createBackup(): Promise<BackupResult>;
+  /** Schedules the restoration of a copy (by its `name`): the database file is overwritten at the next start. */
+  restoreBackup(name: string): Promise<RestoreBackupResult>;
+  /** Cancels a restoration that has not been applied yet. */
+  cancelRestore(): Promise<void>;
 }
 
 /**
@@ -327,6 +340,7 @@ const api: TankobonApi = {
     updateRating: (id, rating) => ipcRenderer.invoke('library:update-rating', id, rating),
     updateTags: (id, tags) => ipcRenderer.invoke('library:update-tags', id, tags),
     updateMetadata: (id, update) => ipcRenderer.invoke('library:update-metadata', id, update),
+    updateMetadataMany: (ids, update) => ipcRenderer.invoke('library:update-metadata-many', ids, update),
     thumbnail: (id) => ipcRenderer.invoke('library:thumbnail', id),
   },
   readingLists: {
@@ -369,6 +383,10 @@ const api: TankobonApi = {
     resetLocation: () => ipcRenderer.invoke('database:reset-location'),
     setFileName: (fileName) => ipcRenderer.invoke('database:set-file-name', fileName),
     relaunch: () => ipcRenderer.invoke('database:relaunch'),
+    listBackups: () => ipcRenderer.invoke('database:list-backups'),
+    createBackup: () => ipcRenderer.invoke('database:create-backup'),
+    restoreBackup: (name) => ipcRenderer.invoke('database:restore-backup', name),
+    cancelRestore: () => ipcRenderer.invoke('database:cancel-restore'),
   },
   metadata: {
     search: (query) => ipcRenderer.invoke('metadata:search', query),

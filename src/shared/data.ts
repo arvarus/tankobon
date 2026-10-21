@@ -24,6 +24,36 @@ export type DatabaseLocationResult =
   | { status: 'changed'; location: DatabaseLocation }
   | { status: 'error'; message: string };
 
+/** A copy of the database kept in the `.tankobon` directory beside it. */
+export interface BackupInfo {
+  /** File name inside the backup directory (`tankobon-AAAAMMJJ-HHMMSS.db`): the identifier the restoration takes. */
+  name: string;
+  /** When the copy was made (ISO 8601). */
+  createdAt: string;
+  /** Size of the copy in bytes. */
+  size: number;
+}
+
+/** What the backup section of Paramètres › Données shows: the copies and where they are. */
+export interface BackupList {
+  /** Directory holding the copies. */
+  directory: string;
+  /** The copies, most recent first. */
+  backups: BackupInfo[];
+  /** The copy that will replace the database at the next start, or null. */
+  pendingRestore: string | null;
+}
+
+/** Outcome of making a copy of the database. Same rationale as `ImportResult`. */
+export type BackupResult =
+  | { status: 'created'; backup: BackupInfo }
+  | { status: 'error'; message: string };
+
+/** Outcome of scheduling the restoration of a copy: it is applied at the next start. */
+export type RestoreBackupResult =
+  | { status: 'scheduled' }
+  | { status: 'error'; message: string };
+
 /**
  * Outcome of importing a previously exported JSON snapshot. Validation failures are part of the
  * result rather than a thrown error: an `ipcMain.handle` rejection reaches the renderer wrapped
