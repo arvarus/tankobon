@@ -2,6 +2,7 @@ import { FolderOpen, X, ZoomIn } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { bookTooltip } from '@/lib/book-tooltip';
 import { ContinuousPage } from '@/components/reader/continuous-page';
 import { FullscreenButton } from '@/components/reader/fullscreen-button';
 import { NextInListButton } from '@/components/reader/next-in-list-button';
@@ -101,7 +102,7 @@ export function ContinuousReader({
   return (
     <div className="relative flex h-full flex-col" style={{ backgroundColor: background }}>
       <ReaderHeader fullscreen={fullscreen}>
-        <span className="truncate font-medium" title={comic.path}>
+        <span className="truncate font-medium" title={bookTooltip(comic)}>
           {comic.title}
         </span>
         <span className="ml-auto tabular-nums text-white/60">

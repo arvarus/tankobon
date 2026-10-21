@@ -3,6 +3,7 @@ import type { DragEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { BookCover } from '@/components/book-cover';
+import { bookTooltip } from '@/lib/book-tooltip';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { LibraryEntry } from '@/shared/library';
@@ -86,7 +87,7 @@ export function BookCard({
           </Button>
         </div>
       </div>
-      <div className="min-w-0 text-sm" title={entry.path}>
+      <div className="min-w-0 text-sm" title={bookTooltip(entry)}>
         {entry.series && <p className="truncate text-xs text-muted-foreground">{entry.series}</p>}
         <p className="truncate font-medium">{entry.title}</p>
         {entry.volume && <p className="truncate text-xs text-muted-foreground">{t('volumeShort', { volume: entry.volume })}</p>}

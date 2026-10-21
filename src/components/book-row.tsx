@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 
 import { BookCover } from '@/components/book-cover';
+import { bookTooltip } from '@/lib/book-tooltip';
 import { LanguageFlag } from '@/components/language-flag';
 import { Button } from '@/components/ui/button';
 import { appData } from '@/lib/app-data';
@@ -116,13 +117,13 @@ export function BookDetails({
       )}
       <div className="min-w-0 flex-1">
         {view === 'compact' ? (
-          <p className="truncate" title={entry.path}>
+          <p className="truncate" title={bookTooltip(entry)}>
             <span className={title}>{entry.title}</span>
             <span className="text-xs text-muted-foreground">{seriesLine(entry, t) && ` — ${seriesLine(entry, t)}`}</span>
           </p>
         ) : (
           <>
-            <p className={cn('truncate', title)} title={entry.path}>
+            <p className={cn('truncate', title)} title={bookTooltip(entry)}>
               {entry.title}
             </p>
             {view === 'full' ? <EntryMetadata entry={entry} /> : <p className="truncate text-xs">{seriesLine(entry, t)}</p>}
