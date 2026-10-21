@@ -142,6 +142,24 @@ describe('ThumbnailCache', () => {
     expect(calls.closed).toBe(0);
   });
 
+  it('gives up the cover of a scanned book when the queue is too busy, and does not make it later', async () => {
+    const { open } = fakeOpener({ '/bd/a.cbz': [cover] });
+    const cache = new ThumbnailCache(dir, open);
+    const archive = await open('/bd/a.cbz');
+
+    // A generation that holds the queue until it is released.
+    let release: (page: ComicPage) => void = () => undefined;
+    const busy = cache.ensure('/bd/busy.cbz', () => new Promise<ComicPage>((resolve) => (release = resolve)));
+    const start = Date.now();
+    await cache.storeFromArchive(archive, 50);
+    expect(Date.now() - start).toBeLessThan(2_000);
+
+    release(cover);
+    await busy;
+    await cache.remove('/bd/none.cbz'); // flushes the queue
+    expect(await cache.read('/bd/a.cbz')).toBeNull();
+  });
+
   it('resolves to null for a book without pages or a file that cannot be opened, and remembers the failure', async () => {
     const { open, calls } = fakeOpener({ '/bd/empty.cbz': [] });
     const cache = new ThumbnailCache(dir, open);
