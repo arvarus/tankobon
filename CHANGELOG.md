@@ -2,6 +2,46 @@
 
 All notable changes to this project are documented here. This file is maintained by [release-please](https://github.com/googleapis/release-please) from the [Conventional Commits](https://www.conventionalcommits.org/) merged into `master`: don't edit released entries by hand. New versions are inserted above the previous ones.
 
+## [0.16.0](https://github.com/pprb/tankobon/compare/v0.15.0...v0.16.0) (2026-10-21)
+
+
+### Features
+
+* **data:** configurable database file name ([#206](https://github.com/pprb/tankobon/issues/206)) ([ce2013b](https://github.com/pprb/tankobon/commit/ce2013bf3af21646526c81ec00ddd42d17aca3dc))
+* **data:** automatic database backups and restore ([#203](https://github.com/pprb/tankobon/issues/203)) ([080d177](https://github.com/pprb/tankobon/commit/080d17742963e5c2e6b38b9bbb3f88467b85e2c8))
+* **library:** show the book name instead of its path on hover ([#210](https://github.com/pprb/tankobon/issues/210)) ([c22ed4c](https://github.com/pprb/tankobon/commit/c22ed4c7fb27ecd60379673f43c0d88a4480ff7b))
+* **library:** cancel the cover requests of rows that left the screen ([#182](https://github.com/pprb/tankobon/issues/182)) ([794a9e3](https://github.com/pprb/tankobon/commit/794a9e3d170d96a754cd4891d846ace125515dfc))
+* **library:** change a book's cover from its edit dialog ([#205](https://github.com/pprb/tankobon/issues/205)) ([d732ef1](https://github.com/pprb/tankobon/commit/d732ef1f0c57baee24e8a04a4b8cf5f9351dc180))
+* **library:** edit several books at once ([#202](https://github.com/pprb/tankobon/issues/202)) ([6fe0520](https://github.com/pprb/tankobon/commit/6fe05204752bf309540567e7b15124d6600de9e7))
+* **organization:** move book cleaning into the organization settings ([#209](https://github.com/pprb/tankobon/issues/209)) ([f5b0b88](https://github.com/pprb/tankobon/commit/f5b0b88a8f9b1b0c205897d60c6e33b2c2f936f4))
+* **organization:** option to ignore leading articles in names ([#207](https://github.com/pprb/tankobon/issues/207)) ([f914281](https://github.com/pprb/tankobon/commit/f914281d431e247398be1589c4f6cf06644a19dc))
+* **organization:** zero-pad the volume in file names ([#208](https://github.com/pprb/tankobon/issues/208)) ([841413e](https://github.com/pprb/tankobon/commit/841413e5eee5070f9795cd4b6e5635d5db9209c4))
+
+
+### Bug Fixes
+
+* **archive:** bound the bytes actually inflated from a CBZ entry ([#176](https://github.com/pprb/tankobon/issues/176)) ([cf9ca7d](https://github.com/pprb/tankobon/commit/cf9ca7d8175a1d5af2e51e8b1ab16e5260ae860a))
+* **archive:** check BMP and AVIF dimensions, and read a CBR without copying it ([#191](https://github.com/pprb/tankobon/issues/191)) ([c669ffe](https://github.com/pprb/tankobon/commit/c669ffe5806dab42f419af4056b062ccd148376a))
+* **archive:** read CBZ entries whose name holds a backslash ([#195](https://github.com/pprb/tankobon/issues/195)) ([0d3130d](https://github.com/pprb/tankobon/commit/0d3130dda25794cd0033e5ad11b3c78d92c405c7))
+* **decoder:** bound the queue wait of a scan's cover so inspect keeps its deadline ([#181](https://github.com/pprb/tankobon/issues/181)) ([1bd833c](https://github.com/pprb/tankobon/commit/1bd833c19a03204cf2678fd8c0b5d2122a56eb20))
+* **import:** refuse network paths in an imported library ([#178](https://github.com/pprb/tankobon/issues/178)) ([0575118](https://github.com/pprb/tankobon/commit/0575118cff089aff91369d5093631ce8e0072bb8))
+* **library:** analyze the cleanup only once when the window opens ([#211](https://github.com/pprb/tankobon/issues/211)) ([9bed148](https://github.com/pprb/tankobon/commit/9bed14855c2afa9ebc8b53b61d9d37437dd218d3))
+* **library:** share the run lock between every writer of the library files ([#179](https://github.com/pprb/tankobon/issues/179)) ([5833480](https://github.com/pprb/tankobon/commit/583348065c2d4cb3da13fce9fb178097e483c8d9))
+* **library:** trash the same sidecars for remove and remove-many ([#186](https://github.com/pprb/tankobon/issues/186)) ([d53d7b5](https://github.com/pprb/tankobon/commit/d53d7b5d798eae45138716a74a193428ae0543ec))
+* **metadata:** drop release dates that do not exist ([#185](https://github.com/pprb/tankobon/issues/185)) ([c06a746](https://github.com/pprb/tankobon/commit/c06a746954fb90654daf937cb54be4456af68252))
+* **nfo:** parse .nfo files in linear time ([#177](https://github.com/pprb/tankobon/issues/177)) ([0b861be](https://github.com/pprb/tankobon/commit/0b861bef167affbb253d95e6d7e19527294399cf))
+* **nfo:** replace the sidecar instead of writing through a symbolic link ([#184](https://github.com/pprb/tankobon/issues/184)) ([2f85174](https://github.com/pprb/tankobon/commit/2f851741ae9f966b0e551a11ef20c41b82158920))
+* **paths:** keep root-relative paths inside their folder ([#183](https://github.com/pprb/tankobon/issues/183)) ([d0147fb](https://github.com/pprb/tankobon/commit/d0147fb5a8b3b26985c9da9be2b933b983873854))
+* **reader:** leave keys to the focused control and to modifier shortcuts ([#180](https://github.com/pprb/tankobon/issues/180)) ([b3bfcc0](https://github.com/pprb/tankobon/commit/b3bfcc08af4298032536811d612eda009e5818ce))
+* **reader:** readability of the zoom select in dark mode ([#204](https://github.com/pprb/tankobon/issues/204)) ([62af3fc](https://github.com/pprb/tankobon/commit/62af3fc480dad73209ab43647f6e611c2c9a50c7))
+* **reader:** reopen a book the decoder lost, and retry a failed page ([#188](https://github.com/pprb/tankobon/issues/188)) ([959bb4e](https://github.com/pprb/tankobon/commit/959bb4e5bf7f96818d2219e2ef49568a3cfc6eb0))
+* **users:** keep a long library run for the user who started it ([#187](https://github.com/pprb/tankobon/issues/187)) ([30c683f](https://github.com/pprb/tankobon/commit/30c683fb42cda5f999844b0eaead394954526ec1))
+
+
+### Performance Improvements
+
+* cheaper activeId and attrib checks, bounded settings and import file ([#190](https://github.com/pprb/tankobon/issues/190)) ([207ef76](https://github.com/pprb/tankobon/commit/207ef761c267aa829f0e76e4396a19ff75868942))
+
 ## [0.15.0](https://github.com/pprb/tankobon/compare/v0.14.0...v0.15.0) (2026-10-20)
 
 
