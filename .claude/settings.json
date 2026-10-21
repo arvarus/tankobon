@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__claude_ai_Todoist__update-tasks",
+      "mcp__claude_ai_Todoist__add-comments",
+      "mcp__claude_ai_Todoist__fetch-object"
+    ]
+  }
+}
