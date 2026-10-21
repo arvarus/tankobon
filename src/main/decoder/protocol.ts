@@ -54,6 +54,8 @@ export interface DecoderMethods {
    * With `cachedOnly`, the file is never opened: the cached thumbnail or null.
    */
   thumbnail(filePath: string, archiveId?: string, cachedOnly?: boolean): Uint8Array<ArrayBuffer> | null;
+  /** Replaces a book's cover with the given image (PNG, JPEG, WebP…), shrunk to the thumbnail size; rejects when it isn't a usable image. */
+  setThumbnail(filePath: string, image: Uint8Array): void;
   /** Deletes a book's thumbnail. */
   removeThumbnail(filePath: string): void;
   /** Deletes every thumbnail that isn't one of `filePaths`'. */

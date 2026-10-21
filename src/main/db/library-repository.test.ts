@@ -149,6 +149,18 @@ describe('LibraryRepository', () => {
     expect(repo.updateMetadata('missing', { series: 'X' })).toBeNull();
   });
 
+  it('writes the same metadata on several entries, skipping unknown ids', () => {
+    const one = repo.touch('/comics/one.cbz', 'One', 20, 22, 1);
+    const two = repo.touch('/comics/two.cbz', 'Two', 20, 22, 1);
+    const updated = repo.updateMetadataMany([one.id, two.id, 'missing', one.id], {
+      series: 'Blacksad',
+      credits: [{ firstName: 'Juan', lastName: 'Díaz Canales', role: 'writer' }],
+    });
+    expect(updated.map((entry) => entry.id)).toEqual([one.id, two.id]);
+    expect(repo.get(two.id)).toMatchObject({ series: 'Blacksad', title: 'Two', titleLocked: false });
+    expect(repo.get(one.id)?.credits[0].personId).toBe(repo.get(two.id)?.credits[0].personId);
+  });
+
   it('replaces the credits, sharing people across books', () => {
     const one = repo.touch('/comics/one.cbz', 'One', 20, 22, 1000);
     const two = repo.touch('/comics/two.cbz', 'Two', 20, 22, 1000);

@@ -4,14 +4,16 @@ import path from 'node:path';
 
 import { SUPPORTED_COMIC_EXTENSIONS } from '../../shared/comic';
 import { t } from '../../shared/i18n';
-import type {
-  AddFileResult,
-  ImageScanProgress,
-  PickOrganizationFolderResult,
-  RelinkFolderResult,
-  RemoveEntryResult,
-  RemoveEntriesResult,
-  ScanResult,
+import {
+  MAX_COVER_BYTES,
+  type AddFileResult,
+  type ImageScanProgress,
+  type PickOrganizationFolderResult,
+  type RelinkFolderResult,
+  type RemoveEntryResult,
+  type RemoveEntriesResult,
+  type ScanResult,
+  type SetCoverResult,
 } from '../../shared/library';
 import type { LibraryFolderRepository } from '../db/library-folder-repository';
 import type { LibraryRepository } from '../db/library-repository';
@@ -33,6 +35,7 @@ import {
   MAX_PATH_LENGTH,
   args,
   booleanArg,
+  expectBytes,
   expectInteger,
   expectMetadataUpdate,
   expectNonEmptyString,
@@ -59,7 +62,9 @@ export const LIBRARY_CHANNELS = {
   updateRating: 'library:update-rating',
   updateTags: 'library:update-tags',
   updateMetadata: 'library:update-metadata',
+  updateMetadataMany: 'library:update-metadata-many',
   thumbnail: 'library:thumbnail',
+  setCover: 'library:set-cover',
   imageScanStatus: 'library:image-scan-status',
   /** Main → renderer, while the background measure of the pages runs. */
   imageScanProgress: 'library:image-scan-progress',
@@ -386,6 +391,25 @@ export function registerLibraryIpc(
     return decoder.thumbnail(entry.path, undefined, cachedOnly).catch(() => null);
   });
 
+  // The renderer sends the picture already cropped to the cover's proportions (from an uploaded file or a page of the book).
+  handle(
+    LIBRARY_CHANNELS.setCover,
+    args(idArg, (value) => expectBytes(value, 'image', MAX_COVER_BYTES)),
+    async (_event, id, image): Promise<SetCoverResult> => {
+      const entry = repo.get(id);
+      if (!entry) return { status: 'error', message: t('errors:library.coverUnknownBook') };
+      try {
+        await decoder.setThumbnail(entry.path, image);
+        return { status: 'ok' };
+      } catch (error) {
+        return {
+          status: 'error',
+          message: t('errors:library.coverFailed', { message: error instanceof Error ? error.message : String(error) }),
+        };
+      }
+    },
+  );
+
   handle(LIBRARY_CHANNELS.imageScanStatus, args(), () => imageScanner.status());
 
   handle(LIBRARY_CHANNELS.updateMetadata, args(idArg, expectMetadataUpdate), (_event, id, update) => {
@@ -393,4 +417,14 @@ export function registerLibraryIpc(
     if (updated) notify({ scope: 'library', upserted: [updated] });
     return updated;
   });
+
+  handle(
+    LIBRARY_CHANNELS.updateMetadataMany,
+    args((ids) => expectStringArray(ids, 'ids'), expectMetadataUpdate),
+    (_event, ids, update) => {
+      const updated = repo.updateMetadataMany(ids, update);
+      if (updated.length > 0) notify({ scope: 'library', upserted: updated });
+      return updated.length;
+    },
+  );
 }

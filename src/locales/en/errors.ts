@@ -23,13 +23,20 @@ export default {
     timeout: 'The file could not be read: it took too long, so it was abandoned.',
   },
   database: {
+    invalidFileName: 'The file name must end with .db, hold at most {{max}} characters and avoid the characters \\ / : * ? " < > | and the names reserved by Windows.',
     notWritable: 'Cannot write to {{directory}}.',
+  },
+  backup: {
+    notFound: 'This backup no longer exists.',
+    failed: 'Could not back up the database: {{message}}',
   },
   data: {
     exportFailed: 'Could not write the export: {{message}}',
     clearFailed: 'Could not clear the library: {{message}}',
   },
   library: {
+    coverUnknownBook: 'Could not find this book.',
+    coverFailed: 'Could not change the cover: {{message}}',
     resyncRunning: 'A resynchronization is already running.',
     unknownFolder: 'This folder is not part of the library.',
     organizationOff: 'The library organization is off, or has no folder.',

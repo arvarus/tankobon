@@ -224,10 +224,10 @@ export function SinglePageReader({
           <select
             value={String(zoom)}
             onChange={(event) => setZoom(event.target.value === 'fit' ? 'fit' : Number(event.target.value))}
-            className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-white"
+            className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-white [color-scheme:dark]"
           >
             {ZOOM_OPTIONS.map((option) => (
-              <option key={option} value={option} className="text-foreground">
+              <option key={option} value={option} className="bg-neutral-900 text-white">
                 {option === 'fit'
                   ? t('zoomFit')
                   : option === 1

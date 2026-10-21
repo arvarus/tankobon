@@ -55,6 +55,7 @@ export default {
   selectedCount_one: '{{count}} book selected',
   selectedCount_other: '{{count}} books selected',
   addSelectionToList: 'Add to a reading list',
+  editSelection: 'Edit details',
   clearSelection: 'Clear the selection',
   remove: 'Remove from the library',
   confirmRemoveTitle: 'Remove this book?',

@@ -147,6 +147,25 @@ export class ThumbnailCache {
   }
 
   /**
+   * Replaces a book's cover with a picture chosen by the user (any image `renderThumbnail()` accepts: it is
+   * shrunk to the thumbnail size like a first page). Rejects with the decoding error when it isn't a usable
+   * image, leaving the current cover as it was. Queued like a generation. When the cover can't go beside the
+   * comic (setting off, read-only folder), an older sidecar is deleted if possible, since `read()` would prefer it.
+   */
+  replace(filePath: string, image: Uint8Array): Promise<void> {
+    return this.enqueue(async () => {
+      const thumbnail = await renderThumbnail(image);
+      if (!(await this.write(filePath, thumbnail))) {
+        await rm(coverSidecarPath(filePath), { force: true }).catch(() => undefined);
+      } else {
+        // The sidecar wins over the local cache: a stale local file would only waste space.
+        await rm(this.fileFor(filePath), { force: true });
+      }
+      this.failed.delete(thumbnailKey(filePath));
+    });
+  }
+
+  /**
    * Deletes the local cache's thumbnail of a book (removed from the library); does nothing when
    * there is none. A sidecar belongs to the comic's folder and is left alone.
    * Queued like a generation, so one still running for this book finishes first and its file is
@@ -213,11 +232,7 @@ export class ThumbnailCache {
         return null;
       }
       const thumbnail = await renderThumbnail(page.data);
-      // Beside the comic when the setting is on and its folder accepts it (read-only share, full disk…), else in the local cache.
-      if (!this.sidecars || !(await this.writeAtomically(coverSidecarPath(filePath), thumbnail).catch(() => false))) {
-        await mkdir(this.directory, { recursive: true });
-        await this.writeAtomically(this.fileFor(filePath), thumbnail);
-      }
+      await this.write(filePath, thumbnail);
       this.failed.delete(key);
       return thumbnail;
     } catch {
@@ -227,6 +242,16 @@ export class ThumbnailCache {
       }
       return null;
     }
+  }
+
+  /** Beside the comic when the setting is on and its folder accepts it (read-only share, full disk…), else in the local cache. Returns whether the sidecar was written. */
+  private async write(filePath: string, thumbnail: Uint8Array): Promise<boolean> {
+    if (this.sidecars && (await this.writeAtomically(coverSidecarPath(filePath), thumbnail).catch(() => false))) {
+      return true;
+    }
+    await mkdir(this.directory, { recursive: true });
+    await this.writeAtomically(this.fileFor(filePath), thumbnail);
+    return false;
   }
 
   /** Written aside then renamed, so a reader never sees a half-written file. */
