@@ -132,6 +132,8 @@ export default {
     organizeAllDone_other: '{{count}} comics moved',
     organizeAllFailed_one: '{{count}} could not be moved',
     organizeAllFailed_other: '{{count}} could not be moved',
+    cleanup: 'Clean the books…',
+    cleanupHint: 'Removes the files that are not images (ComicInfo.xml, Thumbs.db, text files…) from the CBZ archives of the whole library, after showing what would go. Nothing is deleted before you confirm.',
     duplicates: 'Find duplicates…',
     duplicatesHint: 'Lists the books held as several files of the same format (same series and volume, or same title), so you can keep one file of each and remove the others from the library.',
   },

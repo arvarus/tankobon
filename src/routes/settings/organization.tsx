@@ -1,8 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { Copy, FolderTree, RefreshCw } from 'lucide-react';
+import { Copy, Eraser, FolderTree, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { CleanupDialog } from '@/components/cleanup-dialog';
 import { useConfirm } from '@/components/confirm-dialog';
 import { DuplicatesDialog } from '@/components/duplicates-dialog';
 import { ScanFailuresDialog } from '@/components/scan-failures-dialog';
@@ -43,6 +44,8 @@ function OrganizationSettingsPage() {
   // The groups found, frozen when the dialog opens.
   const [duplicates, setDuplicates] = useState<LibraryEntry[][] | null>(null);
   const [duplicatesStatus, setDuplicatesStatus] = useState<string | null>(null);
+  // Whether the cleanup dialog is open (it always works on the whole library).
+  const [cleanupOpen, setCleanupOpen] = useState(false);
   const [progress, setProgress] = useState<ScanProgress | null>(null);
   // Whether this page started the run, to show its progress here (a run started elsewhere only disables the controls).
   const [running, setRunning] = useState(false);
@@ -199,6 +202,13 @@ function OrganizationSettingsPage() {
           </Button>
         </div>
         {duplicatesStatus && <p className="text-sm text-muted-foreground">{duplicatesStatus}</p>}
+        <p className="text-sm text-muted-foreground">{t('cleanupHint')}</p>
+        <div>
+          <Button variant="outline" onClick={() => setCleanupOpen(true)} disabled={busy}>
+            <Eraser />
+            {t('cleanup')}
+          </Button>
+        </div>
       </SettingsSection>
       <SettingsSection title={t('resync')}>
         <p className="text-sm text-muted-foreground">{t('resyncHint')}</p>
@@ -237,6 +247,7 @@ function OrganizationSettingsPage() {
         </div>
       </SettingsSection>
       {duplicates && <DuplicatesDialog groups={duplicates} onClose={() => setDuplicates(null)} />}
+      {cleanupOpen && <CleanupDialog ids={[]} onClose={() => setCleanupOpen(false)} />}
       {confirmDialog}
       {failures && failuresOpen && (
         <ScanFailuresDialog failures={failures.list} total={failures.total} onClose={() => setFailuresOpen(false)} />

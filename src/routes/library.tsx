@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next';
 
 import { AddToListDialog } from '@/components/add-to-list-dialog';
 import { BookDetails, BookRating, BookTags } from '@/components/book-row';
-import { CleanupDialog } from '@/components/cleanup-dialog';
 import { BookBulkEditDialog } from '@/components/book-bulk-edit-dialog';
 import { BookEditDialog } from '@/components/book-edit-dialog';
 import { useConfirm } from '@/components/confirm-dialog';
@@ -76,8 +75,6 @@ function LibraryPage() {
   const [scanStatus, setScanStatus] = useState<string | null>(null);
   const [lookupEntry, setLookupEntry] = useState<LibraryEntry | null>(null);
   const [editEntry, setEditEntry] = useState<LibraryEntry | null>(null);
-  // Ids the cleanup dialog works on (empty: the whole library); null while it is closed.
-  const [cleanupIds, setCleanupIds] = useState<string[] | null>(null);
   const [bulkEntries, setBulkEntries] = useState<LibraryEntry[] | null>(null);
   const [listEntries, setListEntries] = useState<LibraryEntry[] | null>(null);
   // The input follows the keystrokes; filtering and re-laying out the list can lag behind them.
@@ -214,7 +211,6 @@ function LibraryPage() {
           onGroupedChange={(next) => update('libraryGroupBySeries', next)}
           sort={sort}
           onSortChange={(next) => update('librarySort', next)}
-          onCleanup={() => setCleanupIds(selection.map((entry) => entry.id))}
         />
       )}
 
@@ -398,7 +394,6 @@ function LibraryPage() {
       )}
       {bulkEntries && <BookBulkEditDialog entries={bulkEntries} onClose={() => setBulkEntries(null)} />}
       {editEntry && <BookEditDialog entry={editEntry} onClose={() => setEditEntry(null)} onSaved={replaceEntry} />}
-      {cleanupIds && <CleanupDialog ids={cleanupIds} onClose={() => setCleanupIds(null)} />}
       {listEntries && <AddToListDialog entries={listEntries} onClose={() => setListEntries(null)} />}
       {confirmDialog}
     </div>

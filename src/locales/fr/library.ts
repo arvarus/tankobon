@@ -101,7 +101,6 @@ const library: Translation<typeof en> = {
   duplicatesFailed: 'Les doublons n’ont pas pu être retirés.',
   duplicatesFilesFailed_one: '{{count}} fichier n’a pas pu être mis à la corbeille ; son entrée a quand même été retirée de la bibliothèque.',
   duplicatesFilesFailed_other: '{{count}} fichiers n’ont pas pu être mis à la corbeille ; leurs entrées ont quand même été retirées de la bibliothèque.',
-  cleanup: 'Nettoyer les livres (supprimer des archives CBZ les fichiers qui ne sont pas des images)',
   cleanupTitle: 'Nettoyer les livres',
   cleanupIntro: 'Supprime des archives les fichiers qui ne sont pas des images (ComicInfo.xml, Thumbs.db, fichiers texte…). Seuls les fichiers CBZ peuvent être réécrits. Rien n’est supprimé avant votre confirmation.',
   cleanupAnalyzing: 'Analyse des archives…',
