@@ -72,7 +72,7 @@ function writePointer(userDataDir: string, pointer: LocationPointer): void {
   );
 }
 
-/** Reads the configured directory, or null when there is none (see {@link readPointer} for the fallbacks). */
+/** Reads the configured directory, or null when there is none (a malformed pointer counts as none). */
 export function readLocationPointer(userDataDir: string): string | null {
   return readPointer(userDataDir).directory;
 }
