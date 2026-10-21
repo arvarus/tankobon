@@ -77,7 +77,7 @@ export function hasFiche(entry: LibraryEntry): boolean {
   return Boolean(entry.series || entry.volume || entry.releaseDate || entry.language) || entry.credits.length > 0;
 }
 
-/** `matchesFilters` with the search text already normalized, so a whole list normalizes it once. */
+/** Whether an entry passes the filters, with the search text already normalized so a whole list normalizes it once. */
 function matches(entry: LibraryEntry, search: string, filters: LibraryFilters): boolean {
   if (search && !searchableText(entry).includes(search)) return false;
   if (!filters.tags.every((tag) => entry.tags.includes(tag))) return false;
@@ -86,12 +86,7 @@ function matches(entry: LibraryEntry, search: string, filters: LibraryFilters): 
   return true;
 }
 
-/** Whether an entry passes the search text, *every* selected tag, the minimum rating and the without-fiche filter. */
-export function matchesFilters(entry: LibraryEntry, filters: LibraryFilters): boolean {
-  return matches(entry, normalize(filters.search.trim()), filters);
-}
-
-/** The entries that pass `matchesFilters`, in their original order. */
+/** The entries that pass the search text, *every* selected tag, the minimum rating and the without-fiche filter, in their original order. */
 export function filterEntries(entries: LibraryEntry[], filters: LibraryFilters): LibraryEntry[] {
   const search = normalize(filters.search.trim());
   return entries.filter((entry) => matches(entry, search, filters));

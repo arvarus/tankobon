@@ -43,16 +43,11 @@ function originalStem(filePath: string, id: string): string {
 }
 
 /**
- * Name of the subfolder that holds a comic in the organized folder: the original file name without
- * its extension, then the library id in parentheses (`Astérix T01 (3f2a…)`), so two files of the same
- * name never collide. The name part is cut when the whole would exceed {@link MAX_NAME_BYTES}, and a
- * cut name loses its trailing spaces and dots (Windows refuses a name ending with them).
+ * Name of the subfolder that holds a comic in the organized folder (default layout): the original file
+ * name without its extension, then the library id in parentheses (`Astérix T01 (3f2a…)`), so two files of
+ * the same name never collide. The name part is cut when the whole would exceed {@link MAX_NAME_BYTES}, and
+ * a cut name loses its trailing spaces and dots (Windows refuses a name ending with them).
  */
-export function organizedFolderName(filePath: string, id: string): string {
-  return folderNameOf(originalStem(filePath, id), id);
-}
-
-/** {@link organizedFolderName} for a file whose name without extension is `name`. */
 function folderNameOf(name: string, id: string): string {
   const suffix = ` (${id})`;
   const room = MAX_NAME_BYTES - Buffer.byteLength(suffix);
@@ -177,7 +172,7 @@ export interface OrganizationTarget {
  * {@link templatedStem} gives when the target has a file name template and the entry has a fiche, the
  * extension being kept.
  * Without a structure, a single place: `<root>/<name> (<library id>)/<name>.<extension>` (see
- * {@link organizedFolderName}). With one, the file goes in the last level's folder under that name,
+ * `folderNameOf()`). With one, the file goes in the last level's folder under that name,
  * or, when another file has that name there, `<name> (<library id>).<extension>`. A comic at any of
  * these places is in place.
  */
