@@ -437,3 +437,35 @@ describe('organizeEntries with a structure', () => {
     expect(await exists(target)).toBe(true);
   });
 });
+
+describe('ignoring leading articles', () => {
+  const articles = ['le', 'la', "l'", 'the'];
+  const northWind = entry({ title: 'Le vent du nord', series: 'Le vent du nord', volume: '3' });
+
+  it('files the series and album names under their first real word', () => {
+    expect(structureFolders(['letter', 'series'], northWind, articles)).toEqual(['V', 'Vent du nord (Le)']);
+    expect(structureFolders(['letter', 'album'], northWind, articles)).toEqual(['V', 'Vent du nord (Le)']);
+    // The option off, the name is kept as it is.
+    expect(structureFolders(['letter', 'series'], northWind)).toEqual(['L', 'Le vent du nord']);
+  });
+
+  it('uses the title for a one-shot, and leaves author and year alone', () => {
+    const oneShot = entry({ series: null, title: "L'été indien" });
+    expect(structureFolders(['letter', 'series'], oneShot, articles)).toEqual(['E', "Été indien (L')"]);
+    expect(structureFolders(['year', 'author'], northWind, articles)).toEqual(['1960', 'Hergé']);
+  });
+
+  it('applies to the series and title fields of the file name', () => {
+    expect(templatedStem('{series} - T{volume} - {title}', northWind, '.cbz', articles)).toBe(
+      'Vent du nord (Le) - T3 - Vent du nord (Le)',
+    );
+    expect(templatedStem('{series} - {title}', northWind, '.cbz')).toBe('Le vent du nord - Le vent du nord');
+  });
+
+  it('puts the file where the target with articles says, and not in place under the other target', () => {
+    const target = { root: '/org', structure: ['letter', 'series'] as const, fileName: '', articles };
+    const [place] = organizedPaths(target, northWind);
+    expect(place).toBe(path.join('/org', 'V', 'Vent du nord (Le)', path.basename(northWind.path)));
+    expect(organizedPaths({ ...target, articles: [] }, northWind)[0]).not.toBe(place);
+  });
+});

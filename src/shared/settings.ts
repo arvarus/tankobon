@@ -2,6 +2,7 @@
  * Settings types shared between the main process and the renderer (via preload).
  * @module
  */
+import { DEFAULT_ARTICLES, isArticleList } from './articles';
 import { isFileNameTemplate } from './file-name-template';
 import { isSupportedLanguage, type LanguageSetting } from './i18n';
 
@@ -247,6 +248,15 @@ export interface AppSettings {
    */
   libraryFileName: string;
   /**
+   * Whether the organization files a name under its first real word: a leading article of
+   * `libraryArticles` goes to the end (`Le vent du nord` → `Vent du nord (Le)`) in the series and album
+   * folders, the `letter` level and the `{series}` and `{title}` fields of the file name. Like the tree, it
+   * moves nothing by itself.
+   */
+  libraryIgnoreArticles: boolean;
+  /** The articles `libraryIgnoreArticles` moves, edited by the user (see {@link isArticleList}). */
+  libraryArticles: string[];
+  /**
    * Whether a book's cover thumbnail is kept beside it (`<name>.cover.webp`), so a shared library
    * folder carries its covers. Off, the covers are extracted and kept in this machine's local cache
    * only; covers already beside the books are still read.
@@ -307,6 +317,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   libraryOrganizationFolder: '',
   libraryStructure: [],
   libraryFileName: '',
+  libraryIgnoreArticles: false,
+  libraryArticles: [...DEFAULT_ARTICLES],
   librarySidecarCovers: true,
   libraryWriteNfo: true,
   fileNameRules: [],
@@ -335,6 +347,8 @@ export const SHARED_SETTINGS: readonly (keyof AppSettings)[] = [
   'libraryOrganization',
   'libraryStructure',
   'libraryFileName',
+  'libraryIgnoreArticles',
+  'libraryArticles',
   'librarySidecarCovers',
   'libraryWriteNfo',
 ];
@@ -421,6 +435,8 @@ export const SETTING_VALIDATORS: SettingValidators = {
   libraryOrganizationFolder: isShortString,
   libraryStructure: isLibraryStructure,
   libraryFileName: isFileNameTemplate,
+  libraryIgnoreArticles: isBoolean,
+  libraryArticles: isArticleList,
   librarySidecarCovers: isBoolean,
   libraryWriteNfo: isBoolean,
   fileNameRules: (value): value is string[] =>
