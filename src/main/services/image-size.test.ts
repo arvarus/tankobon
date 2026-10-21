@@ -39,6 +39,48 @@ describe('readImageSize', () => {
     expect(readImageSize(bytes)).toEqual({ width: 640, height: 480 });
   });
 
+  it('reads a BMP header, top-down or not, and the old core header', () => {
+    const info = Buffer.alloc(54);
+    info.write('BM', 0, 'ascii');
+    info.writeUInt32LE(40, 14);
+    info.writeInt32LE(30_000, 18);
+    info.writeInt32LE(-20_000, 22);
+    expect(readImageSize(info)).toEqual({ width: 30_000, height: 20_000 });
+
+    const core = Buffer.alloc(26);
+    core.write('BM', 0, 'ascii');
+    core.writeUInt32LE(12, 14);
+    core.writeUInt16LE(640, 18);
+    core.writeUInt16LE(480, 20);
+    expect(readImageSize(core)).toEqual({ width: 640, height: 480 });
+    expect(readImageSize(info.subarray(0, 20))).toBeNull();
+  });
+
+  it('reads the size of a real AVIF file', async () => {
+    const canvas = createCanvas(123, 45);
+    canvas.getContext('2d').fillRect(0, 0, 123, 45);
+    expect(readImageSize(new Uint8Array(await canvas.encode('avif')))).toEqual({ width: 123, height: 45 });
+  });
+
+  it('takes the largest ispe of an AVIF header, and nothing from one without', () => {
+    const ispe = (width: number, height: number) => {
+      const box = Buffer.alloc(20);
+      box.writeUInt32BE(20, 0);
+      box.write('ispe', 4, 'ascii');
+      box.writeUInt32BE(width, 12);
+      box.writeUInt32BE(height, 16);
+      return box;
+    };
+    const ftyp = Buffer.alloc(16);
+    ftyp.writeUInt32BE(16, 0);
+    ftyp.write('ftypavif', 4, 'ascii');
+    expect(readImageSize(Buffer.concat([ftyp, ispe(160, 90), ispe(60_000, 60_000)]))).toEqual({
+      width: 60_000,
+      height: 60_000,
+    });
+    expect(readImageSize(ftyp)).toBeNull();
+  });
+
   it('skips JPEG segments before the start-of-frame marker', () => {
     const bytes = Buffer.from([
       0xff, 0xd8, 0xff, 0xe0, 0x00, 0x04, 0x00, 0x00, 0xff, 0xc2, 0x00, 0x0b, 0x08, 0x75, 0x30, 0x4e, 0x20, 0x03,
@@ -64,5 +106,14 @@ describe('assertImageWithinLimit', () => {
     const side = Math.floor(Math.sqrt(MAX_IMAGE_PIXELS));
     expect(() => assertImageWithinLimit(pngHeader(side, side), 'a.png')).not.toThrow();
     expect(() => assertImageWithinLimit(new Uint8Array([1, 2, 3]), 'a.avif')).not.toThrow();
+  });
+
+  it('refuses a BMP declaring a huge image', () => {
+    const bmp = Buffer.alloc(54);
+    bmp.write('BM', 0, 'ascii');
+    bmp.writeUInt32LE(40, 14);
+    bmp.writeInt32LE(30_000, 18);
+    bmp.writeInt32LE(30_000, 22);
+    expect(() => assertImageWithinLimit(bmp, '001.bmp')).toThrow('Image trop grande');
   });
 });
