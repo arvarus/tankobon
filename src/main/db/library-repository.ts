@@ -445,6 +445,19 @@ export class LibraryRepository {
     return withTransaction(this.db, () => this.writeMetadata(id, update));
   }
 
+  /**
+   * Writes the same `update` on every given entry, in one transaction (all or none). Returns the
+   * updated entries; unknown ids are skipped.
+   */
+  updateMetadataMany(ids: readonly string[], update: MetadataUpdate): LibraryEntry[] {
+    return withTransaction(this.db, () =>
+      [...new Set(ids)].flatMap((id) => {
+        const updated = this.writeMetadata(id, update);
+        return updated ? [updated] : [];
+      }),
+    );
+  }
+
   private writeMetadata(id: string, update: MetadataUpdate): LibraryEntry | null {
     if (!this.get(id)) {
       return null;
