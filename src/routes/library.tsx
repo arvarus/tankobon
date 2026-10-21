@@ -17,17 +17,17 @@ import { SeriesHeader } from '@/components/library/series-header';
 import { MetadataDialog } from '@/components/metadata-dialog';
 import { Button } from '@/components/ui/button';
 import { useLibrary } from '@/hooks/use-library';
+import { useLibraryRows } from '@/hooks/use-library-rows';
+import { useLibrarySelection } from '@/hooks/use-library-selection';
 import { useOrganizationOffer } from '@/hooks/use-organization-offer';
 import { useSettings } from '@/hooks/use-settings';
 import { useActiveUser } from '@/hooks/use-users';
 import { appData } from '@/lib/app-data';
-import { availableTags, filterEntries, type LibraryFilters } from '@/lib/library-filter';
+import type { LibraryFilters } from '@/lib/library-filter';
 import { rememberedFilters, rememberFilters } from '@/lib/library-filters-memory';
-import { collapseEditions, editionGroups } from '@/lib/library-editions';
-import { gridLines, groupBySeries, ungroupedRows } from '@/lib/library-groups';
-import { sortEntries } from '@/lib/library-sort';
-import { draggedEntries, selectedEntries, toggleSelection } from '@/lib/library-selection';
-import { encodeDraggedEntries, LIBRARY_ENTRY_DRAG_TYPE, QUICK_TAGS } from '@/lib/reading-list';
+import { gridLines } from '@/lib/library-groups';
+import { draggedEntries } from '@/lib/library-selection';
+import { encodeDraggedEntries, LIBRARY_ENTRY_DRAG_TYPE } from '@/lib/reading-list';
 import { cn } from '@/lib/utils';
 import { comicFormat } from '@/shared/comic';
 import type { LibraryEntry, ScanProgress } from '@/shared/library';
@@ -78,51 +78,10 @@ function LibraryPage() {
   // Ids the cleanup dialog works on (empty: the whole library); null while it is closed.
   const [cleanupIds, setCleanupIds] = useState<string[] | null>(null);
   const [listEntries, setListEntries] = useState<LibraryEntry[] | null>(null);
-  // Ids of the books ticked for a group action; kept across filter changes, so a selection can be
-  // built from several searches. `anchor` is the book ticked last, the start of a Shift-click range.
-  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
-  const [anchor, setAnchor] = useState<string | null>(null);
   // The input follows the keystrokes; filtering and re-laying out the list can lag behind them.
   const deferredFilters = useDeferredValue(filters);
-  // The same book in several formats (a CBZ and a PDF) is one row; its other files are its editions.
-  const editions = useMemo(() => editionGroups(entries), [entries]);
-  const visible = useMemo(
-    () => collapseEditions(filterEntries(entries, deferredFilters), editions),
-    [entries, deferredFilters, editions],
-  );
-  const tags = useMemo(() => availableTags(entries, QUICK_TAGS), [entries]);
-  // Folded series last for the page's life only; a new key (a series renamed) starts unfolded.
-  const [collapsedSeries, setCollapsedSeries] = useState<ReadonlySet<string>>(() => new Set());
-  const rows = useMemo(
-    () => (grouped ? groupBySeries(visible, collapsedSeries) : ungroupedRows(sortEntries(visible, sort))),
-    [grouped, visible, collapsedSeries, sort],
-  );
-  const toggleSeries = (key: string) =>
-    setCollapsedSeries((current) => {
-      const next = new Set(current);
-      if (!next.delete(key)) next.add(key);
-      return next;
-    });
-  // The books in the order they are drawn (grouped by series or not, folded series left out): the
-  // order of a Shift-click range, of "select all" and of the books sent to a reading list.
-  const shown = useMemo(() => rows.flatMap((row) => (row.kind === 'entry' ? [row.entry] : [])), [rows]);
-  const selection = useMemo(() => selectedEntries(selected, shown, entries), [selected, shown, entries]);
-  const shownSelected = shown.filter((entry) => selected.has(entry.id)).length;
-
-  const tick = (id: string, shift: boolean) => {
-    setSelected(toggleSelection(selected, shown.map((entry) => entry.id), id, anchor, shift));
-    setAnchor(id);
-  };
-
-  const tickAllShown = () => {
-    const next = new Set(selected);
-    const select = shownSelected < shown.length;
-    for (const entry of shown) {
-      if (select) next.add(entry.id);
-      else next.delete(entry.id);
-    }
-    setSelected(next);
-  };
+  const { editions, visible, tags, rows, shown, toggleSeries } = useLibraryRows(entries, deferredFilters, grouped, sort);
+  const { selected, selection, shownSelected, tick, tickAllShown, clear: clearSelection } = useLibrarySelection(shown, entries);
 
   // Subscribed for the whole page's life rather than around each scan: the main process starts
   // sending progress as soon as the directory is picked, which is before `addFolder()` resolves.
@@ -263,7 +222,7 @@ function LibraryPage() {
           shownSelected={shownSelected}
           shown={shown.length}
           onToggleAll={tickAllShown}
-          onClear={() => setSelected(new Set())}
+          onClear={clearSelection}
           onAddToList={() => setListEntries(selection)}
         />
       )}
