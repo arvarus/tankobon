@@ -57,6 +57,7 @@ const library: Translation<typeof en> = {
   selectedCount_one: '{{count}} livre sélectionné',
   selectedCount_other: '{{count}} livres sélectionnés',
   addSelectionToList: 'Ajouter à une liste de lecture',
+  editSelection: 'Modifier les fiches',
   clearSelection: 'Vider la sélection',
   remove: 'Retirer de la bibliothèque',
   confirmRemoveTitle: 'Retirer ce livre ?',
