@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 
 import { AddToListDialog } from '@/components/add-to-list-dialog';
 import { BookDetails, BookRating, BookTags } from '@/components/book-row';
+import { BookBulkEditDialog } from '@/components/book-bulk-edit-dialog';
 import { BookEditDialog } from '@/components/book-edit-dialog';
 import { useConfirm } from '@/components/confirm-dialog';
 import { BookCard } from '@/components/library/book-card';
@@ -74,6 +75,7 @@ function LibraryPage() {
   const [scanStatus, setScanStatus] = useState<string | null>(null);
   const [lookupEntry, setLookupEntry] = useState<LibraryEntry | null>(null);
   const [editEntry, setEditEntry] = useState<LibraryEntry | null>(null);
+  const [bulkEntries, setBulkEntries] = useState<LibraryEntry[] | null>(null);
   const [listEntries, setListEntries] = useState<LibraryEntry[] | null>(null);
   // The input follows the keystrokes; filtering and re-laying out the list can lag behind them.
   const deferredFilters = useDeferredValue(filters);
@@ -220,6 +222,7 @@ function LibraryPage() {
           onToggleAll={tickAllShown}
           onClear={clearSelection}
           onAddToList={() => setListEntries(selection)}
+          onEdit={() => setBulkEntries(selection)}
         />
       )}
 
@@ -389,6 +392,7 @@ function LibraryPage() {
       {lookupEntry && (
         <MetadataDialog entry={lookupEntry} onClose={() => setLookupEntry(null)} onApplied={replaceEntry} />
       )}
+      {bulkEntries && <BookBulkEditDialog entries={bulkEntries} onClose={() => setBulkEntries(null)} />}
       {editEntry && <BookEditDialog entry={editEntry} onClose={() => setEditEntry(null)} onSaved={replaceEntry} />}
       {listEntries && <AddToListDialog entries={listEntries} onClose={() => setListEntries(null)} />}
       {confirmDialog}

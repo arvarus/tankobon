@@ -122,6 +122,8 @@ export interface LibraryApi {
   updateTags(id: string, tags: string[]): Promise<void>;
   /** Writes the given metadata fields (title, series, credits…) of a library entry; resolves with the updated entry, or null if it is gone. */
   updateMetadata(id: string, update: MetadataUpdate): Promise<LibraryEntry | null>;
+  /** Writes the same metadata fields on several library entries at once (all or none); resolves with the number of entries updated (unknown ids are skipped). */
+  updateMetadataMany(ids: string[], update: MetadataUpdate): Promise<number>;
   /** Cover thumbnail (first page, shrunk) of a library entry as WebP bytes, generated and cached first when missing; null if the entry is unknown or unreadable. */
   thumbnail(id: string): Promise<Uint8Array<ArrayBuffer> | null>;
 }
@@ -325,6 +327,7 @@ const api: TankobonApi = {
     updateRating: (id, rating) => ipcRenderer.invoke('library:update-rating', id, rating),
     updateTags: (id, tags) => ipcRenderer.invoke('library:update-tags', id, tags),
     updateMetadata: (id, update) => ipcRenderer.invoke('library:update-metadata', id, update),
+    updateMetadataMany: (ids, update) => ipcRenderer.invoke('library:update-metadata-many', ids, update),
     thumbnail: (id) => ipcRenderer.invoke('library:thumbnail', id),
   },
   readingLists: {
