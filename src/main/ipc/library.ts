@@ -90,6 +90,8 @@ export function registerLibraryIpc(
   imageScanner: ImageStatsScanner,
   organizer: LibraryOrganizer,
   cleaner: LibraryCleaner,
+  // The user a long run is for is the one who started it, even if the app is switched to another meanwhile.
+  activeUser: () => string,
 ): void {
   /** Announces the new state of entries a handler just wrote (the ones that still exist). */
   const notifyUpserted = (...ids: string[]) => {
@@ -157,8 +159,11 @@ export function registerLibraryIpc(
     if (!organizer.lock.tryStart('add')) return { status: 'error', message: organizer.lock.busyMessage() };
     try {
       const directory = filePaths[0];
+      const startedBy = activeUser();
       settingsRepo.set('lastScanFolder', directory);
       notify({ scope: 'settings', values: { lastScanFolder: directory } });
+      // Watched for the user who picked it, before the long scan: its books are then stored relative to it at once.
+      folders.add(directory);
       const summary = await scanIntoLibrary(
         repo,
         directory,
@@ -170,11 +175,11 @@ export function registerLibraryIpc(
         },
         (filePath) => decoder.inspect(filePath),
       );
-      folders.add(directory);
       // The comics already in the library under that folder are stored relative to it from now on.
       repo.adoptRoots();
       notify({ scope: 'library' });
-      const organization = await organizer.afterAdd(summary.addedEntries);
+      // Another user is active now: their organized folder is not the one this addition was made for.
+      const organization = activeUser() === startedBy ? await organizer.afterAdd(summary.addedEntries) : NOTHING_ORGANIZED;
       // The files are in: their pages are measured in the background, after the import.
       void imageScanner.kick();
       const { added, skipped, failed, total } = summary;
