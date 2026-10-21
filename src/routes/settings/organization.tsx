@@ -12,6 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import { useOrganizationOffer } from '@/hooks/use-organization-offer';
 import { useLibrary } from '@/hooks/use-library';
 import { useSettings } from '@/hooks/use-settings';
+import { formatArticleList, isArticleList, parseArticleList } from '@/shared/articles';
 import { duplicateGroups } from '@/lib/library-editions';
 import { fileNameExample, levelChoices, setLevel, structureExample } from '@/lib/library-structure';
 import { cn } from '@/lib/utils';
@@ -148,6 +149,7 @@ function OrganizationSettingsPage() {
         </p>
         <StructureEditor disabled={busy} />
         <FileNameEditor disabled={busy} />
+        <ArticlesEditor disabled={busy} />
         <div className="flex flex-col gap-1">
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -351,6 +353,68 @@ function FileNameEditor({ disabled }: { disabled: boolean }) {
         <p className="text-sm text-muted-foreground">{t('structureExample', { path: fileNameExample(draft) })}</p>
       )}
       <p className="text-sm text-muted-foreground">{t('fileNameHint', { fields })}</p>
+    </div>
+  );
+}
+
+/**
+ * The option to file names under their first real word, and its list of articles: a comma-separated text
+ * saved as it is typed while every article is valid (an invalid text stays a local draft, with its error).
+ */
+function ArticlesEditor({ disabled }: { disabled: boolean }) {
+  const { t } = useTranslation('settings', { keyPrefix: 'library' });
+  const { settings, update } = useSettings();
+  const [draft, setDraft] = useState(formatArticleList(settings.libraryArticles));
+  // Follows a change of the setting made elsewhere (an import), like the tree above.
+  const [stored, setStored] = useState(settings.libraryArticles);
+  if (stored !== settings.libraryArticles) {
+    setStored(settings.libraryArticles);
+    setDraft(formatArticleList(settings.libraryArticles));
+  }
+
+  const change = (value: string) => {
+    setDraft(value);
+    const articles = parseArticleList(value);
+    if (articles !== null && isArticleList(articles)) update('libraryArticles', articles);
+  };
+
+  const invalid = parseArticleList(draft) === null;
+
+  return (
+    <div className="flex flex-col gap-2">
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={settings.libraryIgnoreArticles}
+          disabled={disabled}
+          onChange={(event) => update('libraryIgnoreArticles', event.target.checked)}
+        />
+        {t('ignoreArticles')}
+      </label>
+      <p className="text-sm text-muted-foreground">{t('ignoreArticlesHint')}</p>
+      {settings.libraryIgnoreArticles && (
+        <>
+          <label htmlFor="library-articles" className="text-sm">
+            {t('articles')}
+          </label>
+          <input
+            id="library-articles"
+            type="text"
+            spellCheck={false}
+            autoComplete="off"
+            className="w-full max-w-md rounded-md border bg-background px-3 py-1.5 text-sm"
+            value={draft}
+            disabled={disabled}
+            aria-invalid={invalid}
+            onChange={(event) => change(event.target.value)}
+          />
+          {invalid ? (
+            <p className="text-sm text-destructive">{t('articlesError')}</p>
+          ) : (
+            <p className="text-sm text-muted-foreground">{t('articlesHint')}</p>
+          )}
+        </>
+      )}
     </div>
   );
 }

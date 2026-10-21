@@ -7,6 +7,7 @@ import { constants } from 'node:fs';
 import { copyFile, mkdir, rename, rmdir, stat, unlink } from 'node:fs/promises';
 import path from 'node:path';
 
+import { moveArticleToEnd } from '../../shared/articles';
 import { isSupportedComicFile } from '../../shared/comic';
 import { fillFileNameTemplate } from '../../shared/file-name-template';
 import { t } from '../../shared/i18n';
@@ -107,8 +108,12 @@ function authorName(entry: OrganizedEntry): string | null {
   return `${credit.lastName} ${credit.firstName}`.trim() || null;
 }
 
-/** The raw name of a level other than `letter` for `entry`, or null when the entry doesn't say. */
-function levelValue(level: Exclude<LibraryLevel, 'letter'>, entry: OrganizedEntry): string | null {
+/** The raw name of a level other than `letter` for `entry`, or null when the entry doesn't say. A leading article of `articles` goes to the end of a series or album name. */
+function levelValue(
+  level: Exclude<LibraryLevel, 'letter'>,
+  entry: OrganizedEntry,
+  articles: readonly string[] = [],
+): string | null {
   switch (level) {
     case 'year':
       return /^\d{4}/.exec(entry.releaseDate ?? '')?.[0] ?? null;
@@ -116,23 +121,30 @@ function levelValue(level: Exclude<LibraryLevel, 'letter'>, entry: OrganizedEntr
       return authorName(entry);
     case 'series':
       // A one-shot is its own series.
-      return entry.series?.trim() || entry.title;
+      return moveArticleToEnd(entry.series?.trim() || entry.title, articles);
     case 'album':
-      return entry.title;
+      return moveArticleToEnd(entry.title, articles);
   }
 }
 
 /**
  * The folders `structure` puts `entry` in, from the organized folder down: one per level, a missing
  * value (no year, nobody credited) giving the translated "Unknown" folder and a `letter` level the
- * first character of the next level's folder.
+ * first character of the next level's folder. With `articles`, a leading article is moved to the end of the
+ * series and album names (so `Le vent du nord` is filed under `V`).
  */
-export function structureFolders(structure: readonly LibraryLevel[], entry: OrganizedEntry): string[] {
+export function structureFolders(
+  structure: readonly LibraryLevel[],
+  entry: OrganizedEntry,
+  articles: readonly string[] = [],
+): string[] {
   const folders: string[] = [];
   for (let index = structure.length - 1; index >= 0; index -= 1) {
     const level = structure[index];
     folders.unshift(
-      level === 'letter' ? letterFolderName(folders[0] ?? '') : safeFolderName(levelValue(level, entry) ?? ''),
+      level === 'letter'
+        ? letterFolderName(folders[0] ?? '')
+        : safeFolderName(levelValue(level, entry, articles) ?? ''),
     );
   }
   return folders;
@@ -142,14 +154,20 @@ export function structureFolders(structure: readonly LibraryLevel[], entry: Orga
  * The name, without extension, that the template `fileName` (`AppSettings.libraryFileName`) gives
  * `entry`'s file: each field filled from the entry (a missing series, volume, year or author giving the
  * translated "Unknown"; the author as in the `author` level), then made safe like a folder name and cut
- * so that `extension` still fits in {@link MAX_NAME_BYTES}.
+ * so that `extension` still fits in {@link MAX_NAME_BYTES}. With `articles`, a leading article of the series and
+ * of the title goes to the end (`Vent du nord (Le)`).
  */
-export function templatedStem(fileName: string, entry: OrganizedEntry, extension: string): string {
+export function templatedStem(
+  fileName: string,
+  entry: OrganizedEntry,
+  extension: string,
+  articles: readonly string[] = [],
+): string {
   const unknown = t('library:organizationUnknown');
   const name = fillFileNameTemplate(fileName, {
-    series: entry.series?.trim() || unknown,
+    series: moveArticleToEnd(entry.series?.trim() ?? '', articles) || unknown,
     volume: entry.volume?.trim() || unknown,
-    title: entry.title,
+    title: moveArticleToEnd(entry.title, articles),
     year: levelValue('year', entry) ?? unknown,
     author: authorName(entry) ?? unknown,
   });
@@ -165,6 +183,8 @@ export interface OrganizationTarget {
   root: string;
   structure: readonly LibraryLevel[];
   fileName: string;
+  /** Articles moved to the end of the series and album names (`AppSettings.libraryArticles`); empty or missing when the option is off. */
+  articles?: readonly string[];
 }
 
 /**
@@ -182,11 +202,11 @@ export function organizedPaths(target: OrganizationTarget, entry: OrganizedEntry
   const stem =
     target.fileName === '' || !hasFiche(entry)
       ? originalStem(entry.path, entry.id)
-      : templatedStem(target.fileName, entry, extension);
+      : templatedStem(target.fileName, entry, extension, target.articles);
   if (target.structure.length === 0) {
     return [path.join(target.root, folderNameOf(stem, entry.id), `${stem}${extension}`)];
   }
-  const folder = path.join(target.root, ...structureFolders(target.structure, entry));
+  const folder = path.join(target.root, ...structureFolders(target.structure, entry, target.articles));
   const suffix = ` (${entry.id})`;
   const room = MAX_NAME_BYTES - Buffer.byteLength(suffix + extension);
   const short = Buffer.byteLength(stem) > room ? truncateToBytes(stem, room).replace(/[\s.]+$/, '') : stem;

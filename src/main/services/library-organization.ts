@@ -131,18 +131,20 @@ export function createLibraryOrganizer(
       libraryOrganizationFolder: root,
       libraryStructure: structure,
       libraryFileName: fileName,
+      libraryIgnoreArticles: ignoreArticles,
+      libraryArticles,
     } = settings.getAll();
-    return { mode, root, structure, fileName };
+    return { mode, root, structure, fileName, articles: ignoreArticles ? libraryArticles : [] };
   };
 
   /** The organized folder when the organization is on and its folder is there, else the error to return. */
   const usableRoot = async (): Promise<{ target: OrganizationTarget } | { status: 'error'; message: string }> => {
-    const { mode, root, structure, fileName } = current();
+    const { mode, root, structure, fileName, articles } = current();
     if (mode === 'off' || root === '') return { status: 'error', message: t('errors:library.organizationOff') };
     if (!(await isDirectory(root))) {
       return { status: 'error', message: t('errors:library.organizationFolderUnreachable', { folder: root }) };
     }
-    return { target: { root, structure, fileName } };
+    return { target: { root, structure, fileName, articles } };
   };
 
   const move = async (
@@ -166,14 +168,14 @@ export function createLibraryOrganizer(
     },
 
     async afterAdd(added) {
-      const { mode, root, structure, fileName } = current();
+      const { mode, root, structure, fileName, articles } = current();
       const plan = planOrganization(mode, root, added);
       if (plan.now.length === 0 && plan.offer.length === 0) return NOTHING_ORGANIZED;
       if (!(await isDirectory(root))) {
         // An unplugged drive: nothing moves, and offering would only fail again.
         return { moved: 0, failed: plan.now.length + plan.offer.length, pending: null };
       }
-      const { moved, failed } = await move({ root, structure, fileName }, plan.now);
+      const { moved, failed } = await move({ root, structure, fileName, articles }, plan.now);
       if (plan.offer.length === 0) return { moved, failed, pending: null };
 
       const token = randomUUID();
