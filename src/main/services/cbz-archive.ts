@@ -9,6 +9,15 @@ import { t } from '../../shared/i18n';
 import { checkedPage } from './image-size';
 import { imageMimeType, isPageEntry, MAX_ENTRY_SIZE, sortPages, type ComicArchive } from './comic-archive';
 
+/**
+ * Opens a ZIP for reading. Entry names are only ever used as keys into the archive, never as
+ * filesystem paths, so node-stream-zip's "Malicious entry" check (aimed at extraction) is skipped:
+ * archives made on Windows commonly hold names like `Folder/Folder\page.jpg`, which it refuses.
+ */
+export function openZip(filePath: string): StreamZip.StreamZipAsync {
+  return new StreamZip.async({ file: filePath, skipEntryNameValidation: true });
+}
+
 /** A `.cbz` (ZIP) comic, read entry by entry with node-stream-zip (the file stays open until `close()`). */
 export class CbzArchive implements ComicArchive {
   // Reads still in flight. node-stream-zip closes its file descriptor immediately on
@@ -29,7 +38,7 @@ export class CbzArchive implements ComicArchive {
 
   /** Opens and indexes the archive; throws (after closing it) when it holds no image. */
   static async open(filePath: string): Promise<CbzArchive> {
-    const zip = new StreamZip.async({ file: filePath });
+    const zip = openZip(filePath);
     try {
       const entries = await zip.entries();
       const files = Object.values(entries).filter((entry) => !entry.isDirectory);

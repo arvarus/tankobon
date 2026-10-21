@@ -188,6 +188,10 @@ See [ADR 0012](./decisions/0012-decoder-utility-process.md). Parsing a comic fil
 - `openArchive()` (`comic-service.ts`) picks the implementation from the file extension.
 - `ComicService` keeps opened archives alive between IPC calls, addressed by an opaque `randomUUID()`, distinct from the persistent library id. It lives in the [decoder process](#decoder-process), like everything on this page.
 
+### CBZ: entry names
+
+`openZip()` (`cbz-archive.ts`) turns off node-stream-zip's "Malicious entry" check (`skipEntryNameValidation`): it rejects a backslash in a name, which Windows tools write as a separator (`Folder/Folder\page.jpg`), and it protects extraction to disk, which never happens here (entries are only read by name, in memory). `removeEntries()` rewrites such names with `/`, since `yazl` refuses a backslash.
+
 ### CBZ: closing while reading
 
 `CbzArchive.close()` waits for in-flight `readPage()` calls to settle before closing the zip, and `readPage()` refuses to start once closing has begun. `node-stream-zip` closes its file descriptor immediately, and a read caught mid-way fails with `EBADF` on an internal stream whose error never reaches the `entryData()` promise: it becomes an *uncaught exception in the decoder process*. This happens routinely from the renderer (switching books while a page loads, leaving continuous mode while preloads run); see `cbz-archive.test.ts`.
