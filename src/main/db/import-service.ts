@@ -59,9 +59,12 @@ function toPageSize(width: unknown, height: unknown): Pick<LibraryEntry, 'avgPag
 /**
  * Whether `filePath` can be a comic's place: absolute (on either family of systems, since an export
  * travels between machines) and with an extension the app opens. An export is a file anyone can edit:
- * its paths later get opened, measured and, by the library organization, moved.
+ * its paths later get opened, measured and, by the library organization, moved. A network path
+ * (`\\host\share`, `//host/share`, `\\?\…`) is refused: on Windows the first `stat` of it would send the
+ * user's credentials to that host.
  */
 function isComicPath(filePath: string): boolean {
+  if (/^[\\/]{2}/.test(filePath)) return false;
   return (path.posix.isAbsolute(filePath) || path.win32.isAbsolute(filePath)) && isSupportedComicFile(filePath);
 }
 
