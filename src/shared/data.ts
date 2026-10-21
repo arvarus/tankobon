@@ -8,10 +8,14 @@
 export interface DatabaseLocation {
   /** Directory holding the database file. */
   directory: string;
+  /** Name of the database file inside {@link directory} (`tankobon.db` unless the user chose another). */
+  fileName: string;
   /** Full path of the database file itself, for display. */
   filePath: string;
   /** Whether that's Electron's `userData` directory, i.e. the app's default location. */
   isDefault: boolean;
+  /** Whether the file has the default name, `tankobon.db`. */
+  isDefaultFileName: boolean;
 }
 
 /** Outcome of picking a new directory for the database. Same rationale as `ImportResult`. */

@@ -232,6 +232,8 @@ export interface DatabaseApi {
   chooseLocation(): Promise<DatabaseLocationResult>;
   /** Points the app back at the default location; takes effect on the next start. */
   resetLocation(): Promise<DatabaseLocation>;
+  /** Names the database file (`.db` is added when missing; null goes back to `tankobon.db`); an invalid name comes back as an error result. Like the folder, it takes effect on the next start and the existing file is not renamed. */
+  setFileName(fileName: string | null): Promise<DatabaseLocationResult>;
   /** Restarts the app, e.g. to open the database from its new location. */
   relaunch(): Promise<void>;
 }
@@ -365,6 +367,7 @@ const api: TankobonApi = {
     getLocation: () => ipcRenderer.invoke('database:get-location'),
     chooseLocation: () => ipcRenderer.invoke('database:choose-location'),
     resetLocation: () => ipcRenderer.invoke('database:reset-location'),
+    setFileName: (fileName) => ipcRenderer.invoke('database:set-file-name', fileName),
     relaunch: () => ipcRenderer.invoke('database:relaunch'),
   },
   metadata: {

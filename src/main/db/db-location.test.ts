@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -6,8 +6,11 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { applyLanguage } from '../../shared/i18n';
 import {
   checkDirectoryUsable,
+  databaseFileNameError,
+  normalizeDatabaseFileName,
   readLocationPointer,
   resolveDatabaseLocation,
+  writeFileNamePointer,
   writeLocationPointer,
 } from './db-location';
 
@@ -29,8 +32,10 @@ describe('db-location', () => {
     expect(readLocationPointer(userData)).toBeNull();
     expect(resolveDatabaseLocation(userData)).toEqual({
       directory: userData,
+      fileName: 'tankobon.db',
       filePath: path.join(userData, 'tankobon.db'),
       isDefault: true,
+      isDefaultFileName: true,
     });
   });
 
@@ -39,8 +44,10 @@ describe('db-location', () => {
 
     expect(resolveDatabaseLocation(userData)).toEqual({
       directory: path.join(userData, 'elsewhere'),
+      fileName: 'tankobon.db',
       filePath: path.join(userData, 'elsewhere', 'tankobon.db'),
       isDefault: false,
+      isDefaultFileName: true,
     });
   });
 
@@ -49,6 +56,40 @@ describe('db-location', () => {
     writeLocationPointer(userData, null);
 
     expect(resolveDatabaseLocation(userData).isDefault).toBe(true);
+  });
+
+  it('round-trips a chosen file name and keeps it when the directory changes', () => {
+    writeFileNamePointer(userData, 'bibliotheque.db');
+    expect(resolveDatabaseLocation(userData)).toMatchObject({
+      directory: userData,
+      fileName: 'bibliotheque.db',
+      filePath: path.join(userData, 'bibliotheque.db'),
+      isDefault: true,
+      isDefaultFileName: false,
+    });
+
+    writeLocationPointer(userData, path.join(userData, 'elsewhere'));
+    expect(resolveDatabaseLocation(userData).filePath).toBe(path.join(userData, 'elsewhere', 'bibliotheque.db'));
+
+    writeLocationPointer(userData, null);
+    expect(resolveDatabaseLocation(userData).fileName).toBe('bibliotheque.db');
+  });
+
+  it('keeps the directory when the file name goes back to the default, and removes the pointer when nothing is left', () => {
+    writeLocationPointer(userData, path.join(userData, 'elsewhere'));
+    writeFileNamePointer(userData, 'a.db');
+    writeFileNamePointer(userData, null);
+    expect(resolveDatabaseLocation(userData).filePath).toBe(path.join(userData, 'elsewhere', 'tankobon.db'));
+
+    writeLocationPointer(userData, null);
+    expect(existsSync(path.join(userData, 'db-location.json'))).toBe(false);
+  });
+
+  it('ignores an unusable file name in the pointer file', () => {
+    writeFileSync(path.join(userData, 'db-location.json'), '{"fileName":"../evil"}', 'utf-8');
+    expect(resolveDatabaseLocation(userData).fileName).toBe('tankobon.db');
+    writeFileSync(path.join(userData, 'db-location.json'), '{"fileName":"ok.db","directory":42}', 'utf-8');
+    expect(resolveDatabaseLocation(userData)).toMatchObject({ fileName: 'ok.db', isDefault: true });
   });
 
   // The app has to start even if this file gets hand-edited or mangled by a sync tool.
@@ -72,5 +113,24 @@ describe('db-location', () => {
     writeFileSync(filePath, '', 'utf-8');
 
     expect(checkDirectoryUsable(filePath)).toMatch(/Impossible d'écrire/);
+  });
+
+  describe('database file names', () => {
+    it('adds .db when missing and trims the name', () => {
+      expect(normalizeDatabaseFileName('  ma base ')).toEqual({ fileName: 'ma base.db' });
+      expect(normalizeDatabaseFileName('Comics.DB')).toEqual({ fileName: 'Comics.DB' });
+    });
+
+    it.each(['', '   ', '.db', '..db', 'a/b', 'a\\b', 'a:b', 'a*b', 'a?b', 'a"b', 'a<b', 'a|b', 'x.', 'con', 'NUL.txt', 'lpt1', 'a\u0000b'])(
+      'refuses %j',
+      (name) => {
+        expect('error' in normalizeDatabaseFileName(name)).toBe(true);
+      },
+    );
+
+    it('refuses a name that is too long', () => {
+      expect(databaseFileNameError(`${'a'.repeat(98)}.db`)).not.toBeNull();
+      expect(databaseFileNameError(`${'a'.repeat(97)}.db`)).toBeNull();
+    });
   });
 });

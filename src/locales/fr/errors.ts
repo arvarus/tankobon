@@ -24,6 +24,7 @@ const errors: Translation<typeof en> = {
     timeout: 'Fichier illisible : la lecture a pris trop de temps et a été abandonnée.',
   },
   database: {
+    invalidFileName: 'Le nom du fichier doit se terminer par .db, faire au plus {{max}} caractères et éviter les caractères \\ / : * ? " < > | ainsi que les noms réservés par Windows.',
     notWritable: "Impossible d'écrire dans {{directory}}.",
   },
   data: {
