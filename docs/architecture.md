@@ -306,7 +306,7 @@ In the grid, `gridLines()` (`src/lib/library-groups.ts`, pure and tested) cuts t
 
 The search, tag and rating filters are page state seeded from `rememberedFilters()` (`src/lib/library-filters-memory.ts`, a module variable, so they survive leaving and returning to the page but not a restart, and are dropped when another user is active).
 
-The route (`src/routes/library.tsx`) keeps the page state and the virtualized rows; the toolbar and its parts (`LibraryToolbar`, `SortPicker`, `RatingFilterPicker`), the `SelectionBar`, the `ScanProgressBar` and the `SeriesHeader` are components of `src/components/library/`.
+The route (`src/routes/library.tsx`) keeps the page state and the virtualized rows; what it draws comes from two hooks (`src/hooks/`, tested under jsdom): `useLibraryRows()` filters, collapses the editions, sorts or groups by series (with the folded series) and gives the `rows` and the books `shown` in drawing order, and `useLibrarySelection()` holds the ticked ids and the Shift-click anchor over those `shown` books (`tick()`, `tickAllShown()`, `clear()`); the toolbar and its parts (`LibraryToolbar`, `SortPicker`, `RatingFilterPicker`), the `SelectionBar`, the `ScanProgressBar` and the `SeriesHeader` are components of `src/components/library/`.
 
 The library page (`src/routes/library.tsx`, at `/library`) draws only the rows near the viewport (`@tanstack/react-virtual`, which measures each row since their height varies with wrapping tags and the optional metadata line), inside its own scroll container below the toolbar; it filters with `useDeferredValue` so the search field never waits for the list, and scrolls back to the top when the filters change. A row scrolled out of view is unmounted, with its local state (a half-typed tag).
 
