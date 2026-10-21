@@ -25,6 +25,10 @@ export default {
   database: {
     notWritable: 'Cannot write to {{directory}}.',
   },
+  backup: {
+    notFound: 'This backup no longer exists.',
+    failed: 'Could not back up the database: {{message}}',
+  },
   data: {
     exportFailed: 'Could not write the export: {{message}}',
     clearFailed: 'Could not clear the library: {{message}}',

@@ -163,6 +163,10 @@ The location can't be an `AppSettings` entry, since the settings are stored *in*
 - The functions are pure (they take the `userData` path, never call `app.getPath`), which makes them testable; `database.ts` is the only bridge to Electron.
 - Changing the location only rewrites the pointer: the existing file is *not* moved, because pointing at a directory that already holds a `tankobon.db` (a synced folder, another machine) must keep that database. The open database stays open until the next start (`database:relaunch`).
 
+### Backups (`backup-service.ts`)
+
+See [ADR 0024](./decisions/0024-database-backups.md). Electron-free functions of paths: `createBackup()` runs `VACUUM INTO` a temporary file then renames it to `<database folder>/.tankobon/tankobon-AAAAMMJJ-HHMMSS.db`, `pruneBackups()` keeps the `backupKeep` most recent, `listBackups()` and `isBackupDue()` (shared settings `backupIntervalDays`, `backupKeep`, `lastBackupAt`; the last is in `MAIN_PROCESS_SETTINGS`). `runBackup()` (`src/main/ipc/database.ts`) ties them to the settings and the `data:changed` notification; `main.ts` calls it at start-up and every hour when due. Restoring is deferred: `database:restore-backup` writes `pending-restore.json` in `userData` (a backup is named, never a path: `isBackupName()`), and `openDatabase()` calls `applyPendingRestore()` before opening the file. Channels: `database:list-backups`, `database:create-backup`, `database:restore-backup`, `database:cancel-restore`.
+
 ### Export / import (`export-service.ts`, `import-service.ts`)
 
 - `buildExport()` snapshots library, reading lists and settings as `{ version: 1, exportedAt, library, readingLists, settings }`, written by `data:export` through a save dialog, whose default file name (`exportFileName()`) carries the local date and time. The library entries carry their looked-up metadata and credits; reading lists reference their books by **path**. The format stays `version: 1`, since those fields are only additions (an older export comes back with them empty). The settings include the metadata API keys.

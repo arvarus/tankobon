@@ -12,8 +12,11 @@ import type { ComicPage, OpenComicResult } from './shared/comic';
 import type { DataChange } from './shared/data-changes';
 import type {
   ClearLibraryResult,
+  BackupList,
+  BackupResult,
   DatabaseLocation,
   DatabaseLocationResult,
+  RestoreBackupResult,
   ExportResult,
   ImportResult,
 } from './shared/data';
@@ -236,6 +239,14 @@ export interface DatabaseApi {
   resetLocation(): Promise<DatabaseLocation>;
   /** Restarts the app, e.g. to open the database from its new location. */
   relaunch(): Promise<void>;
+  /** The copies of the database kept beside it, most recent first, and the one waiting to be restored. */
+  listBackups(): Promise<BackupList>;
+  /** Makes a copy of the database now (and deletes the ones beyond the number to keep). */
+  createBackup(): Promise<BackupResult>;
+  /** Schedules the restoration of a copy (by its `name`): the database file is overwritten at the next start. */
+  restoreBackup(name: string): Promise<RestoreBackupResult>;
+  /** Cancels a restoration that has not been applied yet. */
+  cancelRestore(): Promise<void>;
 }
 
 /**
@@ -369,6 +380,10 @@ const api: TankobonApi = {
     chooseLocation: () => ipcRenderer.invoke('database:choose-location'),
     resetLocation: () => ipcRenderer.invoke('database:reset-location'),
     relaunch: () => ipcRenderer.invoke('database:relaunch'),
+    listBackups: () => ipcRenderer.invoke('database:list-backups'),
+    createBackup: () => ipcRenderer.invoke('database:create-backup'),
+    restoreBackup: (name) => ipcRenderer.invoke('database:restore-backup', name),
+    cancelRestore: () => ipcRenderer.invoke('database:cancel-restore'),
   },
   metadata: {
     search: (query) => ipcRenderer.invoke('metadata:search', query),

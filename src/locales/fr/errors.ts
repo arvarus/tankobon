@@ -26,6 +26,10 @@ const errors: Translation<typeof en> = {
   database: {
     notWritable: "Impossible d'écrire dans {{directory}}.",
   },
+  backup: {
+    notFound: "Cette sauvegarde n'existe plus.",
+    failed: 'Impossible de sauvegarder la base : {{message}}',
+  },
   data: {
     exportFailed: "Impossible d'écrire l'export : {{message}}",
     clearFailed: 'Impossible de vider la bibliothèque : {{message}}',

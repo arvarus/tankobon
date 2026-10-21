@@ -7,6 +7,7 @@ import { applyAppMenu } from './main/app-menu';
 import { DecoderClient } from './main/decoder/decoder-client';
 import { spawnDecoderProcess } from './main/decoder/spawn-decoder';
 import { AchievementRepository } from './main/db/achievement-repository';
+import { isBackupDue } from './main/db/backup-service';
 import { openDatabase } from './main/db/database';
 import { LibraryFolderRepository } from './main/db/library-folder-repository';
 import { PathRoots, fileRootsStore } from './main/db/path-roots';
@@ -22,7 +23,7 @@ import { announceLaunchFile, registerAppIpc } from './main/ipc/app';
 import { registerComicIpc } from './main/ipc/comic';
 import { LaunchFiles } from './main/ipc/launch-files';
 import { PickedFiles } from './main/ipc/picked-files';
-import { registerDatabaseIpc } from './main/ipc/database';
+import { registerDatabaseIpc, runBackup } from './main/ipc/database';
 import { registerDataIpc } from './main/ipc/data';
 import { broadcastImageScanProgress, registerLibraryIpc } from './main/ipc/library';
 import { registerMetadataIpc } from './main/ipc/metadata';
@@ -190,7 +191,7 @@ app.whenReady().then(() => {
   const pickedFiles = new PickedFiles();
   const launchFiles = new LaunchFiles(pickedFiles, announceLaunchFile);
   registerComicIpc(libraryRepo, settingsRepo, decoder, broadcastDataChange, imageScanner, pickedFiles);
-  registerDatabaseIpc();
+  registerDatabaseIpc(db, settingsRepo, broadcastDataChange);
   registerMetadataIpc(settingsRepo, libraryRepo, decoder, broadcastDataChange);
   registerAchievementsIpc(achievementRepo, broadcastDataChange);
   registerAppIpc(launchFiles);
@@ -216,6 +217,16 @@ app.whenReady().then(() => {
   for (const filePath of earlyLaunchFiles.splice(0)) launchFiles.offer(filePath);
 
   createWindow();
+
+  // Scheduled copies of the database: checked at start-up, then every hour for sessions that stay open.
+  const backupIfDue = () => {
+    const { backupIntervalDays, lastBackupAt } = settingsRepo.getAll();
+    if (isBackupDue(lastBackupAt, backupIntervalDays)) runBackup(db, settingsRepo, broadcastDataChange);
+  };
+  backupIfDue();
+  const backupTimer = setInterval(backupIfDue, 60 * 60 * 1000);
+  backupTimer.unref();
+  app.on('will-quit', () => clearInterval(backupTimer));
 
   // In the background: the library is usable meanwhile, and its views update as the walk goes.
   if (settingsRepo.getAll().resyncOnStartup) {
