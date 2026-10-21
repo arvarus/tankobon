@@ -98,7 +98,6 @@ export default {
   duplicatesFailed: 'The duplicates could not be removed.',
   duplicatesFilesFailed_one: '{{count}} file could not be moved to the trash; its entry was removed from the library.',
   duplicatesFilesFailed_other: '{{count}} files could not be moved to the trash; their entries were removed from the library.',
-  cleanup: 'Clean the books (remove the files that are not images from the CBZ archives)',
   cleanupTitle: 'Clean the books',
   cleanupIntro: 'Removes the files that are not images (ComicInfo.xml, Thumbs.db, text files…) from the archives. Only CBZ files can be rewritten. Nothing is deleted before you confirm.',
   cleanupAnalyzing: 'Analyzing the archives…',

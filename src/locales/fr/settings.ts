@@ -129,6 +129,8 @@ const settings: Translation<typeof en> = {
     organizeAllDone_other: '{{count}} BD déplacées',
     organizeAllFailed_one: "{{count}} n'a pas pu être déplacée",
     organizeAllFailed_other: "{{count}} n'ont pas pu être déplacées",
+    cleanup: 'Nettoyer les livres…',
+    cleanupHint: "Retire les fichiers qui ne sont pas des images (ComicInfo.xml, Thumbs.db, fichiers texte…) des archives CBZ de toute la bibliothèque, après avoir montré ce qui serait supprimé. Rien n'est supprimé avant votre confirmation.",
     duplicates: 'Rechercher les doublons…',
     duplicatesHint: 'Liste les livres présents en plusieurs fichiers du même format (même série et même tome, ou même titre), pour n’en garder qu’un fichier et retirer les autres de la bibliothèque.',
   },
