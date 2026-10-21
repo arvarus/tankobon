@@ -11,11 +11,22 @@ import { t } from '../../shared/i18n';
 import { imageMimeType, isPageEntry, MAX_ENTRY_SIZE, sortPages, type ComicArchive } from './comic-archive';
 import { checkedPage } from './image-size';
 
+/**
+ * The bytes of `file` as an `ArrayBuffer` of exactly its length, without copying them when `readFile` gave
+ * a buffer of its own (a copy doubles the memory of a CBR, which is held whole while the book is open).
+ */
+function exactArrayBuffer(file: Buffer): ArrayBuffer {
+  const buffer = file.buffer as ArrayBuffer;
+  return file.byteOffset === 0 && file.byteLength === buffer.byteLength
+    ? buffer
+    : buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
+}
+
 // The Emscripten-compiled wasm module is copied next to the bundled decoder-worker.cjs (see
 // vite.decoder.config.mts): loaded once and reused for every archive opened.
 let wasmBinary: ArrayBuffer | undefined;
 async function getWasmBinary(): Promise<ArrayBuffer> {
-  wasmBinary ??= Uint8Array.from(await readFile(join(__dirname, 'unrar.wasm'))).buffer;
+  wasmBinary ??= exactArrayBuffer(await readFile(join(__dirname, 'unrar.wasm')));
   return wasmBinary;
 }
 
@@ -50,7 +61,7 @@ export class CbrArchive implements ComicArchive {
 
   /** Reads and indexes the archive; throws when it holds no image. */
   static async open(filePath: string): Promise<CbrArchive> {
-    const data = Uint8Array.from(await readFile(filePath)).buffer;
+    const data = exactArrayBuffer(await readFile(filePath));
     // The generator must be drained fully, or the underlying archive handle leaks.
     const files = await withExtractor(data, (extractor) =>
       [...extractor.getFileList().fileHeaders].filter((header) => !header.flags.directory),

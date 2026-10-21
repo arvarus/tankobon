@@ -79,7 +79,40 @@ function readWebp(bytes: Uint8Array, view: DataView): ImageSize | null {
   return null;
 }
 
-/** Dimensions declared by a PNG, JPEG, GIF or WebP header, or null for any other (or truncated) data. */
+function readBmp(bytes: Uint8Array, view: DataView): ImageSize | null {
+  // 14-byte file header, then the DIB header, whose first field is its own size.
+  if (bytes.length < 26) {
+    return null;
+  }
+  if (view.getUint32(14, true) === 12) {
+    // BITMAPCOREHEADER: 16-bit unsigned width and height.
+    return { width: view.getUint16(18, true), height: view.getUint16(20, true) };
+  }
+  // BITMAPINFOHEADER and later: signed 32-bit, a negative height meaning rows stored top-down.
+  return bytes.length < 26 ? null : { width: Math.abs(view.getInt32(18, true)), height: Math.abs(view.getInt32(22, true)) };
+}
+
+/** How far into an AVIF file the `ispe` boxes are looked for: the `meta` box comes first. */
+const AVIF_SCAN_BYTES = 64 * 1024;
+
+function readAvif(bytes: Uint8Array, view: DataView): ImageSize | null {
+  // The `ispe` (image spatial extents) properties: box size 20, "ispe", version and flags, then width and
+  // height as big-endian 32-bit numbers. A file can hold several (a thumbnail, grid tiles): the largest counts.
+  let largest: ImageSize | null = null;
+  const end = Math.min(bytes.length, AVIF_SCAN_BYTES) - 15;
+  for (let at = 4; at < end; at += 1) {
+    if (bytes[at] !== 0x69 || ascii(bytes, at, 4) !== 'ispe' || view.getUint32(at - 4) !== 20) {
+      continue;
+    }
+    const size = { width: view.getUint32(at + 8), height: view.getUint32(at + 12) };
+    if (largest === null || size.width * size.height > largest.width * largest.height) {
+      largest = size;
+    }
+  }
+  return largest;
+}
+
+/** Dimensions declared by a PNG, JPEG, GIF, WebP, BMP or AVIF header, or null for any other (or truncated) data. */
 export function readImageSize(bytes: Uint8Array): ImageSize | null {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   if (PNG_SIGNATURE.every((byte, index) => bytes[index] === byte)) {
@@ -94,6 +127,12 @@ export function readImageSize(bytes: Uint8Array): ImageSize | null {
   }
   if (magic === 'RIFF' && ascii(bytes, 8, 4) === 'WEBP') {
     return readWebp(bytes, view);
+  }
+  if (bytes[0] === 0x42 && bytes[1] === 0x4d) {
+    return readBmp(bytes, view);
+  }
+  if (bytes.length >= 12 && ascii(bytes, 4, 4) === 'ftyp' && ['avif', 'avis'].includes(ascii(bytes, 8, 4))) {
+    return readAvif(bytes, view);
   }
   return null;
 }
