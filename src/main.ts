@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, session } from 'electron';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import started from 'electron-squirrel-startup';
@@ -32,6 +32,7 @@ import { registerSettingsIpc } from './main/ipc/settings';
 import { registerUserIpc } from './main/ipc/users';
 import { applyMainLanguage, onMainLanguageApplied } from './main/language';
 import { comicPathFromArgv } from './main/launch-files';
+import { isPermissionAllowed } from './main/permissions';
 import { isOnlineOnly } from './main/services/cloud-files';
 import { createImageStatsScanner } from './main/services/image-stats-scanner';
 import { createLibraryCleaner } from './main/services/library-cleanup';
@@ -92,6 +93,8 @@ const createWindow = () => {
       event.preventDefault();
     }
   });
+  // A redirect is a navigation too: the app's page never legitimately redirects.
+  mainWindow.webContents.on('will-redirect', (event) => event.preventDefault());
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
 
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
@@ -109,6 +112,11 @@ const createWindow = () => {
 
 app.whenReady().then(() => {
   if (!isFirstInstance) return;
+  // Electron grants every permission request by default: only what the page uses is (see permissions.ts).
+  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) =>
+    callback(isPermissionAllowed(permission)),
+  );
+  session.defaultSession.setPermissionCheckHandler((_webContents, permission) => isPermissionAllowed(permission));
   // Only the application's own page may call the IPC handlers.
   setAppUrl(
     MAIN_WINDOW_VITE_DEV_SERVER_URL ??
