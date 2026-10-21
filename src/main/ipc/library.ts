@@ -111,29 +111,35 @@ export function registerLibraryIpc(
       return { status: 'cancelled' };
     }
 
-    const filePath = filePaths[0];
-    const title = path.basename(filePath, path.extname(filePath));
-    if (repo.hasPath(filePath)) {
-      return { status: 'exists', title };
-    }
+    // Held from here to the end, the organization included: a walk or a move must not meet this one.
+    if (!organizer.lock.tryStart('add')) return { status: 'error', message: organizer.lock.busyMessage() };
     try {
-      // Same path as a scanned file: the decoder counts the pages and caches the cover.
-      const { pageCount, fileCount } = await decoder.inspect(filePath);
-      const { size } = await stat(filePath);
-      repo.register(filePath, title, pageCount, fileCount, size);
-      // A `.nfo` next to the comic documents the new row.
-      const nfo = await readNfoFor(filePath);
-      const newId = repo.idOfPath(filePath);
-      if (nfo && newId) repo.updateMetadata(newId, nfo);
-    } catch (error) {
-      return { status: 'error', message: openErrorMessage(error) };
+      const filePath = filePaths[0];
+      const title = path.basename(filePath, path.extname(filePath));
+      if (repo.hasPath(filePath)) {
+        return { status: 'exists', title };
+      }
+      try {
+        // Same path as a scanned file: the decoder counts the pages and caches the cover.
+        const { pageCount, fileCount } = await decoder.inspect(filePath);
+        const { size } = await stat(filePath);
+        repo.register(filePath, title, pageCount, fileCount, size);
+        // A `.nfo` next to the comic documents the new row.
+        const nfo = await readNfoFor(filePath);
+        const newId = repo.idOfPath(filePath);
+        if (nfo && newId) repo.updateMetadata(newId, nfo);
+      } catch (error) {
+        return { status: 'error', message: openErrorMessage(error) };
+      }
+      // New row: the library slice reloads (a targeted upsert would need the entry's id).
+      notify({ scope: 'library' });
+      const id = repo.idOfPath(filePath);
+      const organization = id ? await organizer.afterAdd([{ id, path: filePath }]) : NOTHING_ORGANIZED;
+      void imageScanner.kick();
+      return { status: 'added', title, organization };
+    } finally {
+      organizer.lock.end();
     }
-    // New row: the library slice reloads (a targeted upsert would need the entry's id).
-    notify({ scope: 'library' });
-    const id = repo.idOfPath(filePath);
-    const organization = id ? await organizer.afterAdd([{ id, path: filePath }]) : NOTHING_ORGANIZED;
-    void imageScanner.kick();
-    return { status: 'added', title, organization };
   });
 
   handle(LIBRARY_CHANNELS.addFolder, args(), async (event): Promise<ScanResult> => {
@@ -148,29 +154,34 @@ export function registerLibraryIpc(
       return { status: 'cancelled' };
     }
 
-    const directory = filePaths[0];
-    settingsRepo.set('lastScanFolder', directory);
-    notify({ scope: 'settings', values: { lastScanFolder: directory } });
-    const summary = await scanIntoLibrary(
-      repo,
-      directory,
-      (progress) => {
-        // The renderer may be gone (window closed mid-scan); dropping the update is enough.
-        if (!event.sender.isDestroyed()) {
-          event.sender.send(LIBRARY_CHANNELS.scanProgress, progress);
-        }
-      },
-      (filePath) => decoder.inspect(filePath),
-    );
-    folders.add(directory);
-    // The comics already in the library under that folder are stored relative to it from now on.
-    repo.adoptRoots();
-    notify({ scope: 'library' });
-    const organization = await organizer.afterAdd(summary.addedEntries);
-    // The files are in: their pages are measured in the background, after the import.
-    void imageScanner.kick();
-    const { added, skipped, failed, total } = summary;
-    return { status: 'ok', directory, added, skipped, failed, total, organization };
+    if (!organizer.lock.tryStart('add')) return { status: 'error', message: organizer.lock.busyMessage() };
+    try {
+      const directory = filePaths[0];
+      settingsRepo.set('lastScanFolder', directory);
+      notify({ scope: 'settings', values: { lastScanFolder: directory } });
+      const summary = await scanIntoLibrary(
+        repo,
+        directory,
+        (progress) => {
+          // The renderer may be gone (window closed mid-scan); dropping the update is enough.
+          if (!event.sender.isDestroyed()) {
+            event.sender.send(LIBRARY_CHANNELS.scanProgress, progress);
+          }
+        },
+        (filePath) => decoder.inspect(filePath),
+      );
+      folders.add(directory);
+      // The comics already in the library under that folder are stored relative to it from now on.
+      repo.adoptRoots();
+      notify({ scope: 'library' });
+      const organization = await organizer.afterAdd(summary.addedEntries);
+      // The files are in: their pages are measured in the background, after the import.
+      void imageScanner.kick();
+      const { added, skipped, failed, total } = summary;
+      return { status: 'ok', directory, added, skipped, failed, total, organization };
+    } finally {
+      organizer.lock.end();
+    }
   });
 
   handle(LIBRARY_CHANNELS.pickOrganizationFolder, args(), async (event): Promise<PickOrganizationFolderResult> => {

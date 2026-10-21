@@ -14,6 +14,7 @@ import type { ImageStatsScanner } from './image-stats-scanner';
 import {
   createLibraryOrganizer,
   createLibraryRunLock,
+  type LibraryRun,
   createResynchronizer,
   NOTHING_ORGANIZED,
   type LibraryOrganizer,
@@ -57,7 +58,7 @@ describe('createLibraryRunLock', () => {
 });
 
 /** The message of the lock while `run` holds it. */
-function createBusyMessage(run: 'resync' | 'organize'): string {
+function createBusyMessage(run: LibraryRun): string {
   const lock = createLibraryRunLock();
   lock.tryStart(run);
   return lock.busyMessage();
@@ -219,6 +220,21 @@ describe('library organization and resynchronization', () => {
       expect(await organizer.organizeAll(progress)).toEqual({ status: 'ok', moved: 2, failed: 0 });
       expect(progress).toHaveBeenLastCalledWith(expect.objectContaining({ phase: 'done' }));
       expect(await organizer.countUnorganized()).toMatchObject({ count: 0 });
+    });
+
+    it('refuses an offer while another run holds the lock, and keeps it for later', async () => {
+      const source = await folderWith(['a.cbz']);
+      const root = await folderWith([]);
+      configure('ask', root);
+      const outcome = await organizer.afterAdd([register(path.join(source, 'a.cbz'))]);
+      const token = outcome.pending!.token;
+
+      expect(organizer.lock.tryStart('add')).toBe(true);
+      expect((await organizer.organize(token)).status).toBe('error');
+      organizer.lock.end();
+
+      expect(await organizer.organize(token)).toEqual({ status: 'ok', moved: 1, failed: 0 });
+      expect(organizer.lock.tryStart('add')).toBe(true);
     });
 
     it('refuse to start while a resynchronization holds the lock, and release it afterwards', async () => {

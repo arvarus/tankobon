@@ -83,7 +83,11 @@ export async function scanIntoLibrary(
       const { pageCount, fileCount } = await inspect(filePath);
       const { size } = await stat(filePath);
       const title = path.basename(filePath, path.extname(filePath));
-      repo.register(filePath, title, pageCount, fileCount, size);
+      // Another run may have registered the file while it was being opened.
+      if (repo.register(filePath, title, pageCount, fileCount, size) === 'existing') {
+        summary.skipped += 1;
+        continue;
+      }
       summary.added += 1;
       const id = repo.idOfPath(filePath);
       if (id) {
