@@ -3,6 +3,7 @@
  * @module
  */
 import StreamZip from 'node-stream-zip';
+import type { Readable } from 'node:stream';
 
 import type { ComicPage } from '../../shared/comic';
 import { t } from '../../shared/i18n';
@@ -57,7 +58,7 @@ export class CbzArchive implements ComicArchive {
     if ((this.sizes.get(entryName) ?? 0) > MAX_ENTRY_SIZE) {
       throw new Error(t('errors:archive.entryTooLarge', { entry: entryName }));
     }
-    const read = this.zip.entryData(entryName);
+    const read = this.readBounded(entryName);
     this.pendingReads.add(read);
     try {
       const data = await read;
@@ -66,6 +67,30 @@ export class CbzArchive implements ComicArchive {
     } finally {
       this.pendingReads.delete(read);
     }
+  }
+
+  /**
+   * Inflates an entry, giving up past `MAX_ENTRY_SIZE`. The size the central directory declares can't be
+   * trusted: node-stream-zip skips its own size check when the entry sets the "data descriptor" flag, so a
+   * few kilobytes of ZIP could otherwise inflate to gigabytes in memory.
+   */
+  private async readBounded(entryName: string): Promise<Buffer> {
+    // Typed as a web stream by node-stream-zip; it is a Node `Readable`.
+    const stream = (await this.zip.stream(entryName)) as unknown as Readable;
+    const chunks: Buffer[] = [];
+    let total = 0;
+    try {
+      for await (const chunk of stream as AsyncIterable<Buffer>) {
+        total += chunk.length;
+        if (total > MAX_ENTRY_SIZE) {
+          throw new Error(t('errors:archive.entryTooLarge', { entry: entryName }));
+        }
+        chunks.push(chunk);
+      }
+    } finally {
+      stream.destroy();
+    }
+    return Buffer.concat(chunks);
   }
 
   /** Waits for in-flight reads to settle, then closes the ZIP file. */
