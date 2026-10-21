@@ -37,7 +37,7 @@ export default {
     organizationExpired: 'These comics can no longer be moved from here: add them again or resynchronize.',
     cleanupExpired: 'This analysis is no longer available: run it again.',
     cleanupRunning: 'A cleanup of the books is already running.',
-    organizeRunning: 'A resynchronization or an organization of the library is already running.',
+    organizeRunning: 'Another operation on the library files (adding, resynchronization or organization) is already running.',
     trashFailed: 'The book was removed from the library, but its file could not be moved to the trash: {{message}}',
   },
   import: {

@@ -1,5 +1,5 @@
 import { createWriteStream } from 'node:fs';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
@@ -13,6 +13,7 @@ import { LibraryRepository } from '../db/library-repository';
 import { migrate } from '../db/schema';
 import { listJunkEntries, removeEntries } from './cbz-cleaner';
 import { createLibraryCleaner, groupJunk, junkExtension, type CleanupDecoder } from './library-cleanup';
+import { createLibraryRunLock } from './library-organization';
 
 applyLanguage('fr');
 
@@ -98,6 +99,33 @@ describe('createLibraryCleaner', () => {
     if (analysis.status !== 'ok') throw new Error('analysis failed');
     await cleaner.apply(analysis.token, [], noProgress);
     expect(await cleaner.apply(analysis.token, [], noProgress)).toMatchObject({ status: 'error' });
+  });
+
+  it('refuses to rewrite while another run holds the library lock, keeping the analysis', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'tankobon-cleanup-lock-'));
+    const file = join(dir, 'a.cbz');
+    await writeFile(file, 'x');
+    const repo = repository();
+    repo.register(file, 'a', 10, 5, 100);
+    const decoder: CleanupDecoder = {
+      listJunk: vi.fn(async () => [{ name: 'Thumbs.db', size: 10 }]),
+      cleanArchive: vi.fn(async () => ({ fileCount: 1 })),
+    };
+    const lock = createLibraryRunLock();
+    const cleaner = createLibraryCleaner(repo, decoder, vi.fn(), lock);
+    const analysis = await cleaner.analyze([], noProgress);
+    if (analysis.status !== 'ok') throw new Error('analysis failed');
+
+    lock.tryStart('resync');
+    expect(await cleaner.apply(analysis.token, [], noProgress)).toMatchObject({ status: 'error' });
+    expect(decoder.cleanArchive).not.toHaveBeenCalled();
+
+    lock.end();
+    await cleaner.apply(analysis.token, [], noProgress);
+    expect(decoder.cleanArchive).toHaveBeenCalled();
+    // Released after the run.
+    expect(lock.tryStart('add')).toBe(true);
+    await rm(dir, { recursive: true, force: true });
   });
 
   it('rewrites the archives except the kinds kept, and updates the entry', async () => {

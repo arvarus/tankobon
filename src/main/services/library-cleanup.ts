@@ -14,7 +14,7 @@ import type { CleanupAnalysisResult, CleanupGroup, CleanupResult, ScanProgress }
 import type { LibraryRepository } from '../db/library-repository';
 import type { CleanedArchive, JunkEntry } from './cbz-cleaner';
 import { isOnlineOnly } from './cloud-files';
-import type { LibraryNotifier } from './library-organization';
+import type { LibraryNotifier, LibraryRunLock } from './library-organization';
 
 /** The part of the decoder process the cleanup calls. */
 export interface CleanupDecoder {
@@ -88,6 +88,8 @@ export function createLibraryCleaner(
   repo: LibraryRepository,
   decoder: CleanupDecoder,
   notify: LibraryNotifier,
+  // Shared with the resynchronizer and the organizer: a book is not rewritten while a run moves or registers files.
+  lock?: LibraryRunLock,
 ): LibraryCleaner {
   const analyses = new Map<string, PlannedBook[]>();
   let running = false;
@@ -143,6 +145,7 @@ export function createLibraryCleaner(
       const books = analyses.get(token);
       if (!books) return { status: 'error', message: t('errors:library.cleanupExpired') };
       if (running) return { status: 'error', message: t('errors:library.cleanupRunning') };
+      if (lock && !lock.tryStart('cleanup')) return { status: 'error', message: lock.busyMessage() };
       analyses.delete(token);
       running = true;
       try {
@@ -171,6 +174,7 @@ export function createLibraryCleaner(
         return { status: 'ok', ...result };
       } finally {
         running = false;
+        lock?.end();
       }
     },
   };

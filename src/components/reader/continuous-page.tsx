@@ -2,6 +2,8 @@ import { Loader2 } from 'lucide-react';
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { Button } from '@/components/ui/button';
+
 /** A page within this distance of the viewport (above or below) is fetched. */
 const LOAD_MARGIN = '800px 0px';
 /**
@@ -15,13 +17,15 @@ interface ContinuousPageProps {
   comicId: string;
   index: number;
   onActive: (index: number) => void;
+  /** Asks for the book to be opened again, when this page could not be read. */
+  onRetry: () => void;
   /** The scroll container holding the pages, whose position follows the height changes above the viewport. */
   scrollRef: RefObject<HTMLDivElement | null>;
   /** True while the resumed page is pinned, which already corrects the scroll position itself. */
   pinnedRef: RefObject<boolean>;
 }
 
-export function ContinuousPage({ comicId, index, onActive, scrollRef, pinnedRef }: ContinuousPageProps) {
+export function ContinuousPage({ comicId, index, onActive, onRetry, scrollRef, pinnedRef }: ContinuousPageProps) {
   const { t } = useTranslation('reader');
   const ref = useRef<HTMLDivElement>(null);
   const [shouldLoad, setShouldLoad] = useState(false);
@@ -135,7 +139,16 @@ export function ContinuousPage({ comicId, index, onActive, scrollRef, pinnedRef 
           className={releasedHeight === null ? 'flex h-[60vh] w-full items-center justify-center text-neutral-500' : 'flex w-full items-center justify-center text-neutral-500'}
           style={releasedHeight === null ? undefined : { height: releasedHeight }}
         >
-          {failed ? <span className="text-sm">{t('pageUnreadable')}</span> : <Loader2 className="size-6 animate-spin" />}
+          {failed ? (
+            <div className="flex flex-col items-center gap-2 text-sm">
+              <span>{t('pageUnreadable')}</span>
+              <Button variant="outline" size="sm" onClick={onRetry}>
+                {t('retry')}
+              </Button>
+            </div>
+          ) : (
+            <Loader2 className="size-6 animate-spin" />
+          )}
         </div>
       )}
     </div>

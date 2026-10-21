@@ -140,6 +140,8 @@ export interface ImageScanProgress {
 /** Outcome of `library.addFolder()`. */
 export type ScanResult =
   | { status: 'cancelled' }
+  /** Another run over the library files is in progress; `message` is in the interface language. */
+  | { status: 'error'; message: string }
   | {
       status: 'ok';
       directory: string;
