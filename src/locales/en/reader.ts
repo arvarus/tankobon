@@ -25,6 +25,7 @@ export default {
   upscaleUnavailable: 'Enhancement unavailable',
   upscale: 'Enhance (AI)',
   pageUnreadable: 'Unreadable page',
+  retry: 'Try again',
   pageAlt: 'Page {{page}}',
   previousPage: 'Previous page',
   nextPage: 'Next page',
