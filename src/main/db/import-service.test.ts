@@ -59,6 +59,22 @@ describe('parseExport', () => {
     expect(parsed.library.map((entry) => entry.path)).toEqual(['/comics/ok.cbz', 'C:\\Comics\\windows.PDF']);
   });
 
+  it('refuses network and device paths, which would make Windows reach out to another host', () => {
+    const parsed = parseExport(
+      JSON.stringify({
+        version: 1,
+        library: [
+          { path: '\\\\attacker\\share\\one.cbz' },
+          { path: '//attacker/share/two.cbz' },
+          { path: '\\\\?\\UNC\\attacker\\share\\three.cbz' },
+          { path: '/comics/ok.cbz' },
+        ],
+      }),
+    );
+
+    expect(parsed.library.map((entry) => entry.path)).toEqual(['/comics/ok.cbz']);
+  });
+
   it('drops unusable entries, fills in missing fields and clamps the current page', () => {
     const parsed = parseExport(
       JSON.stringify({
