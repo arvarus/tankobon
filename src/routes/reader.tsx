@@ -39,7 +39,7 @@ function ReaderPage() {
   const navigate = useNavigate();
   const { confirmWithChoice, dialog: confirmDialog } = useConfirm();
   const [removeError, setRemoveError] = useState<string | null>(null);
-  const { comic, page, pageUrl, pageKey, error, loading, pickAndOpen, openFile, close, next, prev } = useComic({
+  const { comic, page, pageUrl, pageKey, error, loading, pickAndOpen, openFile, reopen, close, next, prev } = useComic({
     loadPages: settings.readingMode !== 'continuous',
   });
   const { fullscreen, toggle: toggleFullscreen } = useReaderFullscreen(comic !== null);
@@ -110,6 +110,7 @@ function ReaderPage() {
         pickAndOpen={pickAndOpen}
         close={close}
         onActivePage={persistProgress}
+        onRetry={reopen}
         fullscreen={fullscreen}
         toggleFullscreen={toggleFullscreen}
         background={settings.readerBackground}
