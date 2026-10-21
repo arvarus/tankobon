@@ -1,9 +1,9 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { lstat, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { buildNfo, MAX_NFO_BYTES, nfoPathFor, parseNfo, readNfoFor, writeNfoIfMissing } from './nfo';
+import { buildNfo, MAX_NFO_BYTES, nfoPathFor, parseNfo, readNfoFor, writeNfo, writeNfoIfMissing } from './nfo';
 
 const dirs: string[] = [];
 afterEach(async () => {
@@ -114,6 +114,38 @@ describe('buildNfo', () => {
   it('leaves out the unknown fields', () => {
     const text = buildNfo({ title: 'Seul', series: null, volume: null, releaseDate: null, language: null, credits: [] });
     expect(parseNfo(text)).toEqual({ title: 'Seul' });
+  });
+});
+
+describe('writeNfo', () => {
+  const base = { title: 'Un', series: null, volume: null, releaseDate: null, language: null, credits: [] };
+
+  it('replaces the sidecar, leaving no temporary file', async () => {
+    const d = await mkdtemp(path.join(tmpdir(), 'tankobon-nfo-'));
+    dirs.push(d);
+    const comic = path.join(d, 'Tome 1.cbz');
+    await writeFile(nfoPathFor(comic), '<title>Ancien</title>');
+    expect(await writeNfo({ ...base, path: comic })).toBe(true);
+    expect(await readFile(nfoPathFor(comic), 'utf8')).toContain('<title>Un</title>');
+    expect(await readdir(d)).toEqual(['Tome 1.nfo']);
+  });
+
+  it('does not write through a symbolic link planted as the sidecar', async () => {
+    const d = await mkdtemp(path.join(tmpdir(), 'tankobon-nfo-'));
+    dirs.push(d);
+    const comic = path.join(d, 'Tome 1.cbz');
+    const precious = path.join(d, 'precious.txt');
+    await writeFile(precious, 'keep me');
+    await symlink(precious, nfoPathFor(comic));
+
+    expect(await writeNfo({ ...base, path: comic })).toBe(true);
+    expect(await readFile(precious, 'utf8')).toBe('keep me');
+    expect((await lstat(nfoPathFor(comic))).isSymbolicLink()).toBe(false);
+    expect(await readFile(nfoPathFor(comic), 'utf8')).toContain('<title>Un</title>');
+  });
+
+  it('returns false when the folder is missing', async () => {
+    expect(await writeNfo({ ...base, path: path.join(tmpdir(), 'tankobon-nfo-none', 'a.cbz') })).toBe(false);
   });
 });
 
