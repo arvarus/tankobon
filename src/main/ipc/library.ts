@@ -23,8 +23,8 @@ import type { LibraryCleaner } from '../services/library-cleanup';
 import { NOTHING_ORGANIZED, type LibraryOrganizer, type Resynchronizer } from '../services/library-organization';
 import { openErrorMessage } from '../services/open-error';
 import { scanIntoLibrary } from '../services/library-scanner';
-import { coverSidecarPath } from '../services/cover-sidecar';
-import { nfoPathFor, readNfoFor } from '../services/nfo';
+import { readNfoFor } from '../services/nfo';
+import { trashSidecars } from '../services/sidecars';
 import { lastOpenedDirectory } from './comic';
 import type { NotifyDataChange } from './data-changes';
 import { existingDirectory, openDialogFor } from './dialogs';
@@ -313,9 +313,7 @@ export function registerLibraryIpc(
         };
       }
     }
-    for (const sidecar of [coverSidecarPath(entry.path), nfoPathFor(entry.path)]) {
-      if (await stat(sidecar).catch(() => null)) await shell.trashItem(sidecar).catch(() => undefined);
-    }
+    await trashSidecars(entry.path, (sidecar) => shell.trashItem(sidecar));
     return { status: 'ok' };
   });
 
@@ -333,11 +331,11 @@ export function registerLibraryIpc(
         result.removed++;
         await decoder.removeThumbnail(entry.path).catch(() => undefined);
         if (!deleteFiles) continue;
-        // To the trash, so a wrong choice can still be undone; the cover beside the comic goes along.
+        // To the trash, so a wrong choice can still be undone; the cover and the .nfo beside the comic go along.
         try {
           await shell.trashItem(entry.path);
           result.filesDeleted++;
-          await shell.trashItem(coverSidecarPath(entry.path)).catch(() => undefined);
+          await trashSidecars(entry.path, (sidecar) => shell.trashItem(sidecar));
         } catch {
           result.filesFailed++;
         }
