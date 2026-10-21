@@ -103,6 +103,11 @@ export class DecoderClient {
     return this.call('thumbnail', filePath, archiveId, cachedOnly);
   }
 
+  /** Replaces a book's cover with `image`; rejects when it isn't a usable image. */
+  setThumbnail(filePath: string, image: Uint8Array): Promise<void> {
+    return this.call('setThumbnail', filePath, image);
+  }
+
   /** Deletes a book's thumbnail. */
   removeThumbnail(filePath: string): Promise<void> {
     return this.call('removeThumbnail', filePath);

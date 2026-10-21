@@ -31,6 +31,8 @@ const errors: Translation<typeof en> = {
     clearFailed: 'Impossible de vider la bibliothèque : {{message}}',
   },
   library: {
+    coverUnknownBook: 'Ce livre est introuvable.',
+    coverFailed: 'Impossible de changer la couverture : {{message}}',
     resyncRunning: 'Une resynchronisation est déjà en cours.',
     unknownFolder: 'Ce dossier ne fait pas partie de la bibliothèque.',
     organizationOff: "L'organisation de la bibliothèque est désactivée, ou n'a pas de dossier.",

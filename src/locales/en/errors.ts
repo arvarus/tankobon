@@ -30,6 +30,8 @@ export default {
     clearFailed: 'Could not clear the library: {{message}}',
   },
   library: {
+    coverUnknownBook: 'Could not find this book.',
+    coverFailed: 'Could not change the cover: {{message}}',
     resyncRunning: 'A resynchronization is already running.',
     unknownFolder: 'This folder is not part of the library.',
     organizationOff: 'The library organization is off, or has no folder.',

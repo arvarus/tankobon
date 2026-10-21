@@ -291,3 +291,9 @@ export type CleanupResult =
       /** Books that could not be rewritten (left as they were). */
       failed: number;
     };
+
+/** Largest image `library:set-cover` accepts, in bytes (the renderer sends the cropped picture, a few hundred kilobytes at most). */
+export const MAX_COVER_BYTES = 8 * 1024 * 1024;
+
+/** Outcome of replacing a book's cover. Same rationale as `ImportResult`. */
+export type SetCoverResult = { status: 'ok' } | { status: 'error'; message: string };
