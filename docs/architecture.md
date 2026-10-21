@@ -14,7 +14,7 @@ The app follows the standard Electron three-process split, with a strict boundar
 | Renderer | `src/renderer.tsx`, `src/routes/`, `src/hooks/`, `src/components/`, `src/lib/` | React 19 UI; talks to main exclusively through `window.tankobon`. |
 | Shared types | `src/shared/` | Types used on both sides of the IPC boundary (`ComicInfo`, `LibraryEntry`, `AppSettings`…). |
 
-The window is also locked to the app's own page: `src/main.ts` cancels `will-navigate` to any other URL and denies every `window.open`/middle-click new window, and `src/renderer.tsx` cancels the default of `dragover`/`drop` on the document (the components' own drop handlers still run), so dropping a PDF or an HTML file on the window can't replace the UI. The CSP in `index.html` adds `base-uri 'none'`, `form-action 'none'` and `object-src 'none'`.
+The window is also locked to the app's own page: `src/main.ts` cancels `will-navigate` to any other URL and denies every `window.open`/middle-click new window, and `src/renderer.tsx` cancels the default of `dragover`/`drop` on the document (the components' own drop handlers still run), so dropping a PDF or an HTML file on the window can't replace the UI. A redirect is cancelled like a navigation (`will-redirect`), and the session grants only the two web permissions the page uses, fullscreen and clipboard writes (`isPermissionAllowed()`, `src/main/permissions.ts`): Electron would otherwise grant camera, location and the like to any request. The CSP in `index.html` adds `base-uri 'none'`, `form-action 'none'` and `object-src 'none'`.
 
 `src/main.ts` opens the database once, builds the repositories and the thumbnail cache, registers the IPC handlers of `src/main/ipc/*.ts`, then creates the window.
 
