@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { fileNameTemplateError, fillFileNameTemplate, isFileNameTemplate, parseFileName } from './file-name-template';
+import {
+  fileNameTemplateError,
+  fillFileNameTemplate,
+  isFileNameTemplate,
+  padVolume,
+  parseFileName,
+} from './file-name-template';
 
 describe('fileNameTemplateError', () => {
   it('accepts the known fields, plain text and the empty template', () => {
@@ -57,5 +63,42 @@ describe('parseFileName', () => {
 
   it('keeps the first value of a repeated field', () => {
     expect(parseFileName('A - B', '{title} - {title}')).toEqual({ title: 'A' });
+  });
+});
+
+describe('volume padding', () => {
+  const values = { series: 'Tintin', volume: '7', title: 'Le Lotus bleu', year: '1936', author: 'Hergé' };
+
+  it('pads a whole-number volume with zeros to the requested width', () => {
+    expect(padVolume('7', 2)).toBe('07');
+    expect(padVolume('7', 3)).toBe('007');
+    expect(padVolume('12', 2)).toBe('12');
+    expect(padVolume('123', 2)).toBe('123');
+    expect(padVolume('0', 2)).toBe('00');
+  });
+
+  it('leaves any other volume as it is', () => {
+    for (const volume of ['HS', '12.1', '1/2', '3-4', 'Unknown', '']) expect(padVolume(volume, 3)).toBe(volume);
+  });
+
+  it('fills {volume:N} in a template, {volume} staying as it is', () => {
+    expect(fillFileNameTemplate('{series} T{volume:2}', values)).toBe('Tintin T07');
+    expect(fillFileNameTemplate('{series} T{volume:4}', values)).toBe('Tintin T0007');
+    expect(fillFileNameTemplate('{series} T{volume}', values)).toBe('Tintin T7');
+    expect(fillFileNameTemplate('T{volume:2}', { ...values, volume: 'HS' })).toBe('THS');
+  });
+
+  it('accepts widths 1 to 4 on volume only', () => {
+    expect(isFileNameTemplate('{volume:1}')).toBe(true);
+    expect(isFileNameTemplate('{volume:4}')).toBe(true);
+    for (const template of ['{volume:0}', '{volume:5}', '{volume:}', '{volume:a}', '{series:2}', '{title:2}', '{volume:2'])
+      expect(fileNameTemplateError(template)).toBe('braces');
+  });
+
+  it('reads a padded volume back without its zeros', () => {
+    expect(parseFileName('Tintin - T07', '{series} - T{volume:2}')).toEqual({ series: 'Tintin', volume: '7' });
+    expect(parseFileName('Tintin - T012', '{series} - T{volume:3}')).toEqual({ series: 'Tintin', volume: '12' });
+    expect(parseFileName('Tintin - T00', '{series} - T{volume:2}')).toEqual({ series: 'Tintin', volume: '0' });
+    expect(parseFileName('Tintin - THS', '{series} - T{volume:2}')).toEqual({ series: 'Tintin', volume: 'HS' });
   });
 });

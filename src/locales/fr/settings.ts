@@ -104,7 +104,7 @@ const settings: Translation<typeof en> = {
     sidecarCoversHint: 'Coché, la vignette est enregistrée à côté de chaque BD (« Nom.cover.webp »), si bien qu’un dossier partagé transporte ses vignettes. Décoché, les vignettes sont extraites et gardées uniquement dans le cache local de cette machine (celles déjà présentes à côté des BD restent utilisées).',
     writeNfo: 'Écrire un fichier d’informations (.nfo) à côté de chaque BD',
     writeNfoHint: 'Coché, une resynchronisation et l’enregistrement d’une recherche écrivent le .nfo de la BD. Décoché, aucun n’est créé ni remplacé (ceux qui existent sont toujours lus).',
-    fileNameHint: 'Champs : {{fields}}. Vide, les fichiers gardent leur nom d’origine ; l’extension est toujours conservée. Une série, un tome, une année ou un auteur manquant donne « Inconnu », et les caractères qu’un nom de fichier ne peut pas contenir deviennent « _ ». Le modifier ne renomme rien à lui seul : « Organiser toute la bibliothèque… » renomme les BD.',
+    fileNameHint: 'Champs : {{fields}}. {volume:2} complète un tome entier par des zéros à gauche (de {volume:1} à {volume:4}) : 7 donne 07, les autres tomes (HS, 12.1…) restent tels quels. Vide, les fichiers gardent leur nom d’origine ; l’extension est toujours conservée. Une série, un tome, une année ou un auteur manquant donne « Inconnu », et les caractères qu’un nom de fichier ne peut pas contenir deviennent « _ ». Le modifier ne renomme rien à lui seul : « Organiser toute la bibliothèque… » renomme les BD.',
     fileNameErrors: {
       separator: 'Un nom de fichier ne peut pas contenir « / » ni « \\ » : les dossiers viennent de l’arborescence ci-dessus.',
       braces: 'Champ inconnu : utilisez {{fields}}.',
