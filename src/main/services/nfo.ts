@@ -29,11 +29,46 @@ function decode(text: string): string {
   });
 }
 
+/** Longest raw text looked at when cleaning one value: values are cut to {@link MAX_VALUE_LENGTH} anyway. */
+const MAX_RAW_LENGTH = 4000;
+/** Most elements of one name taken from a file. */
+const MAX_ELEMENTS = 200;
+
+/** `text` without its `<…>` tags (an unclosed `<` stays as text), in one pass. */
+function stripTags(text: string): string {
+  let result = '';
+  let from = 0;
+  for (;;) {
+    const open = text.indexOf('<', from);
+    if (open === -1) break;
+    const close = text.indexOf('>', open);
+    // No `>` left: no later `<` can close either.
+    if (close === -1) break;
+    result += `${text.slice(from, open)} `;
+    from = close + 1;
+  }
+  return result + text.slice(from);
+}
+
+/** `text` with its `<![CDATA[…]]>` wrappers removed (an unclosed one stays as text), in one pass. */
+function unwrapCdata(text: string): string {
+  let result = '';
+  let from = 0;
+  for (;;) {
+    const open = text.indexOf('<![CDATA[', from);
+    if (open === -1) break;
+    const close = text.indexOf(']]>', open + 9);
+    if (close === -1) break;
+    result += text.slice(from, open) + text.slice(open + 9, close);
+    from = close + 3;
+  }
+  return result + text.slice(from);
+}
+
 /** The text of a value: CDATA unwrapped, entities decoded, control characters and extra spaces removed, cut to length. */
 function cleanValue(raw: string): string {
-  const unwrapped = raw.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1');
   // eslint-disable-next-line no-control-regex
-  const text = decode(unwrapped.replace(/<[^>]*>/g, ' ')).replace(/[\u0000-\u001f\u007f]/g, ' ');
+  const text = decode(stripTags(unwrapCdata(raw.slice(0, MAX_RAW_LENGTH)))).replace(/[\u0000-\u001f\u007f]/g, ' ');
   return text.replace(/\s+/g, ' ').trim().slice(0, MAX_VALUE_LENGTH);
 }
 
@@ -42,10 +77,51 @@ interface Element {
   text: string;
 }
 
-/** Every `<name …>text</name>` of the file, in order (names compared ignoring case). */
+const isSpace = (char: string | undefined) => char !== undefined && /\s/.test(char);
+
+/**
+ * Every `<name …>text</name>` of the file, in order (names compared ignoring case), at most
+ * {@link MAX_ELEMENTS}. Found with `indexOf` rather than a lazy regex, which re-scans the rest of the file
+ * for each opening tag that has no closing one: a 256 KiB file of `<author>` took seconds.
+ */
 function elements(xml: string, name: string): Element[] {
-  const pattern = new RegExp(`<${name}(\\s[^>]*)?>([\\s\\S]*?)</${name}\\s*>`, 'gi');
-  return [...xml.matchAll(pattern)].map((match) => ({ attributes: match[1] ?? '', text: cleanValue(match[2]) }));
+  const lower = xml.toLowerCase();
+  const open = `<${name.toLowerCase()}`;
+  const close = `</${name.toLowerCase()}`;
+  const found: Element[] = [];
+  let from = 0;
+  while (found.length < MAX_ELEMENTS) {
+    const start = lower.indexOf(open, from);
+    if (start === -1) break;
+    const afterName = start + open.length;
+    const next = xml[afterName];
+    if (next !== '>' && !isSpace(next)) {
+      from = afterName;
+      continue;
+    }
+    const tagEnd = xml.indexOf('>', afterName);
+    if (tagEnd === -1) break;
+    // A closing tag is `</name`, optional spaces, `>`; one that isn't is skipped.
+    let end = lower.indexOf(close, tagEnd + 1);
+    let afterClose = -1;
+    while (end !== -1) {
+      let cursor = end + close.length;
+      while (isSpace(xml[cursor])) cursor++;
+      if (xml[cursor] === '>') {
+        afterClose = cursor + 1;
+        break;
+      }
+      end = lower.indexOf(close, end + close.length);
+    }
+    // No closing tag here: none can follow a later opening tag either.
+    if (afterClose === -1) break;
+    found.push({
+      attributes: xml.slice(afterName, tagEnd).slice(0, 1000),
+      text: cleanValue(xml.slice(tagEnd + 1, end)),
+    });
+    from = afterClose;
+  }
+  return found;
 }
 
 function firstText(xml: string, ...names: string[]): string {

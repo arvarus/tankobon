@@ -63,6 +63,25 @@ describe('parseNfo', () => {
   });
 });
 
+describe('parseNfo on hostile input', () => {
+  // These made the lazy regexes re-scan the whole file for every opening tag: 4 to 19 s at 256 KiB, in the main process.
+  it.each(['<title>', '<author>', '<writer ', '<![CDATA[', '<', '<author role="a">x</author '])(
+    'stays fast on a file full of %j',
+    (unit) => {
+      const xml = unit.repeat(Math.floor(MAX_NFO_BYTES / unit.length));
+      const start = performance.now();
+      parseNfo(xml);
+      expect(performance.now() - start).toBeLessThan(500);
+    },
+  );
+
+  it('still reads an element after an unclosed lookalike and with spaced closing tags', () => {
+    const nfo = parseNfo('<titlefoo>x</titlefoo><title>Un</title ><author role="writer">Jean Van Hamme</author  >');
+    expect(nfo?.title).toBe('Un');
+    expect(nfo?.credits).toEqual([{ firstName: 'Jean', lastName: 'Van Hamme', role: 'writer' }]);
+  });
+});
+
 describe('readNfoFor', () => {
   async function dir(): Promise<string> {
     const d = await mkdtemp(path.join(tmpdir(), 'tankobon-nfo-'));
