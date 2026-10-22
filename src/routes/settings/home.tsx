@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { InfoTip } from "@/components/info-tip";
 import { SettingsSection } from "@/components/settings-section";
 import { Button } from "@/components/ui/button";
 import { useSettings } from "@/hooks/use-settings";
@@ -29,21 +30,8 @@ function HomeSettingsPage() {
 
   return (
     <>
-      <SettingsSection title={t("enabled")}>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={settings.homeEnabled}
-            onChange={(event) => update("homeEnabled", event.target.checked)}
-          />
-          {t("enabledLabel")}
-        </label>
-        <p className="text-xs text-muted-foreground">{t("enabledHint")}</p>
-      </SettingsSection>
-
       <SettingsSection title={t("sectionsTitle")}>
         <p className="text-xs text-muted-foreground">{t("sectionsHint")}</p>
-        <p className="text-xs text-muted-foreground">{t("countHint")}</p>
         <ul className="flex w-fit min-w-72 max-w-full flex-col divide-y rounded-md border">
           {sections.map((section, index) => (
             <li
@@ -66,6 +54,11 @@ function HomeSettingsPage() {
                   }
                 />
                 {t(`sections.${section.id}`)}
+                <InfoTip
+                  label={t("infoNamed", { name: t(`sections.${section.id}`) })}
+                >
+                  {t(`info.${section.id}`)}
+                </InfoTip>
               </label>
               <label className="flex items-center gap-2 text-sm">
                 {t("count")}
