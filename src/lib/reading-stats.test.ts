@@ -4,7 +4,7 @@ import { applyLanguage } from '@/shared/i18n';
 import type { LibraryEntry } from '@/shared/library';
 import type { ReadingStats } from '@/shared/stats';
 
-import { buildBuckets, formatDuration, libraryTotals, MONTHS_SHOWN, periodKey, periodLabel, totalSeconds } from './reading-stats';
+import { buildBuckets, buildLibraryGrowth, formatDuration, libraryTotals, MONTHS_SHOWN, periodKey, periodLabel, totalSeconds } from './reading-stats';
 
 const NOW = new Date(2026, 9, 5, 12); // 5 October 2026, local time
 
@@ -120,5 +120,32 @@ describe('formatting', () => {
     applyLanguage('fr');
     expect(periodLabel('2026-10')).toMatch(/oct/);
     expect(formatDuration(3 * 3600 + 20 * 60)).toBe('3 h 20 min');
+  });
+});
+
+describe('buildLibraryGrowth', () => {
+  const entries = [
+    entry({ addedAt: new Date(2025, 5, 10).toISOString() }),
+    entry({ addedAt: new Date(2026, 8, 20).toISOString() }),
+    entry({ addedAt: new Date(2026, 9, 1).toISOString() }),
+  ];
+
+  it('accumulates the books by month, keeping the earlier ones in the first slot', () => {
+    const points = buildLibraryGrowth(entries, 'month', NOW);
+    expect(points).toHaveLength(MONTHS_SHOWN);
+    expect(points[0]).toEqual({ key: '2025-11', books: 1 });
+    expect(points.at(-2)).toEqual({ key: '2026-09', books: 2 });
+    expect(points.at(-1)).toEqual({ key: '2026-10', books: 3 });
+  });
+
+  it('accumulates by year since the first book', () => {
+    expect(buildLibraryGrowth(entries, 'year', NOW)).toEqual([
+      { key: '2025', books: 1 },
+      { key: '2026', books: 3 },
+    ]);
+  });
+
+  it('gives zeros for an empty library', () => {
+    expect(buildLibraryGrowth([], 'year', NOW)).toEqual([{ key: '2026', books: 0 }]);
   });
 });

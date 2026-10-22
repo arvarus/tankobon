@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useLibrary } from '@/hooks/use-library';
 import {
   buildBuckets,
+  buildLibraryGrowth,
   formatDuration,
   libraryTotals,
   periodLabel,
@@ -49,6 +50,7 @@ function StatsPage() {
 
   const totals = useMemo(() => libraryTotals(library ?? []), [library]);
   const buckets = useMemo(() => (stats ? buildBuckets(stats, period) : []), [stats, period]);
+  const growth = useMemo(() => buildLibraryGrowth(library ?? [], period), [library, period]);
   const periodName = t(period === 'month' ? 'charts.periodMonth' : 'charts.periodYear');
 
   return (
@@ -92,6 +94,20 @@ function StatsPage() {
             valueLabel: t('barBooks', { count: bucket.booksRead }),
           }))}
         />
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-lg font-medium">{t('charts.libraryGrowth')}</h2>
+        <BarChart
+          ariaLabel={t('charts.libraryGrowthAria', { period: periodName })}
+          data={growth.map((point) => ({
+            key: point.key,
+            label: periodLabel(point.key),
+            value: point.books,
+            valueLabel: t('barBooks', { count: point.books }),
+          }))}
+        />
+        <p className="text-xs text-muted-foreground">{t('charts.libraryGrowthNote')}</p>
       </section>
 
       <section className="flex flex-col gap-2">
