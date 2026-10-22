@@ -3,6 +3,7 @@
  * @module
  */
 import type { ArchiveInfo, ComicPage } from '../../shared/comic';
+import type { ConvertedArchive } from '../services/cbr-converter';
 import type { CleanedArchive, JunkEntry } from '../services/cbz-cleaner';
 import { currentLanguage, t, type Language } from '../../shared/i18n';
 import type {
@@ -91,6 +92,11 @@ export class DecoderClient {
   /** The non-image files of a CBZ, null for another format; see `DecoderMethods.listJunk`. */
   listJunk(filePath: string): Promise<JunkEntry[] | null> {
     return this.call('listJunk', filePath);
+  }
+
+  /** Writes a CBR as a CBZ; see `DecoderMethods.convertCbr`. Not timed: a large archive may take long. */
+  convertCbr(cbrPath: string, cbzPath: string): Promise<ConvertedArchive> {
+    return this.call('convertCbr', cbrPath, cbzPath);
   }
 
   /** Rewrites a CBZ without the entries `names`; see `DecoderMethods.cleanArchive`. */

@@ -2,6 +2,7 @@
  * What the decoder process does for each `DecoderMethods` call. Free of Electron, so it runs under Vitest.
  * @module
  */
+import { convertCbrToCbz } from '../services/cbr-converter';
 import { listJunkEntries, removeEntries } from '../services/cbz-cleaner';
 import { comicFormat } from '../../shared/comic';
 import { ComicService, openArchive } from '../services/comic-service';
@@ -49,6 +50,7 @@ export function createDecoderHandlers(
     },
     listJunk: (filePath) => (comicFormat(filePath) === 'CBZ' ? listJunkEntries(filePath) : Promise.resolve(null)),
     cleanArchive: (filePath, names) => removeEntries(filePath, names),
+    convertCbr: (cbrPath, cbzPath) => convertCbrToCbz(cbrPath, cbzPath),
     thumbnail: (filePath, archiveId, cachedOnly) =>
       cachedOnly
         ? thumbnails.read(filePath)

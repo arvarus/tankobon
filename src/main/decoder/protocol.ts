@@ -4,6 +4,7 @@
  */
 import type { ArchiveInfo, ComicPage } from '../../shared/comic';
 import type { Language } from '../../shared/i18n';
+import type { ConvertedArchive } from '../services/cbr-converter';
 import type { CleanedArchive, JunkEntry } from '../services/cbz-cleaner';
 
 /** What `inspect` learns about an archive: enough to register it in the library. */
@@ -49,6 +50,11 @@ export interface DecoderMethods {
    * once the new archive has been checked.
    */
   cleanArchive(filePath: string, names: string[]): CleanedArchive;
+  /**
+   * Writes the CBR at `cbrPath` as a CBZ at `cbzPath` (see `convertCbrToCbz()`): the new archive is checked
+   * before it appears, and the CBR is left untouched. Rejects when `cbzPath` exists or the CBR can't be read.
+   */
+  convertCbr(cbrPath: string, cbzPath: string): ConvertedArchive;
   /**
    * A book's cover thumbnail, generated first when missing (from the open archive `archiveId`, if any).
    * With `cachedOnly`, the file is never opened: the cached thumbnail or null.

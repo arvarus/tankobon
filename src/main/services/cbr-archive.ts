@@ -15,7 +15,7 @@ import { checkedPage } from './image-size';
  * The bytes of `file` as an `ArrayBuffer` of exactly its length, without copying them when `readFile` gave
  * a buffer of its own (a copy doubles the memory of a CBR, which is held whole while the book is open).
  */
-function exactArrayBuffer(file: Buffer): ArrayBuffer {
+export function exactArrayBuffer(file: Buffer): ArrayBuffer {
   const buffer = file.buffer as ArrayBuffer;
   return file.byteOffset === 0 && file.byteLength === buffer.byteLength
     ? buffer
@@ -37,7 +37,8 @@ async function getWasmBinary(): Promise<ArrayBuffer> {
 // archive keeps only its bytes, and every operation creates its own extractor and uses it up
 // synchronously, one at a time, so that no other creation can slip in between.
 let queue: Promise<unknown> = Promise.resolve();
-function withExtractor<T>(data: ArrayBuffer, use: (extractor: Extractor<Uint8Array>) => T): Promise<T> {
+/** Runs `use` on a fresh extractor of `data`, one at a time (see above); `use` must drain what it needs before returning. */
+export function withExtractor<T>(data: ArrayBuffer, use: (extractor: Extractor<Uint8Array>) => T): Promise<T> {
   const run = queue.then(async () => {
     const extractor = await createExtractorFromData({ data, wasmBinary: await getWasmBinary() });
     return use(extractor);
