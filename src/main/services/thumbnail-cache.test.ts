@@ -149,7 +149,18 @@ describe('ThumbnailCache', () => {
 
     // A generation that holds the queue until it is released.
     let release: (page: ComicPage) => void = () => undefined;
-    const busy = cache.ensure('/bd/busy.cbz', () => new Promise<ComicPage>((resolve) => (release = resolve)));
+    let started: () => void = () => undefined;
+    const holding = new Promise<void>((resolve) => (started = resolve));
+    const busy = cache.ensure(
+      '/bd/busy.cbz',
+      () =>
+        new Promise<ComicPage>((resolve) => {
+          release = resolve;
+          started();
+        }),
+    );
+    // `ensure()` reads the cache before it queues: wait until it really holds the queue.
+    await holding;
     const start = Date.now();
     await cache.storeFromArchive(archive, 50);
     expect(Date.now() - start).toBeLessThan(2_000);
