@@ -13,6 +13,7 @@ const stats: Translation<typeof en> = {
   },
   period: {
     label: 'Regrouper par',
+    week: 'Semaine',
     month: 'Mois',
     year: 'Année',
   },
@@ -25,6 +26,7 @@ const stats: Translation<typeof en> = {
     empty: 'Rien d’enregistré pour cette période.',
     booksReadAria: 'Livres lus par {{period}}',
     timeAria: 'Temps de lecture par {{period}}',
+    periodWeek: 'semaine',
     periodMonth: 'mois',
     periodYear: 'année',
   },
