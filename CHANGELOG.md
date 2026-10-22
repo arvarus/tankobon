@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented here. This file is maintained by [release-please](https://github.com/googleapis/release-please) from the [Conventional Commits](https://www.conventionalcommits.org/) merged into `master`: don't edit released entries by hand. New versions are inserted above the previous ones.
 
+## [0.17.0](https://github.com/arvarus/tankobon/compare/v0.16.0...v0.17.0) (2026-10-22)
+
+
+### Features
+
+* **home:** raise the maximum number of books per block to 30 ([#217](https://github.com/arvarus/tankobon/issues/217)) ([ad6c096](https://github.com/arvarus/tankobon/commit/ad6c096a6309326fc3f4cbfb1238d40820185637))
+* **library:** convert the CBR of the organized folder to CBZ ([#218](https://github.com/arvarus/tankobon/issues/218)) ([3b99b99](https://github.com/arvarus/tankobon/commit/3b99b995f0c211bed5c69150f467738b7e24c53a))
+* **organization:** move orphan folders to .deletedByTankobon ([#221](https://github.com/arvarus/tankobon/issues/221)) ([2834b4a](https://github.com/arvarus/tankobon/commit/2834b4a3619f618552f327b4064c0b7c331a171e))
+* **stats:** add a chart of the number of books in the library ([#213](https://github.com/arvarus/tankobon/issues/213)) ([e1eee96](https://github.com/arvarus/tankobon/commit/e1eee96e617960af52ad55dc09fa394f2835071a))
+* **stats:** add a weekly view to the statistics charts ([#216](https://github.com/arvarus/tankobon/issues/216)) ([4c86739](https://github.com/arvarus/tankobon/commit/4c867397609feaf1373dce9968befc30c3a626b0))
+
 ## [0.16.0](https://github.com/pprb/tankobon/compare/v0.15.0...v0.16.0) (2026-10-21)
 
 
