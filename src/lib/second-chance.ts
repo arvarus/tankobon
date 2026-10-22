@@ -2,6 +2,7 @@
  * The home page's "second chance" block: the library's worst-rated books, offered again.
  * @module
  */
+import { sampleRandom } from '@/lib/home-picks';
 import type { LibraryEntry } from '@/shared/library';
 
 /** The highest rating (out of 5) that still counts as a poor one. */
@@ -20,4 +21,17 @@ export function lowestRated(entries: readonly LibraryEntry[], limit: number = SE
     .filter((entry) => entry.rating >= 1 && entry.rating <= LOW_RATING_MAX)
     .sort((a, b) => a.rating - b.rating || collator.compare(a.title, b.title))
     .slice(0, limit);
+}
+
+/**
+ * A random selection of poorly rated books: `count` books drawn among all those rated
+ * {@link LOW_RATING_MAX} or less, worst first.
+ */
+export function pickRandomLowRated(
+  entries: readonly LibraryEntry[],
+  count: number = SECOND_CHANCE_LIMIT,
+  random: () => number = Math.random,
+): LibraryEntry[] {
+  const pool = lowestRated(entries, Infinity);
+  return sampleRandom(pool, count, random).sort((a, b) => a.rating - b.rating || a.title.localeCompare(b.title));
 }

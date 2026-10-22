@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { lowestRated } from './second-chance';
+import { lowestRated, pickRandomLowRated } from './second-chance';
 import type { LibraryEntry } from '@/shared/library';
 
 const entry = (id: string, rating: number, title = id): LibraryEntry =>
@@ -21,5 +21,19 @@ describe('lowestRated', () => {
     const input = [entry('a', 2), entry('b', 1), entry('c', 1)];
     expect(lowestRated(input, 2).map((e) => e.id)).toEqual(['b', 'c']);
     expect(input.map((e) => e.id)).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('pickRandomLowRated', () => {
+  it('draws among all the poorly rated books, not only the worst, worst first', () => {
+    const library = [entry('a', 1), entry('b', 2), entry('c', 2), entry('d', 4), entry('e', 0)];
+    const picks = pickRandomLowRated(library, 2, () => 0.99);
+    expect(picks).toHaveLength(2);
+    expect(picks.every((e) => e.rating >= 1 && e.rating <= 2)).toBe(true);
+    expect(picks.map((e) => e.rating)).toEqual([...picks.map((e) => e.rating)].sort());
+  });
+
+  it('returns fewer books when fewer are poorly rated', () => {
+    expect(pickRandomLowRated([entry('a', 1), entry('b', 5)], 5).map((e) => e.id)).toEqual(['a']);
   });
 });

@@ -44,7 +44,14 @@ export function pickRandomUnread(
   count: number = HOME_PICK_COUNT,
   random: () => number = Math.random,
 ): LibraryEntry[] {
-  const pool = suggestable(library);
+  return sampleRandom(suggestable(library), count, random);
+}
+
+/**
+ * Up to `count` distinct items drawn at random from `pool` (which is reordered). `random` is
+ * injectable for tests and returns a number in [0, 1) like `Math.random`.
+ */
+export function sampleRandom<T>(pool: T[], count: number, random: () => number = Math.random): T[] {
   // Partial Fisher-Yates: only the first `count` slots need shuffling.
   const picks = Math.min(count, pool.length);
   for (let i = 0; i < picks; i++) {
