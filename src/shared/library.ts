@@ -231,6 +231,12 @@ export type EmptyDeletedResult =
   | { status: 'ok'; deleted: number; bytesFreed: number; failed: number }
   | { status: 'error'; message: string };
 
+/** Result of `library.countOrphanFolders()`: how many folders of the organized `folder` hold no book, only `.nfo` files and cover images. */
+export type OrphanFoldersCountResult = { status: 'ok'; count: number; folder: string } | { status: 'error'; message: string };
+
+/** Result of `library.cleanFolders()`: orphan folders moved to `.deletedByTankobon`, and folders that could not be moved. */
+export type CleanFoldersResult = { status: 'ok'; moved: number; failed: number } | { status: 'error'; message: string };
+
 /** A library folder that has no path on this machine yet, because the library comes from another one. */
 export interface UnlinkedFolder {
   id: string;

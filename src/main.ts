@@ -37,6 +37,7 @@ import { isPermissionAllowed } from './main/permissions';
 import { isOnlineOnly } from './main/services/cloud-files';
 import { createImageStatsScanner } from './main/services/image-stats-scanner';
 import { createCbrConverter } from './main/services/cbr-conversion';
+import { createFolderCleaner } from './main/services/folder-cleanup';
 import { createLibraryCleaner } from './main/services/library-cleanup';
 import { createLibraryOrganizer, createResynchronizer } from './main/services/library-organization';
 
@@ -182,6 +183,7 @@ app.whenReady().then(() => {
     organizer,
     createLibraryCleaner(libraryRepo, decoder, broadcastDataChange, organizer.lock),
     createCbrConverter(libraryRepo, settingsRepo, decoder, broadcastDataChange, organizer.lock),
+    createFolderCleaner(settingsRepo, organizer.lock),
     activeUser,
   );
   registerReadingListIpc(readingListRepo, broadcastDataChange);

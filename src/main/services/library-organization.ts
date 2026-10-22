@@ -39,7 +39,7 @@ export interface LibraryDecoder {
 export type LibraryNotifier = (change: DataChange) => void;
 
 /** What can hold the {@link LibraryRunLock}. */
-export type LibraryRun = 'resync' | 'organize' | 'add' | 'cleanup' | 'convert';
+export type LibraryRun = 'resync' | 'organize' | 'add' | 'cleanup' | 'convert' | 'folders';
 
 /**
  * Lets one long run over the library files at a time (a resynchronization, adding a file or a folder,
@@ -69,6 +69,7 @@ export function createLibraryRunLock(): LibraryRunLock {
     },
     busyMessage() {
       if (holder === 'resync') return t('errors:library.resyncRunning');
+      if (holder === 'folders') return t('errors:library.foldersRunning');
       if (holder === 'convert') return t('errors:library.convertRunning');
       return holder === 'cleanup' ? t('errors:library.cleanupRunning') : t('errors:library.organizeRunning');
     },

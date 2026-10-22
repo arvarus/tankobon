@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { Copy, Eraser, FileArchive, FolderTree, RefreshCw, Trash2 } from 'lucide-react';
+import { Copy, Eraser, FolderMinus, FileArchive, FolderTree, RefreshCw, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -151,6 +151,37 @@ function OrganizationSettingsPage() {
     setConvertStatus({ message: parts.join(' · ') });
   };
 
+  const cleanFolders = async () => {
+    setConvertStatus(null);
+    const count = await window.tankobon.library.countOrphanFolders();
+    if (count.status === 'error') {
+      setConvertStatus({ message: count.message, error: true });
+      return;
+    }
+    if (count.count === 0) {
+      setConvertStatus({ message: t('cleanFoldersNone') });
+      return;
+    }
+    const accepted = await confirm({
+      title: t('cleanFoldersConfirmTitle'),
+      message: t('cleanFoldersConfirm', { count: count.count, folder: count.folder }),
+      action: t('cleanFoldersAction'),
+    });
+    if (!accepted) return;
+    setRunning(true);
+    setProgress({ phase: 'importing', processed: 0, total: count.count, currentFile: '' });
+    const result = await window.tankobon.library.cleanFolders();
+    setProgress(null);
+    setRunning(false);
+    if (result.status === 'error') {
+      setConvertStatus({ message: result.message, error: true });
+      return;
+    }
+    const parts = [t('cleanFoldersDone', { count: result.moved })];
+    if (result.failed > 0) parts.push(t('cleanFoldersFailed', { count: result.failed }));
+    setConvertStatus({ message: parts.join(' · '), error: result.moved === 0 && result.failed > 0 });
+  };
+
   const resync = async () => {
     setResyncStatus(null);
     setFailures(null);
@@ -273,6 +304,17 @@ function OrganizationSettingsPage() {
           >
             <Trash2 />
             {t('emptyDeleted')}
+          </Button>
+        </div>
+        <p className="text-sm text-muted-foreground">{t('cleanFoldersHint')}</p>
+        <div>
+          <Button
+            variant="outline"
+            onClick={() => void cleanFolders()}
+            disabled={busy || settings.libraryOrganization === 'off' || !settings.libraryOrganizationFolder}
+          >
+            <FolderMinus />
+            {running ? t('cleanFoldersRunning') : t('cleanFolders')}
           </Button>
         </div>
         {convertStatus && (
