@@ -86,9 +86,9 @@ describe("home sections", () => {
     expect(wrapped.layout).toBe("wrap");
   });
 
-  it("clamps the count between 3 and 20", () => {
+  it("clamps the count between 3 and 30", () => {
     expect(clampHomeCount(1)).toBe(3);
-    expect(clampHomeCount(99)).toBe(20);
+    expect(clampHomeCount(99)).toBe(30);
     expect(clampHomeCount(7.6)).toBe(8);
     expect(clampHomeCount(Number.NaN)).toBe(HOME_SECTION_DEFAULT_COUNT);
   });
@@ -99,7 +99,7 @@ describe("home sections", () => {
       hideWhenEmpty: true,
     });
     expect(next.find((s) => s.id === "suggestions")).toMatchObject({
-      count: 20,
+      count: 30,
       hideWhenEmpty: true,
     });
     expect(next.filter((s) => s.id !== "suggestions")).toEqual(
@@ -130,7 +130,7 @@ describe("home sections", () => {
         { id: "favorites", visible: true, count: 3, hideWhenEmpty: true },
       ]),
     ).toBe(true);
-    for (const count of [2, 21, 5.5, "5"]) {
+    for (const count of [2, 31, 5.5, "5"]) {
       expect(isHomeSections([{ id: "favorites", visible: true, count }])).toBe(
         false,
       );

@@ -74,7 +74,7 @@ export type HomeSection = (typeof HOME_SECTIONS)[number];
 export const HOME_SECTION_MIN_COUNT = 3;
 
 /** The most books a home block can be set to show. */
-export const HOME_SECTION_MAX_COUNT = 20;
+export const HOME_SECTION_MAX_COUNT = 30;
 
 /** How many books a home block shows until the user sets it. */
 export const HOME_SECTION_DEFAULT_COUNT = 5;
