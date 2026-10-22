@@ -97,7 +97,7 @@ test('a reading list offers its next book on the last page', async () => {
   await expect(page.getByRole('img', { name: 'Page 3' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Next: Beta' }).click();
-  await expect(page.getByTitle(/Beta\.cbz$/)).toBeVisible();
+  await expect(page.getByTitle('Beta', { exact: true })).toBeVisible();
   await expect(page.getByRole('img', { name: 'Page 1' })).toBeVisible();
   await expect.poll(() => savedPage(page, 'Alpha')).toBe(2);
 });
