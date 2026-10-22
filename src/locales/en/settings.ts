@@ -238,6 +238,9 @@ export default {
     sectionsTitle: 'Home page sections',
     sectionsHint:
       'Choose which sections the home page shows, in which order, how many books each shows (3 to 30) and how they are laid out. With “Hide when empty” unchecked, an empty section shows a message instead of disappearing.',
+    columns: { section: 'Section', order: 'Order' },
+    showNamed: 'Show “{{name}}”',
+    hideWhenEmptyNamed: 'Hide “{{name}}” when empty',
     infoNamed: 'About “{{name}}”',
     info: {
       continueReading: 'The books you started but have not finished, most recently opened first. A button over each cover resets its reading.',

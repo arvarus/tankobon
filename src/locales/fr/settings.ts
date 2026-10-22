@@ -240,6 +240,9 @@ const settings: Translation<typeof en> = {
     sectionsTitle: 'Sections de l’accueil',
     sectionsHint:
       'Choisissez les sections affichées sur l’accueil, leur ordre, le nombre de livres de chacune (3 à 30) et leur mise en page. Si « Masquer si vide » est décoché, une section vide affiche un message au lieu de disparaître.',
+    columns: { section: 'Section', order: 'Ordre' },
+    showNamed: 'Afficher « {{name}} »',
+    hideWhenEmptyNamed: 'Masquer « {{name}} » si vide',
     infoNamed: 'À propos de « {{name}} »',
     info: {
       continueReading: 'Les livres commencés et pas encore terminés, le dernier ouvert en premier. Un bouton sur chaque couverture réinitialise sa lecture.',
