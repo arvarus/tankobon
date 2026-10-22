@@ -1,4 +1,4 @@
-// The statistics page: library totals and reading history by month or year.
+// The statistics page: library totals and reading history by week, month or year.
 export default {
   title: 'Statistics',
   intro: 'Your library and your reading. Books finished and time spent reading are recorded from now on.',
@@ -11,6 +11,7 @@ export default {
   },
   period: {
     label: 'Group by',
+    week: 'Week',
     month: 'Month',
     year: 'Year',
   },
@@ -23,6 +24,7 @@ export default {
     empty: 'Nothing recorded for this period yet.',
     booksReadAria: 'Books read per {{period}}',
     timeAria: 'Reading time per {{period}}',
+    periodWeek: 'week',
     periodMonth: 'month',
     periodYear: 'year',
   },

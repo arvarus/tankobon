@@ -51,7 +51,7 @@ function StatsPage() {
   const totals = useMemo(() => libraryTotals(library ?? []), [library]);
   const buckets = useMemo(() => (stats ? buildBuckets(stats, period) : []), [stats, period]);
   const growth = useMemo(() => buildLibraryGrowth(library ?? [], period), [library, period]);
-  const periodName = t(period === 'month' ? 'charts.periodMonth' : 'charts.periodYear');
+  const periodName = t(`charts.period${period === 'week' ? 'Week' : period === 'month' ? 'Month' : 'Year'}`);
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -70,7 +70,7 @@ function StatsPage() {
       {failed && <p className="text-sm text-destructive">{t('loadFailed')}</p>}
 
       <div className="flex items-center gap-2" role="group" aria-label={t('period.label')}>
-        {(['month', 'year'] as const).map((value) => (
+        {(['week', 'month', 'year'] as const).map((value) => (
           <Button
             key={value}
             size="sm"

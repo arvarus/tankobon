@@ -9,7 +9,10 @@ import type { LibraryEntry } from '@/shared/library';
 import type { ReadingStats } from '@/shared/stats';
 
 /** How the history is grouped. */
-export type StatsPeriod = 'month' | 'year';
+export type StatsPeriod = 'week' | 'month' | 'year';
+
+/** How many weeks the weekly charts show, the current one included. */
+export const WEEKS_SHOWN = 12;
 
 /** How many months the monthly charts show, the current one included. */
 export const MONTHS_SHOWN = 12;
@@ -24,9 +27,9 @@ export interface LibraryTotals {
   bytes: number;
 }
 
-/** One bar of a chart: what happened during a month (`YYYY-MM`) or a year (`YYYY`). */
+/** One bar of a chart: what happened during a week (`YYYY-MM-DD`, its Monday), a month (`YYYY-MM`) or a year (`YYYY`). */
 export interface StatsBucket {
-  /** `YYYY-MM` or `YYYY`. */
+  /** `YYYY-MM-DD`, `YYYY-MM` or `YYYY`. */
   key: string;
   /** Books finished during the period. */
   booksRead: number;
@@ -34,9 +37,9 @@ export interface StatsBucket {
   seconds: number;
 }
 
-/** One point of the library's growth: the number of books at the end of a month or a year. */
+/** One point of the library's growth: the number of books at the end of a week, a month or a year. */
 export interface LibraryGrowthPoint {
-  /** `YYYY-MM` or `YYYY`. */
+  /** `YYYY-MM-DD`, `YYYY-MM` or `YYYY`. */
   key: string;
   /** Books in the library at the end of the period. */
   books: number;
@@ -51,13 +54,36 @@ export function libraryTotals(entries: LibraryEntry[]): LibraryTotals {
   };
 }
 
-/** The key (`YYYY-MM` or `YYYY`) of the local month or year a date falls in. */
-export function periodKey(date: Date, period: StatsPeriod): string {
+/** A local date as `YYYY-MM-DD`. */
+function dayKey(date: Date): string {
   const year = String(date.getFullYear()).padStart(4, '0');
-  return period === 'year' ? year : `${year}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+  return `${year}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-/** Every key of the period shown, oldest first, ending with `now`'s: the last months, or each year since `firstYear`. */
+/** The Monday (local midnight) of the week a date falls in: weeks run from Monday to Sunday. */
+function weekStart(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() - ((date.getDay() + 6) % 7));
+}
+
+/**
+ * The key of the local week, month or year a date falls in: `YYYY-MM-DD` of the week's Monday,
+ * `YYYY-MM` or `YYYY`.
+ */
+export function periodKey(date: Date, period: StatsPeriod): string {
+  if (period === 'week') return dayKey(weekStart(date));
+  return dayKey(date).slice(0, period === 'year' ? 4 : 7);
+}
+
+/** The key of the period a stored local day (`YYYY-MM-DD`) belongs to. */
+function dayPeriodKey(day: string, period: StatsPeriod): string {
+  if (period === 'week') {
+    const [year, month, date] = day.split('-').map(Number);
+    return periodKey(new Date(year, month - 1, date), 'week');
+  }
+  return day.slice(0, period === 'year' ? 4 : 7);
+}
+
+/** Every key of the period shown, oldest first, ending with `now`'s: the last weeks or months, or each year since `firstYear`. */
 function periodKeys(period: StatsPeriod, now: Date, firstYear: number): string[] {
   if (period === 'year') {
     const keys: string[] = [];
@@ -66,20 +92,25 @@ function periodKeys(period: StatsPeriod, now: Date, firstYear: number): string[]
     }
     return keys;
   }
+  if (period === 'week') {
+    const monday = weekStart(now);
+    return Array.from({ length: WEEKS_SHOWN }, (_, index) =>
+      periodKey(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() - 7 * (WEEKS_SHOWN - 1 - index)), 'week'),
+    );
+  }
   return Array.from({ length: MONTHS_SHOWN }, (_, index) =>
     periodKey(new Date(now.getFullYear(), now.getMonth() - (MONTHS_SHOWN - 1 - index), 1), 'month'),
   );
 }
 
 /**
- * The history grouped by month (the last {@link MONTHS_SHOWN}) or by year (from the first one with
- * data), oldest first, with empty periods kept as zeros so the charts have no gaps. Dates are
+ * The history grouped by week (the last {@link WEEKS_SHOWN}), month (the last {@link MONTHS_SHOWN})
+ * or year (from the first one with data), oldest first, with empty periods kept as zeros so the charts have no gaps. Dates are
  * read in the local time zone.
  */
 export function buildBuckets(stats: ReadingStats, period: StatsPeriod, now = new Date()): StatsBucket[] {
-  const length = period === 'year' ? 4 : 7;
   const finishedKeys = stats.finished.map((iso) => periodKey(new Date(iso), period));
-  const dayKeys = stats.days.map((day) => day.day.slice(0, length));
+  const dayKeys = stats.days.map((day) => dayPeriodKey(day.day, period));
   const years = [...finishedKeys, ...dayKeys].map((key) => Number(key.slice(0, 4)));
   const keys = periodKeys(period, now, years.length > 0 ? Math.min(...years) : now.getFullYear());
 
@@ -96,8 +127,8 @@ export function buildBuckets(stats: ReadingStats, period: StatsPeriod, now = new
 }
 
 /**
- * How many books the library holds at the end of each period (the last {@link MONTHS_SHOWN}
- * months, or each year since the first book was added), oldest first. It is rebuilt from the
+ * How many books the library holds at the end of each period (the last {@link WEEKS_SHOWN}
+ * weeks, the last {@link MONTHS_SHOWN} months, or each year since the first book was added), oldest first. It is rebuilt from the
  * date each book now in the library was added: a book removed since is no longer counted, not
  * even in the periods when it was there. Dates are read in the local time zone.
  */
@@ -125,9 +156,16 @@ export function formatDuration(seconds: number): string {
   return t('stats:duration.hoursMinutes', { hours, minutes });
 }
 
-/** A bucket key as a label in the current language: "Oct. 2026" / "oct. 2026" for a month, "2026" for a year. */
+/**
+ * A bucket key as a label in the current language: "Oct 5" / "5 oct." for a week (its Monday),
+ * "Oct 26" / "oct. 26" for a month, "2026" for a year.
+ */
 export function periodLabel(key: string): string {
   if (key.length === 4) return key;
+  if (key.length === 10) {
+    const [year, month, day] = key.split('-').map(Number);
+    return new Intl.DateTimeFormat(currentLanguage(), { day: 'numeric', month: 'short' }).format(new Date(year, month - 1, day));
+  }
   const [year, month] = key.split('-').map(Number);
   return new Intl.DateTimeFormat(currentLanguage(), { month: 'short', year: '2-digit' }).format(
     new Date(year, month - 1, 1),

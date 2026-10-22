@@ -4,7 +4,7 @@ import { applyLanguage } from '@/shared/i18n';
 import type { LibraryEntry } from '@/shared/library';
 import type { ReadingStats } from '@/shared/stats';
 
-import { buildBuckets, buildLibraryGrowth, formatDuration, libraryTotals, MONTHS_SHOWN, periodKey, periodLabel, totalSeconds } from './reading-stats';
+import { buildBuckets, buildLibraryGrowth, formatDuration, libraryTotals, MONTHS_SHOWN, periodKey, periodLabel, totalSeconds, WEEKS_SHOWN } from './reading-stats';
 
 const NOW = new Date(2026, 9, 5, 12); // 5 October 2026, local time
 
@@ -52,6 +52,47 @@ describe('periodKey', () => {
   it('uses the local month and year', () => {
     expect(periodKey(new Date(2026, 0, 31, 23, 59), 'month')).toBe('2026-01');
     expect(periodKey(new Date(2026, 0, 31, 23, 59), 'year')).toBe('2026');
+  });
+});
+
+describe('weekly periods', () => {
+  it('keys a week by its Monday, Sunday included', () => {
+    expect(periodKey(new Date(2026, 9, 4, 23, 59), 'week')).toBe('2026-09-28');
+    expect(periodKey(new Date(2026, 9, 5), 'week')).toBe('2026-10-05');
+    expect(periodKey(new Date(2026, 0, 1), 'week')).toBe('2025-12-29');
+  });
+
+  it('shows the last twelve weeks and groups days and finished books by week', () => {
+    const buckets = buildBuckets(
+      {
+        finished: [new Date(2026, 9, 4).toISOString(), new Date(2026, 9, 5).toISOString()],
+        days: [
+          { day: '2026-10-02', seconds: 600 },
+          { day: '2026-10-04', seconds: 300 },
+          { day: '2026-10-05', seconds: 60 },
+        ],
+      },
+      'week',
+      NOW,
+    );
+    expect(buckets).toHaveLength(WEEKS_SHOWN);
+    expect(buckets[0].key).toBe('2026-07-20');
+    expect(buckets.at(-2)).toEqual({ key: '2026-09-28', booksRead: 1, seconds: 900 });
+    expect(buckets.at(-1)).toEqual({ key: '2026-10-05', booksRead: 1, seconds: 60 });
+  });
+
+  it('accumulates the library growth by week', () => {
+    const points = buildLibraryGrowth(
+      [entry({ addedAt: new Date(2025, 5, 10).toISOString() }), entry({ addedAt: new Date(2026, 9, 5).toISOString() })],
+      'week',
+      NOW,
+    );
+    expect(points[0]).toEqual({ key: '2026-07-20', books: 1 });
+    expect(points.at(-1)).toEqual({ key: '2026-10-05', books: 2 });
+  });
+
+  it('labels a week with its Monday', () => {
+    expect(periodLabel('2026-10-05')).toMatch(/5/);
   });
 });
 
