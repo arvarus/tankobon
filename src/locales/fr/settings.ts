@@ -264,7 +264,7 @@ const settings: Translation<typeof en> = {
     layout: "Affichage",
     layoutNamed: "Affichage de « {{name}} »",
     layouts: {
-      row: "Une seule ligne (flèches)",
+      row: "Une seule ligne",
       wrap: "Retour à la ligne",
     },
     moveUp: 'Monter',

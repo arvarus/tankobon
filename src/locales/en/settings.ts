@@ -262,7 +262,7 @@ export default {
     layout: "Display",
     layoutNamed: "Display of “{{name}}”",
     layouts: {
-      row: "Single row (arrows)",
+      row: "Single row",
       wrap: "Wrapping lines",
     },
     moveUp: 'Move up',
