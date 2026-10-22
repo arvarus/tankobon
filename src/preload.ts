@@ -30,8 +30,10 @@ import type {
   RelinkFolderResult,
   CleanupAnalysisResult,
   ConvertCbrResult,
+  CleanFoldersResult,
   ConvertCountResult,
   EmptyDeletedResult,
+  OrphanFoldersCountResult,
   CleanupResult,
   RemoveEntryResult,
   RemoveEntriesResult,
@@ -107,6 +109,10 @@ export interface LibraryApi {
   convertCbr(): Promise<ConvertCbrResult>;
   /** Deletes for good everything in the `.deletedByTankobon` folder of the organized folder. */
   emptyDeleted(): Promise<EmptyDeletedResult>;
+  /** How many folders of the organized folder `cleanFolders()` would move: those holding no book, only `.nfo` files and cover images; an error when the organization is off or its folder unreachable. */
+  countOrphanFolders(): Promise<OrphanFoldersCountResult>;
+  /** Moves those orphan folders to the `.deletedByTankobon` folder of the organized folder; progress arrives through `onScanProgress`. The folders books are added from are never touched. */
+  cleanFolders(): Promise<CleanFoldersResult>;
   /** The folders added with `addFolder`, which `resync` walks again, in the order they were added. */
   listFolders(): Promise<string[]>;
   /** Forgets one of those folders (a path returned by `listFolders`); its comics stay in the library. */
@@ -117,7 +123,7 @@ export interface LibraryApi {
   relinkFolder(id: string): Promise<RelinkFolderResult>;
   /** Walks the remembered folders (and the organized folder, when the organization is on) again: new comics are added (then moved or offered by the organization, a comic dropped in the organized folder being moved into place), and comics whose file no longer exists are removed from the library (with their progress, rating, tags and reading-list places; the files on disk are never touched). A folder that can't be read is skipped and counted as `unreachable`. Comics of those folders without a `.nfo` get one written from their library information (an existing one is never overwritten), counted as `nfoWritten`, and the missing cover thumbnails of those comics are extracted, counted as `coversExtracted`. Stores the date as the `lastResyncAt` setting. Reports through `onScanProgress`; an error result when one is already running. */
   resync(): Promise<ResyncResult>;
-  /** Subscribes to the progress of `addFolder`, `resync`, `organizeAll` and `convertCbr`; returns the unsubscribe function. */
+  /** Subscribes to the progress of `addFolder`, `resync`, `organizeAll`, `convertCbr` and `cleanFolders`; returns the unsubscribe function. */
   onScanProgress(listener: (progress: ScanProgress) => void): () => void;
   /** Where the background measure of the books' page sizes is now (it runs after an import, a resync or the first opening of a book); resolves with the state a window that loads late missed. */
   imageScanStatus(): Promise<ImageScanProgress>;
@@ -329,6 +335,8 @@ const api: TankobonApi = {
     countConvertible: () => ipcRenderer.invoke('library:count-convertible'),
     convertCbr: () => ipcRenderer.invoke('library:convert-cbr'),
     emptyDeleted: () => ipcRenderer.invoke('library:empty-deleted'),
+    countOrphanFolders: () => ipcRenderer.invoke('library:count-orphan-folders'),
+    cleanFolders: () => ipcRenderer.invoke('library:clean-folders'),
     onScanProgress: (listener) => {
       const handler = (_event: Electron.IpcRendererEvent, progress: ScanProgress) => listener(progress);
       ipcRenderer.on('library:scan-progress', handler);

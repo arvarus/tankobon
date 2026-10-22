@@ -1,0 +1,142 @@
+/**
+ * Cleaning the orphan folders of the organized library. Moving, converting or deleting books leaves
+ * folders behind that hold no book any more, only their `.nfo` and cover images. Each such folder is
+ * moved to `.deletedByTankobon` at the root of the organized folder, from where the user empties it
+ * when they want. Only the organized folder is walked: the folders books are added from are never
+ * touched. Kept out of the IPC layer, which only calls it, so it runs under Vitest.
+ * @module
+ */
+import { cp, mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
+import path from 'node:path';
+
+import { isSupportedComicFile } from '../../shared/comic';
+import { t } from '../../shared/i18n';
+import {
+  DELETED_BY_TANKOBON_FOLDER,
+  type CleanFoldersResult,
+  type OrphanFoldersCountResult,
+  type ScanProgress,
+} from '../../shared/library';
+import type { SettingsRepository } from '../db/settings-repository';
+import type { LibraryRunLock } from './library-organization';
+
+/** Extensions of the files an orphan folder may still hold: sidecars (`.nfo`) and cover images. */
+const SIDECAR_EXTENSIONS = new Set(['.nfo', '.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.avif']);
+
+/** The cleaning of the organized folder as the handlers use it; built once in `main.ts`. */
+export interface FolderCleaner {
+  /** How many orphan folders the organized folder holds. An error when the organization is off or its folder unreachable. */
+  count(): Promise<OrphanFoldersCountResult>;
+  /** Moves them to `.deletedByTankobon`, reporting each through `onProgress`. Holds the shared lock. */
+  clean(onProgress?: (progress: ScanProgress) => void): Promise<CleanFoldersResult>;
+}
+
+/**
+ * The orphan folders under `root`, outermost first: a folder that holds no book, only sidecars, covers
+ * and other orphan folders. `root` itself and `.deletedByTankobon` are never listed; a folder that can't
+ * be read, or holds any other file (or a link), is kept.
+ */
+export async function findOrphanFolders(root: string): Promise<string[]> {
+  /** `orphan` when nothing in `dir` is worth keeping; else `found`, the orphans inside it. */
+  async function scan(dir: string, isRoot: boolean): Promise<{ orphan: boolean; found: string[] }> {
+    const entries = await readdir(dir, { withFileTypes: true }).catch(() => null);
+    if (!entries) return { orphan: false, found: [] };
+    let blocked = false;
+    const found: string[] = [];
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        if (isRoot && entry.name === DELETED_BY_TANKOBON_FOLDER) continue;
+        const child = path.join(dir, entry.name);
+        const result = await scan(child, false);
+        if (result.orphan) found.push(child);
+        else {
+          blocked = true;
+          found.push(...result.found);
+        }
+      } else if (
+        !entry.isFile() ||
+        isSupportedComicFile(entry.name) ||
+        !SIDECAR_EXTENSIONS.has(path.extname(entry.name).toLowerCase())
+      ) {
+        blocked = true;
+      }
+    }
+    // An orphan folder is moved whole: its orphan children go with it and are not listed.
+    return blocked || isRoot ? { orphan: false, found } : { orphan: true, found: [] };
+  }
+  return (await scan(root, true)).found;
+}
+
+async function exists(file: string): Promise<boolean> {
+  return stat(file).then(() => true, () => false);
+}
+
+/** `name`, or `name (2)`, `name (3)`… in `folder`, whichever doesn't exist yet. */
+async function freeName(folder: string, name: string): Promise<string> {
+  for (let n = 1; ; n++) {
+    const candidate = path.join(folder, n === 1 ? name : `${name} (${n})`);
+    if (!(await exists(candidate))) return candidate;
+  }
+}
+
+/** Moves a folder: a rename, else (another drive) a copy then a deletion, the copy removed again if the original can't be. */
+async function moveFolder(from: string, to: string): Promise<void> {
+  try {
+    await rename(from, to);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EXDEV') throw error;
+    await cp(from, to, { recursive: true, errorOnExist: true, force: false });
+    try {
+      await rm(from, { recursive: true });
+    } catch (removeError) {
+      await rm(to, { recursive: true, force: true }).catch(() => undefined);
+      throw removeError;
+    }
+  }
+}
+
+/** Builds the cleaner around the settings; `lock` is the one shared with the other runs over the files. */
+export function createFolderCleaner(settings: SettingsRepository, lock: LibraryRunLock): FolderCleaner {
+  /** The organized folder when the organization is on and the folder is there, else the error to return. */
+  const usableRoot = async (): Promise<{ root: string } | { status: 'error'; message: string }> => {
+    const { libraryOrganization: mode, libraryOrganizationFolder: root } = settings.getAll();
+    if (mode === 'off' || root === '') return { status: 'error', message: t('errors:library.organizationOff') };
+    if (!(await stat(root).then((s) => s.isDirectory(), () => false))) {
+      return { status: 'error', message: t('errors:library.organizationFolderUnreachable', { folder: root }) };
+    }
+    return { root };
+  };
+
+  return {
+    async count() {
+      const usable = await usableRoot();
+      if (!('root' in usable)) return usable;
+      return { status: 'ok', count: (await findOrphanFolders(usable.root)).length, folder: usable.root };
+    },
+
+    async clean(onProgress = () => undefined) {
+      const usable = await usableRoot();
+      if (!('root' in usable)) return usable;
+      if (!lock.tryStart('folders')) return { status: 'error', message: lock.busyMessage() };
+      const trash = path.join(usable.root, DELETED_BY_TANKOBON_FOLDER);
+      const result = { moved: 0, failed: 0 };
+      try {
+        const orphans = await findOrphanFolders(usable.root);
+        for (const [index, folder] of orphans.entries()) {
+          onProgress({ phase: 'importing', processed: index, total: orphans.length, currentFile: folder });
+          try {
+            await mkdir(trash, { recursive: true });
+            await moveFolder(folder, await freeName(trash, path.basename(folder)));
+            result.moved++;
+          } catch {
+            result.failed++;
+          }
+        }
+        return { status: 'ok', ...result };
+      } finally {
+        onProgress({ phase: 'done', processed: 0, total: 0, currentFile: '' });
+        lock.end();
+      }
+    },
+  };
+}

@@ -46,6 +46,7 @@ export default {
     cleanupExpired: 'This analysis is no longer available: run it again.',
     cleanupRunning: 'A cleanup of the books is already running.',
     convertRunning: 'A conversion of the CBR files, or the emptying of the folder of the converted ones, is already running.',
+    foldersRunning: 'A cleaning of the orphan folders is already running.',
     organizeRunning: 'Another operation on the library files (adding, resynchronization or organization) is already running.',
     trashFailed: 'The book was removed from the library, but its file could not be moved to the trash: {{message}}',
   },

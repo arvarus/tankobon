@@ -22,6 +22,7 @@ import { isOnlineOnly } from '../services/cloud-files';
 import type { DecoderClient } from '../decoder/decoder-client';
 import type { ImageStatsScanner } from '../services/image-stats-scanner';
 import type { CbrConverter } from '../services/cbr-conversion';
+import type { FolderCleaner } from '../services/folder-cleanup';
 import type { LibraryCleaner } from '../services/library-cleanup';
 import { NOTHING_ORGANIZED, type LibraryOrganizer, type Resynchronizer } from '../services/library-organization';
 import { openErrorMessage } from '../services/open-error';
@@ -78,6 +79,8 @@ export const LIBRARY_CHANNELS = {
   countConvertible: 'library:count-convertible',
   convertCbr: 'library:convert-cbr',
   emptyDeleted: 'library:empty-deleted',
+  countOrphanFolders: 'library:count-orphan-folders',
+  cleanFolders: 'library:clean-folders',
 } as const;
 
 /** Sends the state of the background measure to every open window (one being closed is skipped). */
@@ -100,6 +103,7 @@ export function registerLibraryIpc(
   organizer: LibraryOrganizer,
   cleaner: LibraryCleaner,
   converter: CbrConverter,
+  folderCleaner: FolderCleaner,
   // The user a long run is for is the one who started it, even if the app is switched to another meanwhile.
   activeUser: () => string,
 ): void {
@@ -273,6 +277,16 @@ export function registerLibraryIpc(
   );
 
   handle(LIBRARY_CHANNELS.emptyDeleted, args(), () => converter.emptyDeleted());
+
+  handle(LIBRARY_CHANNELS.countOrphanFolders, args(), () => folderCleaner.count());
+
+  handle(LIBRARY_CHANNELS.cleanFolders, args(), (event) =>
+    folderCleaner.clean((progress) => {
+      if (!event.sender.isDestroyed()) {
+        event.sender.send(LIBRARY_CHANNELS.scanProgress, progress);
+      }
+    }),
+  );
 
   handle(LIBRARY_CHANNELS.listFolders, args(), () => folders.list());
 
