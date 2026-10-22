@@ -1,9 +1,16 @@
 {
   "permissions": {
     "allow": [
+      "mcp__Todoist__fetch-object",
+      "mcp__Todoist__find-sections",
+      "mcp__Todoist__find-tasks",
+      "mcp__Todoist__update-tasks",
+      "mcp__Todoist__add-comments",
+      "mcp__claude_ai_Todoist__fetch-object",
+      "mcp__claude_ai_Todoist__find-sections",
+      "mcp__claude_ai_Todoist__find-tasks",
       "mcp__claude_ai_Todoist__update-tasks",
-      "mcp__claude_ai_Todoist__add-comments",
-      "mcp__claude_ai_Todoist__fetch-object"
+      "mcp__claude_ai_Todoist__add-comments"
     ]
   }
 }
