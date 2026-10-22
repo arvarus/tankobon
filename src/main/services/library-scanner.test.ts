@@ -45,6 +45,11 @@ describe('isSupportedComicFile', () => {
 });
 
 describe('collectComicFiles', () => {
+  it('does not walk the .deletedByTankobon folder', async () => {
+    const root = await tree(['a.cbz', '.deletedByTankobon/old.cbr', 'sub/.deletedByTankobon/old2.cbr']);
+    expect(await collectComicFiles(root)).toEqual([path.join(root, 'a.cbz')]);
+  });
+
   it('finds comics recursively and ignores everything else', async () => {
     const root = await tree([
       'tome-1.cbz',

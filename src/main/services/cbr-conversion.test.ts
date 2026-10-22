@@ -1,0 +1,124 @@
+import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { applyLanguage } from '../../shared/i18n';
+import { DELETED_BY_TANKOBON_FOLDER } from '../../shared/library';
+import { LibraryRepository } from '../db/library-repository';
+import { migrate } from '../db/schema';
+import { SettingsRepository } from '../db/settings-repository';
+import { createCbrConverter, type ConversionDecoder } from './cbr-conversion';
+import { createLibraryRunLock } from './library-organization';
+
+applyLanguage('fr');
+
+describe('createCbrConverter', () => {
+  let root: string;
+  let repo: LibraryRepository;
+  let settings: SettingsRepository;
+
+  beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), 'tankobon-cbr-conversion-'));
+    const db = new DatabaseSync(':memory:');
+    migrate(db);
+    repo = new LibraryRepository(db);
+    settings = new SettingsRepository(db);
+    settings.set('libraryOrganization', 'always');
+    settings.set('libraryOrganizationFolder', root);
+  });
+
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  function setup(convert?: ConversionDecoder['convertCbr']) {
+    const notify = vi.fn();
+    const decoder: ConversionDecoder = {
+      convertCbr: vi.fn(convert ?? (async (_from: string, to: string) => {
+        await writeFile(to, 'cbz!');
+        return { pageCount: 3, fileCount: 4 };
+      })),
+      removeThumbnail: vi.fn(async () => undefined),
+    };
+    return { converter: createCbrConverter(repo, settings, decoder, notify, createLibraryRunLock()), decoder, notify };
+  }
+
+  async function addBook(relative: string, content = 'cbr!'): Promise<string> {
+    const file = join(root, relative);
+    await mkdir(join(file, '..'), { recursive: true });
+    await writeFile(file, content);
+    repo.register(file, 'book', 3, 4, content.length);
+    return file;
+  }
+
+  it('converts the CBR of the organized folder, keeping the entry and parking the original', async () => {
+    const cbr = await addBook('Serie/book.cbr');
+    await addBook('Serie/other.cbz');
+    const id = repo.idOfPath(cbr)!;
+    const { converter, notify } = setup();
+
+    expect(await converter.count()).toMatchObject({ status: 'ok', count: 1, deletedFiles: 0 });
+    expect(await converter.convert()).toEqual({ status: 'ok', converted: 1, failed: 0 });
+
+    const cbz = join(root, 'Serie', 'book.cbz');
+    expect(repo.get(id)).toMatchObject({ path: cbz, fileCount: 4, fileSize: 4 });
+    expect(await readdir(join(root, 'Serie'))).toContain('book.cbz');
+    expect(await readdir(join(root, 'Serie'))).not.toContain('book.cbr');
+    expect(await readdir(join(root, DELETED_BY_TANKOBON_FOLDER))).toEqual(['book.cbr']);
+    expect(notify).toHaveBeenCalledWith({ scope: 'library' });
+    expect(await converter.count()).toMatchObject({ count: 0, deletedFiles: 1, deletedBytes: 4 });
+  });
+
+  it('ignores a CBR outside the organized folder', async () => {
+    const outside = await mkdtemp(join(tmpdir(), 'tankobon-cbr-outside-'));
+    try {
+      repo.register(join(outside, 'x.cbr'), 'x', 1, 1, 1);
+      const { converter } = setup();
+      expect(await converter.count()).toMatchObject({ count: 0 });
+    } finally {
+      await rm(outside, { recursive: true, force: true });
+    }
+  });
+
+  it('leaves the book as it was when the conversion fails', async () => {
+    const cbr = await addBook('book.cbr');
+    const id = repo.idOfPath(cbr)!;
+    const { converter, notify } = setup(async () => {
+      throw new Error('unreadable');
+    });
+
+    expect(await converter.convert()).toEqual({ status: 'ok', converted: 0, failed: 1 });
+    expect(repo.get(id)?.path).toBe(cbr);
+    expect(await readdir(root)).toEqual(['book.cbr']);
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it('picks another name when the CBZ already exists', async () => {
+    const cbr = await addBook('book.cbr');
+    await writeFile(join(root, 'book.cbz'), 'someone else');
+    const { converter, decoder } = setup();
+
+    await converter.convert();
+
+    expect(decoder.convertCbr).toHaveBeenCalledWith(cbr, join(root, 'book (2).cbz'));
+  });
+
+  it('refuses when the organization is off', async () => {
+    settings.set('libraryOrganization', 'off');
+    const { converter } = setup();
+    expect(await converter.count()).toMatchObject({ status: 'error' });
+    expect(await converter.convert()).toMatchObject({ status: 'error' });
+  });
+
+  it('empties .deletedByTankobon for good', async () => {
+    await mkdir(join(root, DELETED_BY_TANKOBON_FOLDER));
+    await writeFile(join(root, DELETED_BY_TANKOBON_FOLDER, 'a.cbr'), '12345');
+    await writeFile(join(root, DELETED_BY_TANKOBON_FOLDER, 'b.cbr'), '123');
+    const { converter } = setup();
+
+    expect(await converter.emptyDeleted()).toEqual({ status: 'ok', deleted: 2, bytesFreed: 8, failed: 0 });
+    expect(await readdir(root)).toEqual([]);
+  });
+});

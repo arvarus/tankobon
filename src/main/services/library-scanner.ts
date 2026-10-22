@@ -6,7 +6,7 @@ import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import { isSupportedComicFile } from '../../shared/comic';
-import { MAX_REPORTED_FAILURES, type ScanFailure, type ScanProgress } from '../../shared/library';
+import { DELETED_BY_TANKOBON_FOLDER, MAX_REPORTED_FAILURES, type ScanFailure, type ScanProgress } from '../../shared/library';
 import type { ArchiveSummary } from '../decoder/protocol';
 import type { LibraryRepository } from '../db/library-repository';
 import { readNfoFor } from './nfo';
@@ -42,7 +42,8 @@ export async function collectComicFiles(directory: string): Promise<string[]> {
     for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
       const fullPath = path.join(current, entry.name);
       if (entry.isDirectory()) {
-        await walk(fullPath);
+        // Where the CBR replaced by a CBZ wait to be emptied: not part of the library any more.
+        if (entry.name !== DELETED_BY_TANKOBON_FOLDER) await walk(fullPath);
       } else if (entry.isFile() && isSupportedComicFile(entry.name)) {
         found.push(fullPath);
       }

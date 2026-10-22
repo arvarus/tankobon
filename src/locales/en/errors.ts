@@ -16,6 +16,7 @@ export default {
     fileNotFound: 'File not found: it has been moved or deleted.',
     openFailed: 'Unable to open this file: {{message}}',
     cleanupChanged: 'The archive changed since the analysis: {{path}}',
+    convertVerifyFailed: 'The converted archive did not pass the check, the CBR was kept: {{path}}',
     cleanupVerifyFailed: 'The cleaned archive did not pass the check, the original was kept: {{path}}',
   },
   decoder: {
@@ -44,6 +45,7 @@ export default {
     organizationExpired: 'These comics can no longer be moved from here: add them again or resynchronize.',
     cleanupExpired: 'This analysis is no longer available: run it again.',
     cleanupRunning: 'A cleanup of the books is already running.',
+    convertRunning: 'A conversion of the CBR files, or the emptying of the folder of the converted ones, is already running.',
     organizeRunning: 'Another operation on the library files (adding, resynchronization or organization) is already running.',
     trashFailed: 'The book was removed from the library, but its file could not be moved to the trash: {{message}}',
   },

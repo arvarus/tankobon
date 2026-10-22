@@ -21,6 +21,7 @@ import type { SettingsRepository } from '../db/settings-repository';
 import { isOnlineOnly } from '../services/cloud-files';
 import type { DecoderClient } from '../decoder/decoder-client';
 import type { ImageStatsScanner } from '../services/image-stats-scanner';
+import type { CbrConverter } from '../services/cbr-conversion';
 import type { LibraryCleaner } from '../services/library-cleanup';
 import { NOTHING_ORGANIZED, type LibraryOrganizer, type Resynchronizer } from '../services/library-organization';
 import { openErrorMessage } from '../services/open-error';
@@ -74,6 +75,9 @@ export const LIBRARY_CHANNELS = {
   organizeAll: 'library:organize-all',
   analyzeCleanup: 'library:analyze-cleanup',
   applyCleanup: 'library:apply-cleanup',
+  countConvertible: 'library:count-convertible',
+  convertCbr: 'library:convert-cbr',
+  emptyDeleted: 'library:empty-deleted',
 } as const;
 
 /** Sends the state of the background measure to every open window (one being closed is skipped). */
@@ -95,6 +99,7 @@ export function registerLibraryIpc(
   imageScanner: ImageStatsScanner,
   organizer: LibraryOrganizer,
   cleaner: LibraryCleaner,
+  converter: CbrConverter,
   // The user a long run is for is the one who started it, even if the app is switched to another meanwhile.
   activeUser: () => string,
 ): void {
@@ -255,6 +260,19 @@ export function registerLibraryIpc(
         }
       }),
   );
+
+  handle(LIBRARY_CHANNELS.countConvertible, args(), () => converter.count());
+
+  // Progress goes over the scan channel, like the organization of the whole library.
+  handle(LIBRARY_CHANNELS.convertCbr, args(), (event) =>
+    converter.convert((progress) => {
+      if (!event.sender.isDestroyed()) {
+        event.sender.send(LIBRARY_CHANNELS.scanProgress, progress);
+      }
+    }),
+  );
+
+  handle(LIBRARY_CHANNELS.emptyDeleted, args(), () => converter.emptyDeleted());
 
   handle(LIBRARY_CHANNELS.listFolders, args(), () => folders.list());
 

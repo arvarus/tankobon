@@ -215,6 +215,22 @@ export type OrganizeResult = { status: 'ok'; moved: number; failed: number } | {
 /** Result of `library.countUnorganized()`: how many library comics aren't in their place in the organized `folder` yet. */
 export type UnorganizedCountResult = { status: 'ok'; count: number; folder: string } | { status: 'error'; message: string };
 
+/** Name of the folder, at the root of the organized folder, where the CBR replaced by a CBZ are moved (see `library.convertCbr()`); a scan never walks it. */
+export const DELETED_BY_TANKOBON_FOLDER = '.deletedByTankobon';
+
+/** Result of `library.countConvertible()`: the CBR of the organized `folder` that could become CBZ, and what its `.deletedByTankobon` folder holds. */
+export type ConvertCountResult =
+  | { status: 'ok'; count: number; folder: string; deletedFiles: number; deletedBytes: number }
+  | { status: 'error'; message: string };
+
+/** Result of `library.convertCbr()`: books converted, and books left as they were because the conversion failed. */
+export type ConvertCbrResult = { status: 'ok'; converted: number; failed: number } | { status: 'error'; message: string };
+
+/** Result of `library.emptyDeleted()`: files removed for good from `.deletedByTankobon`, the space freed and the files that could not be removed. */
+export type EmptyDeletedResult =
+  | { status: 'ok'; deleted: number; bytesFreed: number; failed: number }
+  | { status: 'error'; message: string };
+
 /** A library folder that has no path on this machine yet, because the library comes from another one. */
 export interface UnlinkedFolder {
   id: string;

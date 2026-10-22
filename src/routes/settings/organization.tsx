@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { Copy, Eraser, FolderTree, RefreshCw } from 'lucide-react';
+import { Copy, Eraser, FileArchive, FolderTree, RefreshCw, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -16,7 +16,7 @@ import { useSettings } from '@/hooks/use-settings';
 import { formatArticleList, isArticleList, parseArticleList } from '@/shared/articles';
 import { duplicateGroups } from '@/lib/library-editions';
 import { fileNameExample, levelChoices, setLevel, structureExample } from '@/lib/library-structure';
-import { cn } from '@/lib/utils';
+import { cn, formatFileSize } from '@/lib/utils';
 import { FILE_NAME_FIELDS, MAX_FILE_NAME_TEMPLATE_LENGTH, fileNameTemplateError } from '@/shared/file-name-template';
 import type { LibraryEntry, ScanFailure, ScanProgress } from '@/shared/library';
 import {
@@ -52,6 +52,7 @@ function OrganizationSettingsPage() {
   // The files the last resynchronization couldn't open (`total` is the exact count), shown in a dialog on request.
   const [failures, setFailures] = useState<{ list: ScanFailure[]; total: number } | null>(null);
   const [failuresOpen, setFailuresOpen] = useState(false);
+  const [convertStatus, setConvertStatus] = useState<{ message: string; error?: boolean } | null>(null);
   const [resyncRunning, setResyncRunning] = useState(false);
   const [resyncStatus, setResyncStatus] = useState<{ message: string; error?: boolean } | null>(null);
   const [organizeStatus, setOrganizeStatus] = useState<{ message: string; error?: boolean } | null>(null);
@@ -90,6 +91,64 @@ function OrganizationSettingsPage() {
     const parts = [t('organizeAllDone', { count: result.moved })];
     if (result.failed > 0) parts.push(t('organizeAllFailed', { count: result.failed }));
     setOrganizeStatus({ message: parts.join(' · ') });
+  };
+
+  const convertCbr = async () => {
+    setConvertStatus(null);
+    const count = await window.tankobon.library.countConvertible();
+    if (count.status === 'error') {
+      setConvertStatus({ message: count.message, error: true });
+      return;
+    }
+    if (count.count === 0) {
+      setConvertStatus({ message: t('convertCbrNone') });
+      return;
+    }
+    const accepted = await confirm({
+      title: t('convertCbrConfirmTitle'),
+      message: t('convertCbrConfirm', { count: count.count, folder: count.folder }),
+      action: t('convertCbrAction'),
+    });
+    if (!accepted) return;
+    setRunning(true);
+    setProgress({ phase: 'importing', processed: 0, total: count.count, currentFile: '' });
+    const result = await window.tankobon.library.convertCbr();
+    setProgress(null);
+    setRunning(false);
+    if (result.status === 'error') {
+      setConvertStatus({ message: result.message, error: true });
+      return;
+    }
+    const parts = [t('convertCbrDone', { count: result.converted })];
+    if (result.failed > 0) parts.push(t('convertCbrFailed', { count: result.failed }));
+    setConvertStatus({ message: parts.join(' · '), error: result.converted === 0 && result.failed > 0 });
+  };
+
+  const emptyDeleted = async () => {
+    setConvertStatus(null);
+    const count = await window.tankobon.library.countConvertible();
+    if (count.status === 'error') {
+      setConvertStatus({ message: count.message, error: true });
+      return;
+    }
+    if (count.deletedFiles === 0) {
+      setConvertStatus({ message: t('emptyDeletedNone') });
+      return;
+    }
+    const accepted = await confirm({
+      title: t('emptyDeletedConfirmTitle'),
+      message: t('emptyDeletedConfirm', { count: count.deletedFiles, size: formatFileSize(count.deletedBytes) }),
+      action: t('emptyDeletedAction'),
+    });
+    if (!accepted) return;
+    const result = await window.tankobon.library.emptyDeleted();
+    if (result.status === 'error') {
+      setConvertStatus({ message: result.message, error: true });
+      return;
+    }
+    const parts = [t('emptyDeletedDone', { count: result.deleted, size: formatFileSize(result.bytesFreed) })];
+    if (result.failed > 0) parts.push(t('emptyDeletedFailed', { count: result.failed }));
+    setConvertStatus({ message: parts.join(' · ') });
   };
 
   const resync = async () => {
@@ -192,6 +251,33 @@ function OrganizationSettingsPage() {
         {organizeStatus && (
           <p className={cn('text-sm', organizeStatus.error ? 'text-destructive' : 'text-muted-foreground')}>
             {organizeStatus.message}
+          </p>
+        )}
+        <p className="text-sm text-muted-foreground">{t('convertCbrHint')}</p>
+        <div>
+          <Button
+            variant="outline"
+            onClick={() => void convertCbr()}
+            disabled={busy || settings.libraryOrganization === 'off' || !settings.libraryOrganizationFolder}
+          >
+            <FileArchive />
+            {running ? t('convertCbrRunning') : t('convertCbr')}
+          </Button>
+        </div>
+        <p className="text-sm text-muted-foreground">{t('emptyDeletedHint')}</p>
+        <div>
+          <Button
+            variant="outline"
+            onClick={() => void emptyDeleted()}
+            disabled={busy || settings.libraryOrganization === 'off' || !settings.libraryOrganizationFolder}
+          >
+            <Trash2 />
+            {t('emptyDeleted')}
+          </Button>
+        </div>
+        {convertStatus && (
+          <p className={cn('text-sm', convertStatus.error ? 'text-destructive' : 'text-muted-foreground')}>
+            {convertStatus.message}
           </p>
         )}
         <p className="text-sm text-muted-foreground">{t('duplicatesHint')}</p>

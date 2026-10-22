@@ -28,6 +28,7 @@ An ADR records one structural decision: the context, what was decided, and what 
 | [0022](./0022-per-user-library-folders-and-settings-groups.md) | Watched folders per user, and settings split in two groups | Accepted |
 | [0023](./0023-clean-books-rewrite-cbz.md) | Cleaning the books by rewriting the CBZ archives | Accepted |
 | [0024](./0024-database-backups.md) | Database backups in a `.tankobon` folder, restored at start-up | Accepted |
+| [0025](./0025-convert-cbr-to-cbz.md) | Converting the CBR of the organized library to CBZ | Accepted |
 
 These first four ADRs were written after the fact, from the code and its comments, then checked by the maintainer.
 
