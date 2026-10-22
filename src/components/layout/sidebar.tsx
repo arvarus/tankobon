@@ -52,7 +52,13 @@ export function Sidebar() {
           {collapsed ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
         </Button>
       </div>
-      {nav.filter(({ to }) => to !== '/' || settings.homeEnabled).map(({ to, label, icon: Icon }) =>
+      {nav
+        .filter(
+          ({ to }) =>
+            (to !== '/' || settings.homeEnabled) &&
+            (to !== '/stats' || settings.statsEnabled) &&
+            (to !== '/achievements' || settings.achievementsEnabled),
+        ).map(({ to, label, icon: Icon }) =>
         to === '/lists' ? (
           <ReadingListsNav key={to} collapsed={collapsed} />
         ) : (

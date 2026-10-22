@@ -48,6 +48,11 @@ export default {
       sepia: 'Sepia',
       white: 'White',
     },
+    features: 'Pages',
+    statsEnabled: 'Show the statistics',
+    achievementsEnabled: 'Show the achievements',
+    featuresHint:
+      'Turned off, the page leaves the sidebar. Without achievements, none is earned or announced; the data is kept and picks up again when you turn it back on.',
     askUser: 'Users',
     askUserOnStartup: 'Ask who is reading at startup',
     askUserHint: 'Shows a screen to pick a user each time the app starts. Shared by every user.',

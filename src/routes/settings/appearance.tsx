@@ -84,6 +84,32 @@ function AppearanceSettingsPage() {
       </div>
     </SettingsSection>
 
+      <SettingsSection title={t('features')}>
+        <div className="flex items-center gap-2">
+          <input
+            id="stats-enabled"
+            type="checkbox"
+            checked={settings.statsEnabled}
+            onChange={(event) => update('statsEnabled', event.target.checked)}
+          />
+          <label htmlFor="stats-enabled" className="text-sm">
+            {t('statsEnabled')}
+          </label>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            id="achievements-enabled"
+            type="checkbox"
+            checked={settings.achievementsEnabled}
+            onChange={(event) => update('achievementsEnabled', event.target.checked)}
+          />
+          <label htmlFor="achievements-enabled" className="text-sm">
+            {t('achievementsEnabled')}
+          </label>
+        </div>
+        <p className="text-sm text-muted-foreground">{t('featuresHint')}</p>
+      </SettingsSection>
+
       <SettingsSection title={t('askUser')}>
         <div className="flex items-center gap-2">
           <input

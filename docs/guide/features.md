@@ -94,7 +94,7 @@ The menu bar only holds entries that work: Fichier (Quitter; Fermer on macOS), �
 
 ## Statistics
 
-"Statistiques" in the sidebar shows how the library is used.
+"Statistiques" in the sidebar shows how the library is used. Paramètres › Affichage can hide the statistics page and the achievements page (one personal box each): the sidebar entry leaves, the page redirects to the library, and with the achievements off none is earned or announced. Nothing is deleted: reading time keeps being recorded, the earned achievements are kept, and turning them back on earns those the library justifies by then.
 
 - **Totals**: the number of books, the size of the library on disk, the number of books read (last page reached or "Lu" tag, whenever that happened) and the total reading time.
 - **Charts**: "Livres lus", "Livres dans la bibliothèque" (the number of books at the end of each period) and "Temps de lecture", as bars per week (the last twelve, Monday to Sunday, labelled with the week's Monday), per month (the last twelve) or per year (since the first one with data), switched with the "Semaine"/"Mois"/"Année" buttons. Periods with nothing keep an empty slot.

@@ -211,6 +211,17 @@ export interface AppSettings {
    * it off for that user only.
    */
   askUserOnStartup: boolean;
+  /**
+   * Whether the statistics page exists: off, the sidebar has no "Statistiques" entry and `/stats`
+   * redirects to the library. Reading time is still recorded, so nothing is lost when it comes back.
+   */
+  statsEnabled: boolean;
+  /**
+   * Whether the achievements exist: off, the sidebar has no "Accomplissements" entry, `/achievements`
+   * redirects to the library and nothing is earned or announced. Those already earned are kept, and
+   * the ones justified meanwhile are earned when it is turned back on.
+   */
+  achievementsEnabled: boolean;
   /** Whether the app asks GitHub at every start if a newer release exists, and offers to download it. */
   checkUpdatesOnStartup: boolean;
   /** Days between two automatic copies of the database (1 to {@link MAX_BACKUP_INTERVAL_DAYS}); 0 turns them off. */
@@ -308,6 +319,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   resyncOnStartup: false,
   checkUpdatesOnStartup: true,
   askUserOnStartup: false,
+  statsEnabled: true,
+  achievementsEnabled: true,
   backupIntervalDays: 0,
   backupKeep: 5,
   lastBackupAt: '',
@@ -424,6 +437,8 @@ export const SETTING_VALIDATORS: SettingValidators = {
   resyncOnStartup: isBoolean,
   checkUpdatesOnStartup: isBoolean,
   askUserOnStartup: isBoolean,
+  statsEnabled: isBoolean,
+  achievementsEnabled: isBoolean,
   backupIntervalDays: (value): value is number =>
     typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= MAX_BACKUP_INTERVAL_DAYS,
   backupKeep: (value): value is number =>
