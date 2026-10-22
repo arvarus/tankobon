@@ -50,6 +50,11 @@ const settings: Translation<typeof en> = {
       sepia: 'Sépia',
       white: 'Blanc',
     },
+    features: 'Pages',
+    statsEnabled: 'Afficher les statistiques',
+    achievementsEnabled: 'Afficher les accomplissements',
+    featuresHint:
+      'Désactivée, la page disparaît de la barre latérale. Sans les accomplissements, aucun n’est obtenu ni annoncé ; les données sont conservées et reprennent à la réactivation.',
     askUser: 'Utilisateurs',
     askUserOnStartup: 'Demander qui lit au démarrage',
     askUserHint: 'Affiche un écran de choix de l’utilisateur à chaque lancement de l’application. Partagé par tous les utilisateurs.',

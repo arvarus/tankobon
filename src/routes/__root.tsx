@@ -8,6 +8,7 @@ import { UpdateToast } from '@/components/update-toast';
 import { useAchievementTracker } from '@/hooks/use-achievements';
 import { useFullscreen } from '@/hooks/use-fullscreen';
 import { useLaunchFile } from '@/hooks/use-launch-file';
+import { useSettings } from '@/hooks/use-settings';
 import { useUsers } from '@/hooks/use-users';
 
 export const Route = createRootRoute({
@@ -18,6 +19,7 @@ function RootLayout() {
   // Fullscreen reading (toggled from the reader) hides the sidebar entirely; the
   // collapsed/expanded preference is untouched and comes back on exit.
   const { fullscreen } = useFullscreen();
+  const achievementsEnabled = useSettings().settings.achievementsEnabled;
   const activeUserId = useUsers()?.activeId;
   // A comic opened from the file explorer.
   useLaunchFile();
@@ -32,8 +34,8 @@ function RootLayout() {
       </div>
       {!fullscreen && <ImageScanBar />}
       {/* Remounted for each user, so the tracker never counts one user's library for another's achievements. */}
-      <AchievementTracker key={activeUserId} />
-      <AchievementToasts key={activeUserId} />
+      {achievementsEnabled && <AchievementTracker key={activeUserId} />}
+      {achievementsEnabled && <AchievementToasts key={activeUserId} />}
       <UpdateToast />
       <UserChooser />
     </div>

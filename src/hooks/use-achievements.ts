@@ -73,9 +73,10 @@ export function useAchievementTracker(): void {
 export function useOpeningAchievements(bookId: string | null): void {
   const { settings } = useSettings();
   const direction = settings.readingDirection;
+  const enabled = settings.achievementsEnabled;
 
   useEffect(() => {
-    if (!bookId) return;
+    if (!bookId || !enabled) return;
     const ids = eventAchievements({ at: new Date(), direction });
     if (ids.length > 0) void window.tankobon.achievements.unlock(ids).catch(() => undefined);
     // Only a new book counts: a change of direction while reading isn't an opening.

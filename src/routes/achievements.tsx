@@ -1,7 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { Navigate, createFileRoute } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 
 import { AchievementIcon } from '@/components/achievement-icon';
+import { useSettings } from '@/hooks/use-settings';
 import { useAchievements, useAchievementStats } from '@/hooks/use-achievements';
 import { achievementProgress, ACHIEVEMENT_RULES } from '@/lib/achievements';
 import { ACHIEVEMENT_GROUPS, ACHIEVEMENT_IDS } from '@/shared/achievements';
@@ -11,10 +12,13 @@ export const Route = createFileRoute('/achievements')({
 });
 
 function AchievementsPage() {
+  const { settings } = useSettings();
   const { t, i18n } = useTranslation('achievements');
   const earned = useAchievements();
   const stats = useAchievementStats();
   const unlockedAt = new Map(earned?.map((achievement) => [achievement.id, achievement.unlockedAt]));
+
+  if (!settings.achievementsEnabled) return <Navigate to="/library" replace />;
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-8 p-6">

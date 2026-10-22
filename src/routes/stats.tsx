@@ -1,10 +1,11 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { Navigate, createFileRoute } from '@tanstack/react-router';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { BarChart } from '@/components/stats/bar-chart';
 import { Button } from '@/components/ui/button';
 import { useLibrary } from '@/hooks/use-library';
+import { useSettings } from '@/hooks/use-settings';
 import {
   buildBuckets,
   buildLibraryGrowth,
@@ -22,6 +23,7 @@ export const Route = createFileRoute('/stats')({
 });
 
 function StatsPage() {
+  const { settings } = useSettings();
   const { t } = useTranslation('stats');
   const library = useLibrary();
   const [stats, setStats] = useState<ReadingStats | null>(null);
@@ -52,6 +54,8 @@ function StatsPage() {
   const buckets = useMemo(() => (stats ? buildBuckets(stats, period) : []), [stats, period]);
   const growth = useMemo(() => buildLibraryGrowth(library ?? [], period), [library, period]);
   const periodName = t(`charts.period${period === 'week' ? 'Week' : period === 'month' ? 'Month' : 'Year'}`);
+
+  if (!settings.statsEnabled) return <Navigate to="/library" replace />;
 
   return (
     <div className="flex flex-col gap-6 p-6">
