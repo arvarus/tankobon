@@ -17,6 +17,9 @@ export default {
   charts: {
     booksRead: 'Books read',
     time: 'Reading time',
+    libraryGrowth: 'Books in the library',
+    libraryGrowthAria: 'Books in the library at the end of each {{period}}',
+    libraryGrowthNote: 'Counted from the date each book was added; books removed since are not included.',
     empty: 'Nothing recorded for this period yet.',
     booksReadAria: 'Books read per {{period}}',
     timeAria: 'Reading time per {{period}}',

@@ -34,6 +34,14 @@ export interface StatsBucket {
   seconds: number;
 }
 
+/** One point of the library's growth: the number of books at the end of a month or a year. */
+export interface LibraryGrowthPoint {
+  /** `YYYY-MM` or `YYYY`. */
+  key: string;
+  /** Books in the library at the end of the period. */
+  books: number;
+}
+
 /** The library's totals: book count, books read and size on disk. */
 export function libraryTotals(entries: LibraryEntry[]): LibraryTotals {
   return {
@@ -85,6 +93,21 @@ export function buildBuckets(stats: ReadingStats, period: StatsPeriod, now = new
     if (bucket) bucket.seconds += day.seconds;
   });
   return [...buckets.values()];
+}
+
+/**
+ * How many books the library holds at the end of each period (the last {@link MONTHS_SHOWN}
+ * months, or each year since the first book was added), oldest first. It is rebuilt from the
+ * date each book now in the library was added: a book removed since is no longer counted, not
+ * even in the periods when it was there. Dates are read in the local time zone.
+ */
+export function buildLibraryGrowth(entries: LibraryEntry[], period: StatsPeriod, now = new Date()): LibraryGrowthPoint[] {
+  const addedKeys = entries.map((entry) => periodKey(new Date(entry.addedAt), period));
+  const years = addedKeys.map((key) => Number(key.slice(0, 4)));
+  const keys = periodKeys(period, now, years.length > 0 ? Math.min(...years) : now.getFullYear());
+
+  // Zero-padded keys sort chronologically as strings, so a book counts from its period onwards.
+  return keys.map((key) => ({ key, books: addedKeys.filter((added) => added <= key).length }));
 }
 
 /** Total reading time of the whole history, in seconds. */
