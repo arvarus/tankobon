@@ -87,6 +87,17 @@ function AppearanceSettingsPage() {
       <SettingsSection title={t('features')}>
         <div className="flex items-center gap-2">
           <input
+            id="home-enabled"
+            type="checkbox"
+            checked={settings.homeEnabled}
+            onChange={(event) => update('homeEnabled', event.target.checked)}
+          />
+          <label htmlFor="home-enabled" className="text-sm">
+            {t('homeEnabled')}
+          </label>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
             id="stats-enabled"
             type="checkbox"
             checked={settings.statsEnabled}
