@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { Database, DatabaseBackup, Download, Trash2, Upload } from 'lucide-react';
+import { Database, DatabaseBackup, Download, Eraser, Trash2, Upload } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -34,6 +34,8 @@ function DataSettingsPage() {
   const [clearCounts, setClearCounts] = useState<{ entries: number; readingLists: number } | null>(null);
   const [clearing, setClearing] = useState(false);
   const [clearStatus, setClearStatus] = useState<{ message: string; error?: boolean } | null>(null);
+  const [cacheBusy, setCacheBusy] = useState(false);
+  const [cacheStatus, setCacheStatus] = useState<{ message: string; error?: boolean } | null>(null);
 
   const [backups, setBackups] = useState<BackupList | null>(null);
   const [backupStatus, setBackupStatus] = useState<{ message: string; error?: boolean } | null>(null);
@@ -154,6 +156,18 @@ function DataSettingsPage() {
     setDataStatus({
       message: t('data.imported', { count: result.added, updated: result.updated, filePath: result.filePath }),
     });
+  };
+
+  const clearCache = async () => {
+    setCacheBusy(true);
+    try {
+      const result = await window.tankobon.data.clearCache();
+      setCacheStatus(
+        result.status === 'error' ? { message: result.message, error: true } : { message: t('data.cacheCleared') },
+      );
+    } finally {
+      setCacheBusy(false);
+    }
   };
 
   const askClearLibrary = () => {
@@ -331,6 +345,21 @@ function DataSettingsPage() {
             </li>
           ))}
         </ul>
+      </SettingsSection>
+
+      <SettingsSection title={t('data.cache')}>
+        <p className="text-sm text-muted-foreground">{t('data.cacheHint')}</p>
+        <div>
+          <Button variant="outline" disabled={cacheBusy} onClick={() => void clearCache()}>
+            <Eraser />
+            {t('data.cacheButton')}
+          </Button>
+        </div>
+        {cacheStatus && (
+          <p className={cn('text-sm', cacheStatus.error ? 'text-destructive' : 'text-muted-foreground')}>
+            {cacheStatus.message}
+          </p>
+        )}
       </SettingsSection>
 
       <SettingsSection title={t('data.clear')}>

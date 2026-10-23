@@ -35,6 +35,7 @@ const errors: Translation<typeof en> = {
   data: {
     exportFailed: "Impossible d'écrire l'export : {{message}}",
     clearFailed: 'Impossible de vider la bibliothèque : {{message}}',
+    clearCacheFailed: 'Impossible de vider le cache : {{message}}',
   },
   library: {
     coverUnknownBook: 'Ce livre est introuvable.',

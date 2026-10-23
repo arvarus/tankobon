@@ -34,6 +34,7 @@ export default {
   data: {
     exportFailed: 'Could not write the export: {{message}}',
     clearFailed: 'Could not clear the library: {{message}}',
+    clearCacheFailed: 'Could not clear the cache: {{message}}',
   },
   library: {
     coverUnknownBook: 'Could not find this book.',
