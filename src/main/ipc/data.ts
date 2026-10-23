@@ -1,7 +1,7 @@
 import { writeFile } from 'node:fs/promises';
 import type { DatabaseSync } from 'node:sqlite';
 
-import type { ClearLibraryResult, ExportResult, ImportResult } from '../../shared/data';
+import type { ClearCacheResult, ClearLibraryResult, ExportResult, ImportResult } from '../../shared/data';
 import { t } from '../../shared/i18n';
 import { buildExport, exportFileName } from '../db/export-service';
 import { applyImport, parseExport, readExportFile } from '../db/import-service';
@@ -21,6 +21,7 @@ export const DATA_CHANNELS = {
   export: 'data:export',
   import: 'data:import',
   clearLibrary: 'data:clear-library',
+  clearCache: 'data:clear-cache',
 } as const;
 
 function errorMessage(error: unknown): string {
@@ -98,6 +99,17 @@ export function registerDataIpc(
       return { status: 'cleared', entries, readingLists };
     } catch (error) {
       return { status: 'error', message: t('errors:data.clearFailed', { message: errorMessage(error) }) };
+    }
+  });
+
+  handle(DATA_CHANNELS.clearCache, args(), async (): Promise<ClearCacheResult> => {
+    try {
+      // The local cache holds only thumbnails; the covers beside the comics are not ours to delete.
+      // The library page makes the missing ones again when it shows them.
+      await decoder.pruneThumbnails([]);
+      return { status: 'cleared' };
+    } catch (error) {
+      return { status: 'error', message: t('errors:data.clearCacheFailed', { message: errorMessage(error) }) };
     }
   });
 }

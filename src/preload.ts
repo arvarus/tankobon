@@ -11,6 +11,7 @@ import type { AppInfo, AppLink, UpdateCheckResult } from './shared/app';
 import type { ComicPage, OpenComicResult } from './shared/comic';
 import type { DataChange } from './shared/data-changes';
 import type {
+  ClearCacheResult,
   ClearLibraryResult,
   BackupList,
   BackupResult,
@@ -219,6 +220,8 @@ export interface DataApi {
   import(): Promise<ImportResult>;
   /** Empties the library (entries, credits, people) and deletes every reading list and cover thumbnail; the comic files and the settings are left untouched. A failure comes back as an error result. */
   clearLibrary(): Promise<ClearLibraryResult>;
+  /** Deletes the cover thumbnails kept in the application's cache folder (they are made again on demand); the library, the settings and the covers beside the comics are left untouched. A failure comes back as an error result. */
+  clearCache(): Promise<ClearCacheResult>;
   /** Subscribes to the main process's `data:changed` push, sent after every database write (library, reading lists, settings); returns the unsubscribe function. */
   onChanged(listener: (change: DataChange) => void): () => void;
 }
@@ -393,6 +396,7 @@ const api: TankobonApi = {
     export: () => ipcRenderer.invoke('data:export'),
     import: () => ipcRenderer.invoke('data:import'),
     clearLibrary: () => ipcRenderer.invoke('data:clear-library'),
+    clearCache: () => ipcRenderer.invoke('data:clear-cache'),
     onChanged: (listener) => {
       const handler = (_event: Electron.IpcRendererEvent, change: DataChange) => listener(change);
       ipcRenderer.on('data:changed', handler);

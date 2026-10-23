@@ -83,3 +83,6 @@ export type ClearLibraryResult =
       readingLists: number;
     }
   | { status: 'error'; message: string };
+
+/** Outcome of `data:clear-cache`: done, or why it failed. Same rationale as `ImportResult`. */
+export type ClearCacheResult = { status: 'cleared' } | { status: 'error'; message: string };
