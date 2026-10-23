@@ -20,9 +20,9 @@ import {
   setHomeSectionVisible,
 } from "@/lib/home-sections";
 
-/** One row of the table (header included): the five columns share the same widths. */
+/** One row of the table (header included): the five columns share the same widths. No scroll container: it would clip the info tips. */
 const ROW =
-  "grid grid-cols-[minmax(18rem,1fr)_6rem_12rem_9rem_5.5rem] items-center gap-x-4 px-3 py-2";
+  "grid grid-cols-[minmax(11rem,1fr)_5rem_minmax(8rem,12rem)_minmax(6rem,9rem)_5.5rem] items-center gap-x-4 px-3 py-2";
 
 export const Route = createFileRoute("/settings/home")({
   component: HomeSettingsPage,
@@ -37,8 +37,8 @@ function HomeSettingsPage() {
     <>
       <SettingsSection title={t("sectionsTitle")}>
         <p className="text-xs text-muted-foreground">{t("sectionsHint")}</p>
-        <div className="w-fit max-w-full overflow-x-auto rounded-md border">
-          <ul className="flex min-w-max flex-col divide-y">
+        <div className="w-full max-w-4xl rounded-md border">
+          <ul className="flex flex-col divide-y">
             <li
               className={`${ROW} bg-muted/40 text-xs font-medium text-muted-foreground`}
             >
