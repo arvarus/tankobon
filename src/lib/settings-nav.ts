@@ -31,13 +31,13 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
       { to: '/settings/appearance', id: 'appearance', icon: Palette },
       { to: '/settings/reading', id: 'reading', icon: BookOpen },
       { to: '/settings/library', id: 'library', icon: Library },
+      { to: '/settings/metadata', id: 'metadata', icon: Globe },
     ],
   },
   {
     id: 'library',
     sections: [
       { to: '/settings/organization', id: 'organization', icon: FolderTree },
-      { to: '/settings/metadata', id: 'metadata', icon: Globe },
       { to: '/settings/data', id: 'data', icon: Database },
     ],
   },

@@ -254,6 +254,21 @@ const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    // The metadata sources and their API keys become personal (they were shared). Every existing
+    // user gets the shared values, which were the live ones, and the shared rows are dropped so an
+    // API key doesn't linger where no one reads it.
+    version: 10,
+    run: (db) => {
+      db.exec(`
+        INSERT OR REPLACE INTO user_settings (user_id, key, value)
+          SELECT u.id, s.key, s.value FROM users u, settings s
+          WHERE s.key IN ('comicVineEnabled', 'comicVineApiKey', 'googleBooksEnabled', 'googleBooksApiKey');
+        DELETE FROM settings
+          WHERE key IN ('comicVineEnabled', 'comicVineApiKey', 'googleBooksEnabled', 'googleBooksApiKey');
+      `);
+    },
+  },
 ];
 
 /** The name of the OS session, which makes the first user's nickname; a generic one when it can't be read. */
