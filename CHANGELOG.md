@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here. This file is maintained by [release-please](https://github.com/googleapis/release-please) from the [Conventional Commits](https://www.conventionalcommits.org/) merged into `master`: don't edit released entries by hand. New versions are inserted above the previous ones.
 
+## [0.18.0](https://github.com/arvarus/tankobon/compare/v0.17.0...v0.18.0) (2026-10-24)
+
+
+### Features
+
+* **data:** add an action to clear the cache ([#227](https://github.com/arvarus/tankobon/issues/227)) ([fe8bbdd](https://github.com/arvarus/tankobon/commit/fe8bbdd31884df2ef120b172d4ff4d3aa0353ee9))
+* **home:** welcome title, shuffle icons on every block and reset from continue reading ([#224](https://github.com/arvarus/tankobon/issues/224)) ([ad79bc3](https://github.com/arvarus/tankobon/commit/ad79bc38e0f74381b6178e4973be0dc4d93ca6f7))
+* **settings:** disable the statistics and achievements pages ([#222](https://github.com/arvarus/tankobon/issues/222)) ([29f0160](https://github.com/arvarus/tankobon/commit/29f0160bd5e6ebf15d25f2a541199e190998c980))
+* **settings:** move home toggle to display, add per-block info tips ([#225](https://github.com/arvarus/tankobon/issues/225)) ([b8cd0a4](https://github.com/arvarus/tankobon/commit/b8cd0a4fd9fca3a142cb8d4a8cf84b458cf8b80c))
+
 ## [0.17.0](https://github.com/arvarus/tankobon/compare/v0.16.0...v0.17.0) (2026-10-22)
 
 
