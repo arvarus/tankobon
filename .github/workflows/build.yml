@@ -93,3 +93,28 @@ jobs:
             gh release create "$TAG" --verify-tag --title "$TAG" --generate-notes
           fi
           find dist -type f -print0 | xargs -0 gh release upload "$TAG" --clobber
+
+  notify:
+    name: Announce on Discord
+    needs: release
+    runs-on: ubuntu-latest
+    # Reads the release only; the webhook URL is a repository secret (Settings > Secrets and variables > Actions).
+    permissions:
+      contents: read
+    steps:
+      - name: Post the release on Discord
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "DISCORD_WEBHOOK_URL is not set: nothing to announce."
+            exit 0
+          fi
+          url="$(gh release view "$TAG" --json url --jq .url)"
+          # An embed description holds 4096 characters at most.
+          notes="$(gh release view "$TAG" --json body --jq .body | head -c 3500)"
+          jq -n --arg title "Tankōbon $TAG" --arg url "$url" --arg notes "$notes" \
+            '{embeds: [{title: $title, url: $url, description: $notes, color: 5814783}]}' \
+            | curl -fsS -H 'Content-Type: application/json' -d @- "$DISCORD_WEBHOOK_URL"
