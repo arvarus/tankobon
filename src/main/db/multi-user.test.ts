@@ -162,9 +162,16 @@ describe('settings, per user', () => {
 
   it('shares the library’s settings between users', () => {
     settings.set('libraryOrganization', 'always');
+    as('bob');
+    expect(settings.getAll()).toMatchObject({ libraryOrganization: 'always' });
+  });
+
+  it('keeps the metadata sources and API keys apart', () => {
     settings.set('comicVineApiKey', 'secret');
     as('bob');
-    expect(settings.getAll()).toMatchObject({ libraryOrganization: 'always', comicVineApiKey: 'secret' });
+    expect(settings.getAll().comicVineApiKey).toBe(DEFAULT_SETTINGS.comicVineApiKey);
+    as('alice');
+    expect(settings.getAll().comicVineApiKey).toBe('secret');
   });
 
   it('ignores a value stored on the wrong side', () => {

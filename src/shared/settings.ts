@@ -346,13 +346,10 @@ export const MAX_BACKUP_KEEP = 50;
 /**
  * The settings every user shares: they describe the library (where it lives, how it is laid out,
  * how it is kept up to date) and the app's technical side, which the users' common library depends
- * on. All the others (reading, appearance, language, home, library views…) belong to each user.
+ * on. All the others (reading, appearance, language, home, library views, metadata sources and
+ * their API keys…) belong to each user.
  */
 export const SHARED_SETTINGS: readonly (keyof AppSettings)[] = [
-  'comicVineEnabled',
-  'comicVineApiKey',
-  'googleBooksEnabled',
-  'googleBooksApiKey',
   'checkUpdatesOnStartup',
   'backupIntervalDays',
   'backupKeep',

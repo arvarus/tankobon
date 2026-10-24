@@ -115,7 +115,7 @@ describe('versioned migrations', () => {
     const db = new DatabaseSync(':memory:');
     migrate(db);
 
-    expect(userVersion(db)).toBe(9);
+    expect(userVersion(db)).toBe(10);
     expect(indexNames(db)).toEqual(INDEXES);
   });
 
@@ -127,7 +127,7 @@ describe('versioned migrations', () => {
 
     migrate(db);
 
-    expect(userVersion(db)).toBe(9);
+    expect(userVersion(db)).toBe(10);
     expect(indexNames(db)).toEqual(INDEXES);
     expect(db.prepare('SELECT value FROM settings').get()).toEqual({ value: '"dark"' });
   });
@@ -139,7 +139,7 @@ describe('versioned migrations', () => {
 
     migrate(db);
 
-    expect(userVersion(db)).toBe(9);
+    expect(userVersion(db)).toBe(10);
     expect(columnNames(db, 'library')).toContain('finished_at');
     expect(columnNames(db, 'reading_sessions')).toEqual(['id', 'library_id', 'day', 'seconds', 'user_id']);
   });
@@ -151,7 +151,7 @@ describe('versioned migrations', () => {
 
     migrate(db);
 
-    expect(userVersion(db)).toBe(9);
+    expect(userVersion(db)).toBe(10);
     expect(columnNames(db, 'achievements')).toEqual(['id', 'unlocked_at']);
   });
 
@@ -234,6 +234,29 @@ describe('versioned migrations', () => {
     expect(db.prepare('SELECT user_id, folder_id FROM user_library_folders').all()).toEqual([
       { user_id: 'default', folder_id: 'f1' },
     ]);
+  });
+
+  it('makes the metadata sources and API keys each existing user\'s own (version 10)', () => {
+    const db = new DatabaseSync(':memory:');
+    migrate(db);
+    db.exec(`
+      INSERT INTO users (id, nickname, created_at, last_active_at) VALUES ('bob', 'Bob', '2024-01-01', '');
+      INSERT INTO settings (key, value) VALUES ('comicVineApiKey', '"secret"'), ('googleBooksEnabled', 'false'), ('libraryOrganization', '"always"');
+      PRAGMA user_version = 9;
+    `);
+
+    migrate(db);
+
+    const rows = db
+      .prepare("SELECT user_id, key, value FROM user_settings WHERE key IN ('comicVineApiKey', 'googleBooksEnabled') ORDER BY user_id, key")
+      .all();
+    expect(rows).toEqual([
+      { user_id: 'bob', key: 'comicVineApiKey', value: '"secret"' },
+      { user_id: 'bob', key: 'googleBooksEnabled', value: 'false' },
+      { user_id: 'default', key: 'comicVineApiKey', value: '"secret"' },
+      { user_id: 'default', key: 'googleBooksEnabled', value: 'false' },
+    ]);
+    expect(db.prepare('SELECT key FROM settings').all()).toEqual([{ key: 'libraryOrganization' }]);
   });
 
   it('leaves a database from a newer release alone', () => {
