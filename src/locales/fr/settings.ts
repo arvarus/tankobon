@@ -3,6 +3,7 @@ import type { Translation } from '../types';
 
 const settings: Translation<typeof en> = {
   title: 'Paramètres',
+  sectionTitle: 'Paramètres › {{section}}',
   sections: {
     home: 'Accueil',
     appearance: 'Affichage',
