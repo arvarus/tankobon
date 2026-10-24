@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { Navigate, createFileRoute } from '@tanstack/react-router';
 import { Copy, Eraser, FolderMinus, FileArchive, FolderTree, RefreshCw, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +10,7 @@ import { ScanFailuresDialog } from '@/components/scan-failures-dialog';
 import { SETTINGS_SELECT_CLASS, SettingsSection } from '@/components/settings-section';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { isOrganizationOn } from '@/lib/settings-nav';
 import { useOrganizationOffer } from '@/hooks/use-organization-offer';
 import { useLibrary } from '@/hooks/use-library';
 import { useSettings } from '@/hooks/use-settings';
@@ -27,8 +28,14 @@ import {
 } from '@/shared/settings';
 
 export const Route = createFileRoute('/settings/organization')({
-  component: OrganizationSettingsPage,
+  component: OrganizationSettingsGuard,
 });
+
+/** The page only exists while the organized library is enabled (Paramètres › Bibliothèque). */
+function OrganizationSettingsGuard() {
+  const { settings } = useSettings();
+  return isOrganizationOn(settings) ? <OrganizationSettingsPage /> : <Navigate to="/settings/library" replace />;
+}
 
 /**
  * How the library's files are laid out, shared by every user. The folder the files are moved to is
@@ -232,7 +239,6 @@ function OrganizationSettingsPage() {
             value={settings.libraryOrganization}
             onChange={(event) => update('libraryOrganization', event.target.value as LibraryOrganization)}
           >
-            <option value="off">{t('organizationOff')}</option>
             <option value="ask">{t('organizationAsk')}</option>
             <option value="always">{t('organizationAlways')}</option>
           </select>

@@ -2,6 +2,7 @@
  * Navigation of the settings sections.
  * @module
  */
+import type { AppSettings } from '@/shared/settings';
 import { BookOpen, Database, FolderTree, Globe, Home, Library, Palette, type LucideIcon } from 'lucide-react';
 
 /** A settings sub-page; its label is the `settings:sections.<id>` translation. */
@@ -9,6 +10,8 @@ export interface SettingsSection {
   to: string;
   id: 'reading' | 'appearance' | 'home' | 'library' | 'organization' | 'metadata' | 'data';
   icon: LucideIcon;
+  /** Shown only while the library organization is on (see {@link isOrganizationOn}). */
+  requiresOrganization?: true;
 }
 
 /** A group of settings sub-pages; its label is the `settings:groups.<id>` translation. */
@@ -37,8 +40,18 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
   {
     id: 'library',
     sections: [
-      { to: '/settings/organization', id: 'organization', icon: FolderTree },
+      { to: '/settings/organization', id: 'organization', icon: FolderTree, requiresOrganization: true },
       { to: '/settings/data', id: 'data', icon: Database },
     ],
   },
 ];
+
+/** Whether the library organization is switched on (`libraryOrganization` is anything but `off`). */
+export function isOrganizationOn(settings: Pick<AppSettings, 'libraryOrganization'>): boolean {
+  return settings.libraryOrganization !== 'off';
+}
+
+/** The sections of `group` to show: those that need the library organization are hidden while it is off. */
+export function visibleSections(group: SettingsGroup, settings: Pick<AppSettings, 'libraryOrganization'>): SettingsSection[] {
+  return group.sections.filter((section) => !section.requiresOrganization || isOrganizationOn(settings));
+}

@@ -3,7 +3,8 @@ import { ChevronDown, Settings } from 'lucide-react';
 import { Fragment, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { SETTINGS_GROUPS } from '@/lib/settings-nav';
+import { useSettings } from '@/hooks/use-settings';
+import { SETTINGS_GROUPS, visibleSections } from '@/lib/settings-nav';
 import { cn } from '@/lib/utils';
 
 import { activeLinkClass, linkClass, subLinkClass } from './sidebar-styles';
@@ -15,6 +16,7 @@ import { activeLinkClass, linkClass, subLinkClass } from './sidebar-styles';
  */
 export function SettingsNav({ collapsed }: { collapsed: boolean }) {
   const { t } = useTranslation(['nav', 'settings']);
+  const { settings } = useSettings();
   const onSettings = useRouterState({
     select: (state) => state.location.pathname.startsWith('/settings'),
   });
@@ -48,7 +50,7 @@ export function SettingsNav({ collapsed }: { collapsed: boolean }) {
             <span className="px-3 pt-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground/70">
               {t(`settings:groups.${group.id}`)}
             </span>
-            {group.sections.map(({ to, id, icon: Icon }) => (
+            {visibleSections(group, settings).map(({ to, id, icon: Icon }) => (
               <Link key={to} to={to} className={subLinkClass} activeProps={{ className: activeLinkClass }}>
                 <Icon className="size-3.5" />
                 {t(`settings:sections.${id}`)}
