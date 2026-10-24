@@ -17,6 +17,11 @@ on:
         description: Release tag to build (e.g. v0.2.0).
         required: true
         type: string
+    # A called workflow doesn't see the caller's secrets unless they are passed explicitly.
+    secrets:
+      DISCORD_WEBHOOK_URL:
+        description: Discord webhook the release is announced on (optional).
+        required: false
   workflow_dispatch:
     inputs:
       tag:
