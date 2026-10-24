@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here. This file is maintained by [release-please](https://github.com/googleapis/release-please) from the [Conventional Commits](https://www.conventionalcommits.org/) merged into `master`: don't edit released entries by hand. New versions are inserted above the previous ones.
 
+## [0.19.0](https://github.com/arvarus/tankobon/compare/v0.18.0...v0.19.0) (2026-10-24)
+
+
+### Features
+
+* **library:** select every book of a series from its heading ([#235](https://github.com/arvarus/tankobon/issues/235)) ([4fe405d](https://github.com/arvarus/tankobon/commit/4fe405d9e7e5d27770d71025a40e5924234a6109))
+* **settings:** add a switch to enable the organized library ([#234](https://github.com/arvarus/tankobon/issues/234)) ([5958097](https://github.com/arvarus/tankobon/commit/59580977f67bae79ed20e62f0d57cd7119e52cf9))
+* **settings:** make metadata sources and API keys per user ([#233](https://github.com/arvarus/tankobon/issues/233)) ([24383a9](https://github.com/arvarus/tankobon/commit/24383a9290c4a53d0c5113e2160481eafa92c7f9))
+* **settings:** name the section in the settings page title ([#231](https://github.com/arvarus/tankobon/issues/231)) ([24ba0cf](https://github.com/arvarus/tankobon/commit/24ba0cf11f6617465ad2b11202604e3f91c74990))
+
 ## [0.18.0](https://github.com/arvarus/tankobon/compare/v0.17.0...v0.18.0) (2026-10-24)
 
 
