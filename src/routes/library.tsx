@@ -80,7 +80,7 @@ function LibraryPage() {
   // The input follows the keystrokes; filtering and re-laying out the list can lag behind them.
   const deferredFilters = useDeferredValue(filters);
   const { editions, visible, tags, rows, shown, toggleSeries } = useLibraryRows(entries, deferredFilters, grouped, sort);
-  const { selected, selection, shownSelected, tick, tickAllShown, clear: clearSelection } = useLibrarySelection(shown, entries);
+  const { selected, selection, shownSelected, tick, tickGroup, tickAllShown, clear: clearSelection } = useLibrarySelection(shown, entries);
 
   // Subscribed for the whole page's life rather than around each scan: the main process starts
   // sending progress as soon as the directory is picked, which is before `addFolder()` resolves.
@@ -282,6 +282,8 @@ function LibraryPage() {
                     index={item.index}
                     start={item.start}
                     onToggle={() => toggleSeries(row.key)}
+                    selectedCount={row.ids.filter((id) => selected.has(id)).length}
+                    onSelect={() => tickGroup(row.ids)}
                   />
                 );
               }

@@ -140,6 +140,8 @@ const library: Translation<typeof en> = {
   },
   noSeries: 'Sans série',
   seriesProgress: 'Lus : {{finished}} / {{count}}',
+  selectSeries: 'Sélectionner tout {{series}}',
+  selectSeriesHint: 'Sélectionner tous les livres de la série',
   expandSeries: 'Déplier {{series}}',
   collapseSeries: 'Replier {{series}}',
   tags: {

@@ -21,6 +21,8 @@ export interface SeriesHeaderRow {
   count: number;
   /** Of those, how many are finished (`isFinished()`). */
   finished: number;
+  /** Ids of every entry of the group that passes the filters, folded or not (to select the series). */
+  ids: string[];
   /** Whether the group is folded: its entries are then left out of the rows. */
   collapsed: boolean;
 }
@@ -123,6 +125,7 @@ export function groupBySeries(entries: LibraryEntry[], collapsed: ReadonlySet<st
       series: group.series,
       count: group.entries.length,
       finished: group.entries.filter(isFinished).length,
+      ids: group.entries.map((entry) => entry.id),
       collapsed: folded,
     };
     if (folded) return [header];
