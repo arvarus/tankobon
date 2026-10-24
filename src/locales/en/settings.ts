@@ -1,6 +1,7 @@
 // The settings pages (/settings/*), one block per section.
 export default {
   title: 'Settings',
+  sectionTitle: 'Settings › {{section}}',
   sections: {
     home: 'Home',
     appearance: 'Display',
