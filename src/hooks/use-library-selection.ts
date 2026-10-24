@@ -17,6 +17,8 @@ export interface LibrarySelection {
   shownSelected: number;
   /** Ticks or unticks a book; with `shift`, the whole range from the book ticked last. */
   tick: (id: string, shift: boolean) => void;
+  /** Ticks every book of a group, or unticks them all when they already are. */
+  tickGroup: (ids: readonly string[]) => void;
   /** Ticks every shown book, or unticks them all when they already are. */
   tickAllShown: () => void;
   /** Unticks everything. */
@@ -50,5 +52,15 @@ export function useLibrarySelection(shown: readonly LibraryEntry[], entries: rea
     setSelected(next);
   };
 
-  return { selected, selection, shownSelected, tick, tickAllShown, clear: () => setSelected(new Set()) };
+  const tickGroup = (ids: readonly string[]) => {
+    const next = new Set(selected);
+    const select = ids.some((id) => !selected.has(id));
+    for (const id of ids) {
+      if (select) next.add(id);
+      else next.delete(id);
+    }
+    setSelected(next);
+  };
+
+  return { selected, selection, shownSelected, tick, tickGroup, tickAllShown, clear: () => setSelected(new Set()) };
 }

@@ -25,6 +25,15 @@ describe('useLibrarySelection', () => {
     expect(result.current.selected.size).toBe(0);
   });
 
+  it('ticks a group, completes a partly ticked one, then unticks it', () => {
+    const { result } = renderHook(() => useLibrarySelection(library, library));
+    act(() => result.current.tick('a', false));
+    act(() => result.current.tickGroup(['a', 'b']));
+    expect([...result.current.selected].sort()).toEqual(['a', 'b']);
+    act(() => result.current.tickGroup(['a', 'b']));
+    expect(result.current.selected.size).toBe(0);
+  });
+
   it('keeps the books a filter hides, after the shown ones', () => {
     const { result, rerender } = renderHook(({ shown }) => useLibrarySelection(shown, library), { initialProps: { shown: library } });
     act(() => result.current.tick('a', false));

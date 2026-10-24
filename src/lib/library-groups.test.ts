@@ -59,6 +59,12 @@ describe('groupBySeries', () => {
     expect(shape(rows)).toEqual(['# Blacksad (2)', 'a', 'b']);
   });
 
+  it('lists the ids of a series, even when it is folded', () => {
+    const entries = [entry({ id: 'a', series: 'S' }), entry({ id: 'b', series: 'S' })];
+    const [header] = groupBySeries(entries, new Set(['s']));
+    expect(header).toMatchObject({ collapsed: true, ids: ['a', 'b'] });
+  });
+
   it('counts the finished books of each series', () => {
     const [header] = groupBySeries([
       entry({ id: 'a', series: 'S', tags: ['Lu'] }),

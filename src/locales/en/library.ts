@@ -138,6 +138,8 @@ export default {
   },
   noSeries: 'No series',
   seriesProgress: '{{finished}} / {{count}} read',
+  selectSeries: 'Select all of {{series}}',
+  selectSeriesHint: 'Select every book of the series',
   expandSeries: 'Unfold {{series}}',
   collapseSeries: 'Fold {{series}}',
   tags: {
