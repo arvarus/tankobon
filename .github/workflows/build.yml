@@ -19,8 +19,11 @@ on:
         type: string
     # A called workflow doesn't see the caller's secrets unless they are passed explicitly.
     secrets:
-      DISCORD_WEBHOOK_URL:
-        description: Discord webhook the release is announced on (optional).
+      DISCORD_WEBHOOK_URL_EN:
+        description: Discord webhook of the English channel the release is announced on (optional).
+        required: false
+      DISCORD_WEBHOOK_URL_FR:
+        description: Discord webhook of the French channel the release is announced on (optional).
         required: false
   workflow_dispatch:
     inputs:
@@ -103,7 +106,7 @@ jobs:
     name: Announce on Discord
     needs: release
     runs-on: ubuntu-latest
-    # Reads the release only; the webhook URL is a repository secret (Settings > Secrets and variables > Actions).
+    # Reads the release only; the webhook URLs are repository secrets (Settings > Secrets and variables > Actions).
     permissions:
       contents: read
     steps:
@@ -111,15 +114,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_WEBHOOK_URLS: ${{ secrets.DISCORD_WEBHOOK_URL_EN }} ${{ secrets.DISCORD_WEBHOOK_URL_FR }}
         run: |
-          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
-            echo "DISCORD_WEBHOOK_URL is not set: nothing to announce."
+          if [ -z "${DISCORD_WEBHOOK_URLS// /}" ]; then
+            echo "No Discord webhook is set: nothing to announce."
             exit 0
           fi
           url="$(gh release view "$TAG" --json url --jq .url)"
           # An embed description holds 4096 characters at most.
           notes="$(gh release view "$TAG" --json body --jq .body | head -c 3500)"
-          jq -n --arg title "Tankōbon $TAG" --arg url "$url" --arg notes "$notes" \
-            '{embeds: [{title: $title, url: $url, description: $notes, color: 5814783}]}' \
-            | curl -fsS -H 'Content-Type: application/json' -d @- "$DISCORD_WEBHOOK_URL"
+          payload="$(jq -n --arg title "Tankōbon $TAG" --arg url "$url" --arg notes "$notes" \
+            '{embeds: [{title: $title, url: $url, description: $notes, color: 5814783}]}')"
+          for webhook in $DISCORD_WEBHOOK_URLS; do
+            curl -fsS -H 'Content-Type: application/json' -d "$payload" "$webhook"
+          done

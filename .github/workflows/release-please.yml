@@ -36,4 +36,5 @@ jobs:
     with:
       tag: ${{ needs.release-please.outputs.tag_name }}
     secrets:
-      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      DISCORD_WEBHOOK_URL_EN: ${{ secrets.DISCORD_WEBHOOK_URL_EN }}
+      DISCORD_WEBHOOK_URL_FR: ${{ secrets.DISCORD_WEBHOOK_URL_FR }}
