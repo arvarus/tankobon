@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { SettingsSection } from '@/components/settings-section';
 import { Button } from '@/components/ui/button';
 import { useSettings } from '@/hooks/use-settings';
+import { isOrganizationOn } from '@/lib/settings-nav';
 import type { ScanProgress, UnlinkedFolder } from '@/shared/library';
 
 export const Route = createFileRoute('/settings/library')({
@@ -14,7 +15,8 @@ export const Route = createFileRoute('/settings/library')({
 
 function LibrarySettingsPage() {
   const { t } = useTranslation('settings', { keyPrefix: 'library' });
-  const { settings } = useSettings();
+  const { settings, update } = useSettings();
+  const organizationOn = isOrganizationOn(settings);
   const [folders, setFolders] = useState<string[] | null>(null);
   const [unlinked, setUnlinked] = useState<UnlinkedFolder[]>([]);
   const [progress, setProgress] = useState<ScanProgress | null>(null);
@@ -101,6 +103,20 @@ function LibrarySettingsPage() {
 
       {status && <p className="text-sm text-destructive">{status.message}</p>}
 
+      <SettingsSection title={t('organizedLibrary')}>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={organizationOn}
+            disabled={resyncing}
+            onChange={(event) => update('libraryOrganization', event.target.checked ? 'ask' : 'off')}
+          />
+          {t('organizedLibraryEnable')}
+        </label>
+        <p className="text-sm text-muted-foreground">{t('organizedLibraryHint')}</p>
+      </SettingsSection>
+
+      {organizationOn && (
       <SettingsSection title={t('organizationFolder')}>
         <p className="text-sm text-muted-foreground">{t('organizationFolderHint')}</p>
         <div className="flex flex-wrap items-center gap-2">
@@ -115,6 +131,7 @@ function LibrarySettingsPage() {
           </Button>
         </div>
       </SettingsSection>
+      )}
     </>
   );
 }
