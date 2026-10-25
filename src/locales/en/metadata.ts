@@ -38,7 +38,7 @@ export default {
   pageUrlPlaceholder: 'https://…',
   pageSitesHint: 'Supported sites: Bédéthèque (album page), BDfugue (product page) and Nautiljon (volume page).',
   stop: 'Stop',
-  ruleHint: "This book has no information yet, so the search starts from its file name. Describe how the name is built, with the fields of the library file names ({series} {volume} {title} {year} {author}), to read the series and volume from it.",
+  ruleHint: "The search starts from the book's information, or from its file name when it has none. To search from the file name, describe how the name is built, with the fields of the library file names ({series} {volume} {title} {year} {author}), to read the series and volume from it.",
   ruleLabel: 'File name rule',
   rulePlaceholder: '{series} - T{volume}',
   applyRule: 'Read the name',

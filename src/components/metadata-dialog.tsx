@@ -68,10 +68,10 @@ export function MetadataDialog({
   const { settings, update } = useSettings();
   const [mode, setMode] = useState<Mode>('api');
   // A book with no information yet starts from its file name: a rule can read it into the fields,
-  // and the last rule used that fits is applied at once.
-  const needsRule = !hasFiche(entry);
+  // and the last rule used that fits is applied at once. A book that has some starts from them, but
+  // the rule zone stays available to search from the file name instead.
   const [initial] = useState(() =>
-    needsRule
+    !hasFiche(entry)
       ? initialRuleState(entry, settings?.fileNameRules ?? [])
       : { rule: '', query: initialLookupQuery(entry) },
   );
@@ -230,63 +230,61 @@ export function MetadataDialog({
                 onChange={(event) => setQuery({ ...query, volume: event.target.value || null })}
               />
             </div>
-            {needsRule && (
-              <div className="flex flex-col gap-1 rounded-md border p-2">
-                <span className="text-xs text-muted-foreground">{t('ruleHint')}</span>
-                <div className="flex flex-wrap items-center gap-2">
-                  <input
-                    aria-label={t('ruleLabel')}
-                    placeholder={t('rulePlaceholder')}
-                    className={cn(INPUT_CLASS, 'min-w-48 flex-1 font-mono')}
-                    value={rule}
-                    onChange={(event) => {
-                      setRule(event.target.value);
-                      setRuleMisses(false);
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={rule === '' || ruleError !== null}
-                    onClick={applyRule}
-                  >
-                    {t('applyRule')}
-                  </Button>
-                </div>
-                {rules.length > 0 && (
-                  <ul className="flex flex-wrap gap-1" aria-label={t('previousRules')}>
-                    {rules.map((previous) => (
-                      <li key={previous} className="flex items-center rounded-md border text-xs">
+            <div className="flex flex-col gap-1 rounded-md border p-2">
+              <span className="text-xs text-muted-foreground">{t('ruleHint')}</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  aria-label={t('ruleLabel')}
+                  placeholder={t('rulePlaceholder')}
+                  className={cn(INPUT_CLASS, 'min-w-48 flex-1 font-mono')}
+                  value={rule}
+                  onChange={(event) => {
+                    setRule(event.target.value);
+                    setRuleMisses(false);
+                  }}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={rule === '' || ruleError !== null}
+                  onClick={applyRule}
+                >
+                  {t('applyRule')}
+                </Button>
+              </div>
+              {rules.length > 0 && (
+                <ul className="flex flex-wrap gap-1" aria-label={t('previousRules')}>
+                  {rules.map((previous) => (
+                    <li key={previous} className="flex items-center rounded-md border text-xs">
+                      <button
+                        type="button"
+                        className="px-2 py-0.5 font-mono hover:bg-accent"
+                        onClick={() => {
+                          setRule(previous);
+                          setRuleMisses(false);
+                        }}
+                      >
+                        {previous}
+                      </button>
+                      {(settings?.fileNameRules ?? []).includes(previous) && (
                         <button
                           type="button"
-                          className="px-2 py-0.5 font-mono hover:bg-accent"
-                          onClick={() => {
-                            setRule(previous);
-                            setRuleMisses(false);
-                          }}
+                          className="px-1 py-0.5 text-muted-foreground hover:text-foreground"
+                          aria-label={t('forgetRule', { rule: previous })}
+                          title={t('forgetRule', { rule: previous })}
+                          onClick={() => update('fileNameRules', forgetRule(settings?.fileNameRules ?? [], previous))}
                         >
-                          {previous}
+                          <X className="size-3" />
                         </button>
-                        {(settings?.fileNameRules ?? []).includes(previous) && (
-                          <button
-                            type="button"
-                            className="px-1 py-0.5 text-muted-foreground hover:text-foreground"
-                            aria-label={t('forgetRule', { rule: previous })}
-                            title={t('forgetRule', { rule: previous })}
-                            onClick={() => update('fileNameRules', forgetRule(settings?.fileNameRules ?? [], previous))}
-                          >
-                            <X className="size-3" />
-                          </button>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {ruleError && <p className="text-xs text-destructive">{t('ruleInvalid')}</p>}
-                {ruleMisses && <p className="text-xs text-destructive">{t('ruleNoMatch')}</p>}
-              </div>
-            )}
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {ruleError && <p className="text-xs text-destructive">{t('ruleInvalid')}</p>}
+              {ruleMisses && <p className="text-xs text-destructive">{t('ruleNoMatch')}</p>}
+            </div>
             <fieldset className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
               <legend className="sr-only">{t('sourcesLabel')}</legend>
               <span className="text-muted-foreground">{t('sourcesLabel')}</span>
