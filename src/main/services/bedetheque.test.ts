@@ -357,6 +357,7 @@ describe('searchBedetheque', () => {
     expect(found[0]).toMatchObject({
       source: 'bedetheque',
       sourceId: '15161',
+      coverUrl: 'https://www.bedetheque.com/media/Couvertures/Couv_15161.jpg',
       series: 'Blacksad',
       title: 'Quelque part entre les ombres',
       releaseDate: '2000-11',

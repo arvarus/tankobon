@@ -295,13 +295,18 @@ export function pickAlbum(albums: SeriesAlbum[], volume: string | null): SeriesA
   return numbered.length === 0 && albums.length === 1 ? albums[0] : null;
 }
 
-/** An album of the list as a candidate: what the list shows, the credits left for the album page. */
+/**
+ * An album of the list as a candidate: what the list shows, the credits left for the album page. The
+ * list shows no cover, but the site names each album's cover file after the album's id, so it is
+ * deduced from the link (no extra request).
+ */
 function listCandidate(album: SeriesAlbum, series: string): MetadataCandidate {
+  const id = /-(\d+)\.html$/i.exec(new URL(album.url).pathname)?.[1];
   return {
     source: 'bedetheque',
-    sourceId: /-(\d+)\.html$/i.exec(new URL(album.url).pathname)?.[1] ?? album.url,
+    sourceId: id ?? album.url,
     sourceUrl: album.url,
-    coverUrl: null,
+    coverUrl: id ? `https://www.bedetheque.com/media/Couvertures/Couv_${id}.jpg` : null,
     title: album.title || null,
     series,
     volume: album.number || null,

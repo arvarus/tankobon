@@ -3,6 +3,7 @@ import { useEffect, useReducer, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
+import { BookCover } from '@/components/book-cover';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { useSettings } from '@/hooks/use-settings';
@@ -173,6 +174,13 @@ export function MetadataDialog({
       description={entry.path}
       className="max-w-3xl"
     >
+      <div className="flex items-center gap-3 rounded-md border bg-muted/30 p-2">
+        <BookCover entryId={entry.id} title={entry.title} className="h-20 w-14" />
+        <p className="min-w-0 truncate text-sm font-medium" title={entry.title}>
+          {entry.title}
+        </p>
+      </div>
+
       <div role="tablist" className="flex gap-1">
         {(['api', 'site'] as const).map((value) => (
           <Button
