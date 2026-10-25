@@ -1,4 +1,4 @@
-import { ArrowLeft, Globe, Loader2, Search, Square } from 'lucide-react';
+import { ArrowLeft, Globe, Loader2, Search, Square, X } from 'lucide-react';
 import { useEffect, useReducer, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
@@ -18,7 +18,7 @@ import {
 import { bumpCoverRevision } from '@/lib/cover-revisions';
 import { hasFiche } from '@/lib/library-filter';
 import { INITIAL_LOOKUP, lookupReducer } from '@/lib/metadata-lookup';
-import { initialLookupQuery, initialRuleState, offeredRules, queryFromRule, rememberRule } from '@/lib/lookup-query';
+import { forgetRule, initialLookupQuery, initialRuleState, offeredRules, queryFromRule, rememberRule } from '@/lib/lookup-query';
 import { cn, formatLanguage } from '@/lib/utils';
 import { fileNameTemplateError } from '@/shared/file-name-template';
 import { CREDIT_ROLES, type CreditRole, type LibraryEntry } from '@/shared/library';
@@ -236,7 +236,6 @@ export function MetadataDialog({
                 <input
                   aria-label={t('ruleLabel')}
                   placeholder={t('rulePlaceholder')}
-                  list="file-name-rules"
                   className={cn(INPUT_CLASS, 'min-w-48 flex-1 font-mono')}
                   value={rule}
                   onChange={(event) => {
@@ -244,11 +243,6 @@ export function MetadataDialog({
                     setRuleMisses(false);
                   }}
                 />
-                <datalist id="file-name-rules">
-                  {rules.map((previous) => (
-                    <option key={previous} value={previous} />
-                  ))}
-                </datalist>
                 <Button
                   type="button"
                   size="sm"
@@ -259,6 +253,35 @@ export function MetadataDialog({
                   {t('applyRule')}
                 </Button>
               </div>
+              {rules.length > 0 && (
+                <ul className="flex flex-wrap gap-1" aria-label={t('previousRules')}>
+                  {rules.map((previous) => (
+                    <li key={previous} className="flex items-center rounded-md border text-xs">
+                      <button
+                        type="button"
+                        className="px-2 py-0.5 font-mono hover:bg-accent"
+                        onClick={() => {
+                          setRule(previous);
+                          setRuleMisses(false);
+                        }}
+                      >
+                        {previous}
+                      </button>
+                      {(settings?.fileNameRules ?? []).includes(previous) && (
+                        <button
+                          type="button"
+                          className="px-1 py-0.5 text-muted-foreground hover:text-foreground"
+                          aria-label={t('forgetRule', { rule: previous })}
+                          title={t('forgetRule', { rule: previous })}
+                          onClick={() => update('fileNameRules', forgetRule(settings?.fileNameRules ?? [], previous))}
+                        >
+                          <X className="size-3" />
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
               {ruleError && <p className="text-xs text-destructive">{t('ruleInvalid')}</p>}
               {ruleMisses && <p className="text-xs text-destructive">{t('ruleNoMatch')}</p>}
             </div>
