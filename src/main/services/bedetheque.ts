@@ -103,6 +103,10 @@ function credits(album: string): CreditInput[] {
 export function parseBedethequeAlbum(html: string, url: string): MetadataCandidate {
   const album = /<section class="bdt-ah">([\s\S]*?)<\/section>/i.exec(html)?.[1];
   if (!album) {
+    const fromSeries = parseSeriesPageAlbum(html, url);
+    if (fromSeries) {
+      return fromSeries;
+    }
     throw new Error(t('errors:metadata.notAlbumPage', { source: SOURCE }));
   }
 
@@ -112,7 +116,8 @@ export function parseBedethequeAlbum(html: string, url: string): MetadataCandida
   const subtitle = textOf(/<h2 class="bdt-ah-sub">([\s\S]*?)<\/h2>/i.exec(album)?.[1] ?? '');
   const numbered = /^([^\s.]+)\s*\.\s*(.*)$/.exec(subtitle);
   const volume = numbered ? numbered[1] : null;
-  const title = (numbered ? numbered[2] : subtitle) || metaItemprop(album, 'alternativeheadline');
+  // A one-shot has no subtitle: its title is the series' name.
+  const title = (numbered ? numbered[2] : subtitle) || metaItemprop(album, 'alternativeheadline') || series;
 
   return {
     source: 'bedetheque',
@@ -125,6 +130,53 @@ export function parseBedethequeAlbum(html: string, url: string): MetadataCandida
     releaseDate: releaseDate(album),
     language: metaItemprop(album, 'inLanguage'),
     credits: credits(album),
+  };
+}
+
+/**
+ * The album of a one-shot read from its series page. The site shows a one-shot's album page as the
+ * series page (its canonical address), where the album is the `bdt-edition--detail` article: name,
+ * cover and a `<dt>`/`<dd>` sheet (credits by role label, legal deposit). Null when the page has no
+ * such article. The language isn't spelled as a code there, so it is left out.
+ */
+function parseSeriesPageAlbum(html: string, url: string): MetadataCandidate | null {
+  const article = /<article\b[^>]*\bbdt-edition--detail\b[^>]*>([\s\S]*?)<\/article>/i.exec(html)?.[1];
+  if (!article) {
+    return null;
+  }
+  const sheet = new Map<string, string[]>();
+  for (const field of article.matchAll(/<dt>([\s\S]*?)<\/dt>\s*<dd\b[^>]*>([\s\S]*?)<\/dd>/gi)) {
+    const label = textOf(field[1]).toLowerCase();
+    sheet.set(label, [...(sheet.get(label) ?? []), field[2]]);
+  }
+  const result: CreditInput[] = [];
+  const seen = new Set<string>();
+  for (const [label, role] of Object.entries(ROLES)) {
+    for (const value of sheet.get(label) ?? []) {
+      for (const person of value.matchAll(/<a\b(?:"[^"]*"|[^">])*>([\s\S]*?)<\/a>/gi)) {
+        const name = textOf(person[1]);
+        const key = `${name}|${role}`.toLowerCase();
+        if (name && !name.startsWith('<') && !seen.has(key)) {
+          seen.add(key);
+          result.push({ ...splitPersonName(name), role });
+        }
+      }
+    }
+  }
+  const deposit = textOf(sheet.get('dépôt légal')?.[0] ?? '');
+  const monthYear = /^(\d{2})\/(\d{4})/.exec(deposit);
+  const title = textOf(/<span itemprop="name">([\s\S]*?)<\/span>\s*<\/a>/i.exec(article)?.[1] ?? '');
+  return {
+    source: 'bedetheque',
+    sourceId: /-(\d+)\.html$/i.exec(new URL(url).pathname)?.[1] ?? url,
+    sourceUrl: url,
+    coverUrl: /<img\s+itemprop="image"\s+src="([^"]+)"/i.exec(article)?.[1] ?? null,
+    title: title || null,
+    series: textOf(/<section class="bdt-ah bdt-ah--serie">[\s\S]*?<h1>[\s\S]*?<a\b[^>]*>([\s\S]*?)<\/a>/i.exec(html)?.[1] ?? '') || null,
+    volume: null,
+    releaseDate: monthYear ? `${monthYear[2]}-${monthYear[1]}` : /^\d{4}$/.test(deposit) ? deposit : null,
+    language: null,
+    credits: result,
   };
 }
 
@@ -252,7 +304,7 @@ function listDate(text: string): string | null {
 export function parseSeriesAlbums(html: string): SeriesAlbum[] {
   const list = /<ul class="bdt-box-albums-liste">([\s\S]*?)<\/ul>/i.exec(html)?.[1];
   if (!list) {
-    return [];
+    return parseCoverAlbums(html);
   }
   const albums: SeriesAlbum[] = [];
   for (const item of list.matchAll(/<li\b([^>]*)>([\s\S]*?)<\/li>/gi)) {
@@ -272,6 +324,29 @@ export function parseSeriesAlbums(html: string): SeriesAlbum[] {
   return albums;
 }
 
+/**
+ * The albums of a series page that has no album list: a one-shot's page is a presentation, where
+ * the album only shows as its cover in the `bdt-sh-tomes` block (a link to the album page, titled
+ * with its name). Such an album has no number and no date (the album page gives it).
+ */
+function parseCoverAlbums(html: string): SeriesAlbum[] {
+  const block = /<div class="bdt-sh-tomes\b[^"]*">([\s\S]*?)<\/div>/i.exec(html)?.[1] ?? '';
+  const albums: SeriesAlbum[] = [];
+  for (const link of block.matchAll(/<a\b([^>]*)>/gi)) {
+    const url = /href="([^"]+)"/i.exec(link[1])?.[1];
+    if (url && isBedethequeAlbumUrl(url) && !albums.some((album) => album.url === url)) {
+      albums.push({
+        url,
+        number: '',
+        title: textOf(/title="([^"]*)"/i.exec(link[1])?.[1] ?? ''),
+        releaseDate: null,
+        kind: 'album',
+      });
+    }
+  }
+  return albums;
+}
+
 /** A volume number as compared: upper case, leading zeros of a plain number dropped (`01` is `1`). */
 function normalizeNumber(text: string): string {
   return text.trim().toUpperCase().replace(/^0+(?=\d)/, '');
@@ -286,7 +361,13 @@ export function pickAlbum(albums: SeriesAlbum[], volume: string | null): SeriesA
   const wanted = normalizeNumber(volume ?? '');
   if (wanted) {
     const matches = albums.filter((album) => normalizeNumber(album.number) === wanted);
-    return matches.find((album) => album.kind === 'album') ?? matches[0] ?? null;
+    const match = matches.find((album) => album.kind === 'album') ?? matches[0];
+    if (match) {
+      return match;
+    }
+    // A one-shot has no number: its file may still call it volume 1.
+    const numbered = albums.filter((album) => album.kind === 'album');
+    return wanted === '1' && numbered.length === 1 && !numbered[0].number ? numbered[0] : null;
   }
   const numbered = albums.filter((album) => album.kind === 'album');
   if (numbered.length === 1) {

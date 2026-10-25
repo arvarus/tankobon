@@ -289,6 +289,87 @@ describe('parseSeriesAlbums', () => {
   });
 });
 
+/** A one-shot's series page: a presentation with the album only as its cover (Vitesse moderne). */
+const ONE_SHOT_PAGE = `<html><body>
+  <section class="bdt-ah bdt-ah--serie"><h1><span class="bdt-ah-type">One shot :</span>
+    <a href="https://www.bedetheque.com/serie-4603-BD-Vitesse-moderne.html">Vitesse moderne</a></h1></section>
+  <div class="bdt-sh-tomes n1">
+    <a class="bdt-img" href="https://www.bedetheque.com/BD-Vitesse-moderne-19759.html" title="Vitesse moderne">
+      <img src="https://www.bedetheque.com/cache/thb_couv/vitessemoderne.JPG" alt="Vitesse moderne">
+    </a>
+  </div>
+</body></html>`;
+
+describe('a one-shot series page', () => {
+  it('gives the album shown as its cover, with no number', () => {
+    expect(parseSeriesAlbums(ONE_SHOT_PAGE)).toEqual([
+      {
+        url: 'https://www.bedetheque.com/BD-Vitesse-moderne-19759.html',
+        number: '',
+        title: 'Vitesse moderne',
+        releaseDate: null,
+        kind: 'album',
+      },
+    ]);
+  });
+
+  it('is picked with no volume or with volume 1, not with another', () => {
+    const albums = parseSeriesAlbums(ONE_SHOT_PAGE);
+    expect(pickAlbum(albums, null)?.title).toBe('Vitesse moderne');
+    expect(pickAlbum(albums, '1')?.title).toBe('Vitesse moderne');
+    expect(pickAlbum(albums, '2')).toBeNull();
+  });
+
+  it('is found by searchBedetheque, reading the album page', async () => {
+    const calls: string[] = [];
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      calls.push(url);
+      if (url.startsWith('https://www.bdgest.com/ajax/tout')) {
+        return Response.json([{ id: 'S4603', label: 'Vitesse moderne', category: 'Séries' }]);
+      }
+      if (url.startsWith('https://www.bedetheque.com/serie/index/s/')) return new Response(ONE_SHOT_PAGE);
+      return new Response(albumPage());
+    });
+    const http: HttpOptions = { fetch: fetch as typeof globalThis.fetch, userAgent: 'Tankobon/test', timeoutMs: 1000 };
+    const found = await searchBedetheque({ text: 'Vitesse moderne', volume: null }, http);
+    expect(calls.at(-1)).toBe('https://www.bedetheque.com/BD-Vitesse-moderne-19759.html');
+    expect(found).toHaveLength(1);
+  });
+});
+
+/** The same one-shot with its album detail, as the site serves the album page (the series page). */
+const ONE_SHOT_ALBUM_PAGE = `${ONE_SHOT_PAGE}
+  <article class="bdt-edition bdt-edition--detail" id="ed-19759" itemscope>
+    <h3><a itemprop="url" href="https://www.bedetheque.com/BD-Vitesse-moderne-19759.html"><span itemprop="name"><span class="bdt-numa"></span>Vitesse moderne</span></a></h3>
+    <img itemprop="image" src="https://www.bedetheque.com/cache/thb_couv/vitessemoderne.JPG" alt="">
+    <dl class="bdt-sheet">
+      <dt>Scénario</dt><dd><a href="/auteur-193-BD-Blutch.html"><span itemprop="author">Blutch</span></a></dd>
+      <dt>Dessin</dt><dd><a href="/auteur-193-BD-Blutch.html"><span itemprop="illustrator">Blutch</span></a></dd>
+      <dt>Couleurs</dt><dd><a href="/auteur-610-BD-Ruby.html"><span itemprop="illustrator">Ruby</span></a></dd>
+      <dt>Dépôt légal</dt><dd>09/2002 <meta itemprop="datePublished" content="2002-09-01"></dd>
+    </dl>
+  </article>`;
+
+describe('a one-shot album page served as its series page', () => {
+  it('is read from the album detail', () => {
+    const album = parseBedethequeAlbum(ONE_SHOT_ALBUM_PAGE, 'https://www.bedetheque.com/BD-Vitesse-moderne-19759.html');
+    expect(album).toMatchObject({
+      sourceId: '19759',
+      title: 'Vitesse moderne',
+      series: 'Vitesse moderne',
+      volume: null,
+      releaseDate: '2002-09',
+      coverUrl: 'https://www.bedetheque.com/cache/thb_couv/vitessemoderne.JPG',
+    });
+    expect(album.credits).toEqual([
+      { firstName: '', lastName: 'Blutch', role: 'writer' },
+      { firstName: '', lastName: 'Blutch', role: 'artist' },
+      { firstName: '', lastName: 'Ruby', role: 'colorist' },
+    ]);
+  });
+});
+
 describe('pickAlbum', () => {
   const albums = parseSeriesAlbums(SERIES_PAGE);
 
