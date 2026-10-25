@@ -30,6 +30,7 @@ An ADR records one structural decision: the context, what was decided, and what 
 | [0024](./0024-database-backups.md) | Database backups in a `.tankobon` folder, restored at start-up | Accepted |
 | [0025](./0025-convert-cbr-to-cbz.md) | Converting the CBR of the organized library to CBZ | Accepted |
 | [0026](./0026-bedetheque-series-search.md) | Bédéthèque: finding the album from the series name | Accepted |
+| [0028](./0028-separate-background-decoder-process.md) | A second decoder process for background work, the reader keeps its own | Proposed |
 
 These first four ADRs were written after the fact, from the code and its comments, then checked by the maintainer.
 
