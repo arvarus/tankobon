@@ -2,6 +2,34 @@
 
 All notable changes to this project are documented here. This file is maintained by [release-please](https://github.com/googleapis/release-please) from the [Conventional Commits](https://www.conventionalcommits.org/) merged into `master`: don't edit released entries by hand. New versions are inserted above the previous ones.
 
+## [0.19.0](https://github.com/arvarus/tankobon/compare/v0.18.0...v0.19.0) (2026-10-25)
+
+
+### Features
+
+* **about:** add a link to the Arvarus Discord server ([#246](https://github.com/arvarus/tankobon/issues/246)) ([f85b56e](https://github.com/arvarus/tankobon/commit/f85b56efd6ff40ea6ff232a3cc19f5140826aba7))
+* **library:** do not report as duplicates the files with another title or language ([#249](https://github.com/arvarus/tankobon/issues/249)) ([80937c2](https://github.com/arvarus/tankobon/commit/80937c2addce8ae3eb3cc2e3365989bd984918e5))
+* **library:** look up the details of the selected books one after the other ([#238](https://github.com/arvarus/tankobon/issues/238)) ([3bf739f](https://github.com/arvarus/tankobon/commit/3bf739fc36899f9d68c41110cb6857de643f956f))
+* **library:** select every book of a series from its heading ([#235](https://github.com/arvarus/tankobon/issues/235)) ([4fe405d](https://github.com/arvarus/tankobon/commit/4fe405d9e7e5d27770d71025a40e5924234a6109))
+* **metadata:** fold the file name rule block of the lookup dialog ([#248](https://github.com/arvarus/tankobon/issues/248)) ([05f2a6f](https://github.com/arvarus/tankobon/commit/05f2a6fda50e50d405a14f0c81111c80dd16af22))
+* **metadata:** forget a previous file name rule from the lookup dialog ([#245](https://github.com/arvarus/tankobon/issues/245)) ([c72264e](https://github.com/arvarus/tankobon/commit/c72264e5689beb683cc5efbcfa9c0b9b8fd6b535))
+* **metadata:** option to use the cover found by the lookup ([#241](https://github.com/arvarus/tankobon/issues/241)) ([795691a](https://github.com/arvarus/tankobon/commit/795691a28365e946f395e13a47b10ba564d022e8))
+* **metadata:** prefill the last used file name rule in the lookup dialog ([#237](https://github.com/arvarus/tankobon/issues/237)) ([a9e4c1b](https://github.com/arvarus/tankobon/commit/a9e4c1be8140b1589f2a87044e7ac49255c66d7b))
+* **metadata:** search the series on Bédéthèque to find the album ([#236](https://github.com/arvarus/tankobon/issues/236)) ([45b9440](https://github.com/arvarus/tankobon/commit/45b9440cdd9315bed38eae32537a8ec38cef6113))
+* **metadata:** show the cover of Bédéthèque series-list candidates ([#239](https://github.com/arvarus/tankobon/issues/239)) ([a697371](https://github.com/arvarus/tankobon/commit/a6973717e201e403d046192f8af85de2e40f9273))
+* **settings:** add a switch to enable the organized library ([#234](https://github.com/arvarus/tankobon/issues/234)) ([5958097](https://github.com/arvarus/tankobon/commit/59580977f67bae79ed20e62f0d57cd7119e52cf9))
+* **settings:** make metadata sources and API keys per user ([#233](https://github.com/arvarus/tankobon/issues/233)) ([24383a9](https://github.com/arvarus/tankobon/commit/24383a9290c4a53d0c5113e2160481eafa92c7f9))
+* **settings:** name the section in the settings page title ([#231](https://github.com/arvarus/tankobon/issues/231)) ([24ba0cf](https://github.com/arvarus/tankobon/commit/24ba0cf11f6617465ad2b11202604e3f91c74990))
+
+
+### Bug Fixes
+
+* **layout:** scroll to the top when changing page ([#243](https://github.com/arvarus/tankobon/issues/243)) ([f4a5714](https://github.com/arvarus/tankobon/commit/f4a5714838c519dac5291d08d1c4f6076169193f))
+* **library:** clear the selection once a bulk action is done ([#240](https://github.com/arvarus/tankobon/issues/240)) ([7a45e29](https://github.com/arvarus/tankobon/commit/7a45e2940a243d3b3531db2deef80d351f1b2adb))
+* **metadata:** find a one-shot on Bédéthèque from its series page ([#247](https://github.com/arvarus/tankobon/issues/247)) ([8458aab](https://github.com/arvarus/tankobon/commit/8458aabfd212ee5aa94db595b4250bd901690171))
+* **metadata:** offer the file name rule for books that already have information ([#244](https://github.com/arvarus/tankobon/issues/244)) ([f53cb10](https://github.com/arvarus/tankobon/commit/f53cb10564f28c80067db42892d5a2f41afec0e9))
+* **reader:** return to the library when a book opened from it is closed ([#242](https://github.com/arvarus/tankobon/issues/242)) ([bc2edb4](https://github.com/arvarus/tankobon/commit/bc2edb412e159594d5f616ce143c21d86925f378))
+
 ## [0.18.0](https://github.com/arvarus/tankobon/compare/v0.17.0...v0.18.0) (2026-10-24)
 
 
