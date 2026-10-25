@@ -13,6 +13,7 @@ const metadata: Translation<typeof en> = {
   readingPage: 'Lecture de la fiche…',
   searching: 'Recherche en cours…',
   otherResults: 'Autres résultats',
+  useCover: 'Utiliser cette couverture pour le livre',
   apply: 'Appliquer',
   untitled: 'Sans titre',
   noResults: "Aucun résultat. Essaie avec le nom de la série seul, sans numéro de tome, ou cherche le livre depuis le lien de sa fiche.",

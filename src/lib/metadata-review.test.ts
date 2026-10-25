@@ -46,6 +46,12 @@ const candidate: MetadataCandidate = {
 };
 
 describe('buildReview', () => {
+  it('offers the candidate\'s cover, not accepted at first', () => {
+    const review = buildReview(entry({}), { ...candidate, coverUrl: 'https://books.google.com/c.jpg' });
+    expect(review.coverUrl).toBe('https://books.google.com/c.jpg');
+    expect(review.coverAccepted).toBe(false);
+  });
+
   it('lists the fields the candidate knows, pre-accepting the ones that change', () => {
     const review = buildReview(entry({ series: 'Blacksad' }), candidate);
     expect(review.fields).toEqual([

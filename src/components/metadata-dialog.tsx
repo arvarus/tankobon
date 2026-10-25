@@ -14,6 +14,7 @@ import {
   reviewFieldLabel,
   reviewToUpdate,
 } from '@/lib/metadata-review';
+import { bumpCoverRevision } from '@/lib/cover-revisions';
 import { hasFiche } from '@/lib/library-filter';
 import { INITIAL_LOOKUP, lookupReducer } from '@/lib/metadata-lookup';
 import { initialLookupQuery, initialRuleState, offeredRules, queryFromRule, rememberRule } from '@/lib/lookup-query';
@@ -154,13 +155,15 @@ export function MetadataDialog({
   const apply = async (review: MetadataReview) => {
     const update = reviewToUpdate(entry, review);
     const finish = onDone ?? onClose;
-    if (isEmptyUpdate(update)) {
+    const coverUrl = review.coverAccepted ? review.coverUrl : null;
+    if (isEmptyUpdate(update) && coverUrl === null) {
       finish();
       return;
     }
     setApplying(true);
-    const updated = await window.tankobon.metadata.apply(entry.id, update);
+    const updated = await window.tankobon.metadata.apply(entry.id, update, coverUrl);
     setApplying(false);
+    if (coverUrl !== null) bumpCoverRevision(entry.id);
     if (updated) onApplied(updated);
     finish();
   };
@@ -427,6 +430,17 @@ function ReviewForm({ review, onChange }: { review: MetadataReview; onChange: (r
 
   return (
     <div className="flex flex-col gap-4">
+      {review.coverUrl && (
+        <label className="flex items-center gap-3 text-sm">
+          <input
+            type="checkbox"
+            checked={review.coverAccepted}
+            onChange={(event) => onChange({ ...review, coverAccepted: event.target.checked })}
+          />
+          <img src={review.coverUrl} alt="" className="h-16 w-11 shrink-0 rounded-sm object-cover" />
+          {t('useCover')}
+        </label>
+      )}
       {review.fields.length > 0 && (
         <table className="w-full text-sm">
           <thead className="text-left text-xs text-muted-foreground">

@@ -1,17 +1,24 @@
 import { app, net } from 'electron';
 
-import type { LibraryEntry, MetadataUpdate } from '../../shared/library';
-import type { MetadataPageResult, MetadataSearchResult } from '../../shared/metadata';
+import { MAX_COVER_BYTES, type LibraryEntry, type MetadataUpdate } from '../../shared/library';
+import { isCoverUrl, type MetadataPageResult, type MetadataSearchResult } from '../../shared/metadata';
 import type { LibraryRepository } from '../db/library-repository';
 import type { SettingsRepository } from '../db/settings-repository';
 import type { DecoderClient } from '../decoder/decoder-client';
 import { writeNfo } from '../services/nfo';
 import { fetchMetadataPage, searchMetadata } from '../services/metadata-service';
-import type { HttpOptions } from '../services/http-json';
+import { getImage, type HttpOptions } from '../services/http-json';
 import { handle } from './handle';
 import { PendingRequests } from './pending-requests';
 import type { NotifyDataChange } from './data-changes';
-import { MAX_PATH_LENGTH, args, expectMetadataQuery, expectMetadataUpdate, expectNonEmptyString } from './validate';
+import {
+  MAX_PATH_LENGTH,
+  args,
+  expectMetadataQuery,
+  expectMetadataUpdate,
+  expectNonEmptyString,
+  expectNullableString,
+} from './validate';
 
 // Channel names are shared with preload.ts: keep them in sync.
 export const METADATA_CHANNELS = {
@@ -56,15 +63,22 @@ export function registerMetadataIpc(
   );
   handle(METADATA_CHANNELS.cancel, args(), (event): void => pending.cancel(event.sender.id));
   // The lookup dialog's save: the information goes to the library, then to the `.nfo` beside the
-  // file, and the cover is made if the book has none yet, so nothing waits for a later scan.
+  // file, and the cover is made if the book has none yet, so nothing waits for a later scan. With a
+  // `coverUrl` (the picture of the chosen result) the cover is replaced by that picture instead.
   handle(
     METADATA_CHANNELS.apply,
-    args((id) => expectNonEmptyString(id, 'id', MAX_PATH_LENGTH), expectMetadataUpdate),
-    async (_event, id, update: MetadataUpdate): Promise<LibraryEntry | null> => {
+    args((id) => expectNonEmptyString(id, 'id', MAX_PATH_LENGTH), expectMetadataUpdate, (value) => expectNullableString(value, 'coverUrl')),
+    async (_event, id, update: MetadataUpdate, coverUrl): Promise<LibraryEntry | null> => {
       const updated = libraryRepo.updateMetadata(id, update);
       if (!updated) return null;
       notify({ scope: 'library', upserted: [updated] });
       if (settingsRepo.getAll().libraryWriteNfo) await writeNfo(updated);
+      // A picture that can't be downloaded or read never fails the save: the book keeps its cover.
+      const picture =
+        coverUrl !== null && isCoverUrl(coverUrl)
+          ? await getImage(coverUrl, httpOptions(), new URL(coverUrl).hostname, MAX_COVER_BYTES).catch(() => null)
+          : null;
+      if (picture) await decoder.setThumbnail(updated.path, picture).catch(() => null);
       await decoder.thumbnail(updated.path).catch(() => null);
       return updated;
     },

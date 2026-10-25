@@ -5,7 +5,7 @@ import type { MetadataReview } from './metadata-review';
 import type { MetadataCandidate } from '@/shared/metadata';
 
 const candidate = { source: 'comicvine', sourceId: '1', title: 'A', credits: [] } as unknown as MetadataCandidate;
-const review = { fields: [], credits: [] } as MetadataReview;
+const review: MetadataReview = { fields: [], credits: [], coverUrl: null, coverAccepted: false };
 const results: LookupStep = { kind: 'results', candidates: [candidate], errors: [] };
 
 describe('lookupReducer', () => {
