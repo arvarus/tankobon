@@ -116,7 +116,8 @@ export function parseBedethequeAlbum(html: string, url: string): MetadataCandida
   const subtitle = textOf(/<h2 class="bdt-ah-sub">([\s\S]*?)<\/h2>/i.exec(album)?.[1] ?? '');
   const numbered = /^([^\s.]+)\s*\.\s*(.*)$/.exec(subtitle);
   const volume = numbered ? numbered[1] : null;
-  const title = (numbered ? numbered[2] : subtitle) || metaItemprop(album, 'alternativeheadline');
+  // A one-shot has no subtitle: its title is the series' name.
+  const title = (numbered ? numbered[2] : subtitle) || metaItemprop(album, 'alternativeheadline') || series;
 
   return {
     source: 'bedetheque',
@@ -451,7 +452,14 @@ export async function searchBedetheque(query: MetadataQuery, http: HttpOptions):
   const album = pickAlbum(albums, query.volume);
   console.warn('[bedetheque-debug] albums', JSON.stringify({ albums, album }));
   if (album) {
-    return [await fetchBedethequeAlbum(album.url, http)];
+    try {
+      const candidate = await fetchBedethequeAlbum(album.url, http);
+      console.warn('[bedetheque-debug] album page', JSON.stringify(candidate));
+      return [candidate];
+    } catch (error) {
+      console.warn('[bedetheque-debug] album page failed', String(error));
+      throw error;
+    }
   }
   return albums.slice(0, MAX_SERIES_CANDIDATES).map((entry) => listCandidate(entry, series.label));
 }
