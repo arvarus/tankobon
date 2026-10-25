@@ -90,6 +90,21 @@ describe('duplicateGroups', () => {
     expect(groups.map((group) => group.map((e) => e.id))).toEqual([['a', 'c']]);
   });
 
+  it('does not group files whose title differs, even with the same series and volume', () => {
+    const same = { series: 'Tintin', volume: '1' };
+    const groups = duplicateGroups([
+      entry('a', { ...same, title: 'Au Tibet' }),
+      entry('b', { ...same, title: 'Le Lotus bleu' }),
+    ]);
+    expect(groups).toEqual([]);
+  });
+
+  it('does not group files whose language differs, but ignores its case', () => {
+    expect(duplicateGroups([entry('a', { language: 'fr' }), entry('b', { language: 'en' })])).toEqual([]);
+    expect(duplicateGroups([entry('a', { language: 'fr' }), entry('b', { language: 'FR' })])).toHaveLength(1);
+    expect(duplicateGroups([entry('a'), entry('b')])).toHaveLength(1);
+  });
+
   it('is empty when every book is in one file per format', () => {
     expect(duplicateGroups([entry('a'), entry('b', { path: '/comics/b.pdf' })])).toEqual([]);
   });

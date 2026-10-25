@@ -70,14 +70,17 @@ export function collapseEditions(
 /**
  * The books held as several files of the same format (two CBZ of the same volume): one group per
  * book and format, of at least two entries, in library order. Unlike {@link editionGroups}, which
- * links different formats, these are the duplicates the user may want to clean up.
+ * links different formats, these are the duplicates the user may want to clean up. Files whose title
+ * or language differs (compared ignoring case, accents and surrounding spaces; no language counts
+ * as a language of its own) are different books, even with the same series and volume: a
+ * translation or a differently titled edition is not a duplicate.
  */
 export function duplicateGroups(entries: readonly LibraryEntry[]): LibraryEntry[][] {
   const byKey = new Map<string, LibraryEntry[]>();
   for (const entry of entries) {
     const format = comicFormat(entry.path);
     if (format === null) continue;
-    const key = `${format}|${editionKey(entry)}`;
+    const key = [format, editionKey(entry), normalize(entry.title), normalize(entry.language ?? '')].join('|');
     const group = byKey.get(key);
     if (group) group.push(entry);
     else byKey.set(key, [entry]);
