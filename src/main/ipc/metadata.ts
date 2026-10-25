@@ -9,6 +9,7 @@ import { writeNfo } from '../services/nfo';
 import { fetchMetadataPage, searchMetadata } from '../services/metadata-service';
 import type { HttpOptions } from '../services/http-json';
 import { handle } from './handle';
+import { PendingRequests } from './pending-requests';
 import type { NotifyDataChange } from './data-changes';
 import { MAX_PATH_LENGTH, args, expectMetadataQuery, expectMetadataUpdate, expectNonEmptyString } from './validate';
 
@@ -16,6 +17,7 @@ import { MAX_PATH_LENGTH, args, expectMetadataQuery, expectMetadataUpdate, expec
 export const METADATA_CHANNELS = {
   search: 'metadata:search',
   fromPage: 'metadata:from-page',
+  cancel: 'metadata:cancel',
   apply: 'metadata:apply',
 } as const;
 
@@ -34,14 +36,25 @@ export function registerMetadataIpc(
   decoder: DecoderClient,
   notify: NotifyDataChange,
 ): void {
-  handle(METADATA_CHANNELS.search, args(expectMetadataQuery), (_event, query): Promise<MetadataSearchResult> =>
-    searchMetadata(query, settingsRepo.getAll(), httpOptions()),
+  // What each window is waiting for, so its "Stop" (or a newer lookup) really interrupts the requests.
+  const pending = new PendingRequests();
+  const cancelable = async <T>(owner: number, run: (http: HttpOptions) => Promise<T>): Promise<T> => {
+    const signal = pending.begin(owner);
+    try {
+      return await run({ ...httpOptions(), signal });
+    } finally {
+      pending.end(owner, signal);
+    }
+  };
+  handle(METADATA_CHANNELS.search, args(expectMetadataQuery), (event, query): Promise<MetadataSearchResult> =>
+    cancelable(event.sender.id, (http) => searchMetadata(query, settingsRepo.getAll(), http)),
   );
   handle(
     METADATA_CHANNELS.fromPage,
     args((url) => expectNonEmptyString(url, 'url', MAX_PATH_LENGTH)),
-    (_event, url): Promise<MetadataPageResult> => fetchMetadataPage(url, httpOptions()),
+    (event, url): Promise<MetadataPageResult> => cancelable(event.sender.id, (http) => fetchMetadataPage(url, http)),
   );
+  handle(METADATA_CHANNELS.cancel, args(), (event): void => pending.cancel(event.sender.id));
   // The lookup dialog's save: the information goes to the library, then to the `.nfo` beside the
   // file, and the cover is made if the book has none yet, so nothing waits for a later scan.
   handle(

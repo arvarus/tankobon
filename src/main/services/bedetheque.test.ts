@@ -3,7 +3,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { applyLanguage } from '../../shared/i18n';
 import { isBedethequeAlbumUrl, pageSourceOf } from '../../shared/metadata';
 import {
-  clearSeriesCache,
+  resetBedethequeState,
   fetchBedethequeAlbum,
   parseBedethequeAlbum,
   parseSeriesAlbums,
@@ -16,6 +16,8 @@ import type { HttpOptions } from './http-json';
 
 // The user-facing messages are checked in French; English is the interface's default.
 beforeAll(() => applyLanguage('fr'));
+// Nothing is remembered from one test to the next, and the requests are not spaced out.
+beforeEach(() => resetBedethequeState(0));
 
 const URL_1 = 'https://www.bedetheque.com/BD-Winged-Mermaids-Tome-1-311296.html';
 
@@ -314,8 +316,6 @@ describe('pickAlbum', () => {
 });
 
 describe('searchBedetheque', () => {
-  beforeEach(() => clearSeriesCache());
-
   /** Answers each of the three pages; the calls are recorded in order. */
   function site(search: unknown = SEARCH_BLACKSAD, series = SERIES_PAGE) {
     const calls: string[] = [];
@@ -391,5 +391,78 @@ describe('searchBedetheque', () => {
     const working = site();
     expect(await searchBedetheque({ text: 'blacksad', volume: '1' }, working.http)).toHaveLength(1);
     expect(working.calls.filter((url) => url.includes('/serie/index/s/'))).toHaveLength(1);
+  });
+});
+
+describe('searchBedetheque: a light touch on the site', () => {
+  const albumHtml = albumPage();
+  function site(calls: string[] = []) {
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      calls.push(url);
+      if (url.startsWith('https://www.bdgest.com/ajax/tout')) return Response.json(SEARCH_BLACKSAD);
+      if (url.includes('/serie/index/s/')) return new Response(SERIES_PAGE, { status: 200 });
+      return new Response(albumHtml, { status: 200 });
+    });
+    return { calls, fetch };
+  }
+  const options = (fetch: ReturnType<typeof site>['fetch'], signal?: AbortSignal): HttpOptions => ({
+    fetch: fetch as unknown as typeof globalThis.fetch,
+    userAgent: 'Tankobon/test',
+    timeoutMs: 1000,
+    signal,
+  });
+
+  it('asks nothing again for the same search within a few minutes', async () => {
+    const { calls, fetch } = site();
+    await searchBedetheque({ text: 'Blacksad', volume: '1' }, options(fetch));
+    await searchBedetheque({ text: ' blacksad ', volume: '1' }, options(fetch));
+    expect(calls).toHaveLength(3);
+  });
+
+  it('reads the series box and the album pages only once each across volumes', async () => {
+    const { calls, fetch } = site();
+    await searchBedetheque({ text: 'Blacksad', volume: '1' }, options(fetch));
+    await searchBedetheque({ text: 'Blacksad', volume: '2' }, options(fetch));
+    expect(calls.filter((url) => url.includes('/ajax/tout'))).toHaveLength(1);
+    expect(calls.filter((url) => url.includes('/serie/index/s/'))).toHaveLength(1);
+    expect(calls.filter((url) => url.includes('/BD-'))).toHaveLength(2);
+  });
+
+  it('reads an album page once, whether it was found by a search or picked from the list', async () => {
+    const { calls, fetch } = site();
+    const [album] = await searchBedetheque({ text: 'Blacksad', volume: '1' }, options(fetch));
+    await fetchBedethequeAlbum(album.sourceUrl as string, options(fetch));
+    expect(calls.filter((url) => url.includes('/BD-'))).toHaveLength(1);
+  });
+
+  it('spaces the requests it sends to the site', async () => {
+    resetBedethequeState(60_000);
+    const { calls, fetch } = site();
+    const controller = new AbortController();
+    const search = searchBedetheque({ text: 'Blacksad', volume: '1' }, options(fetch, controller.signal));
+    // The first request goes at once; the second waits for its slot, a minute away.
+    await vi.waitFor(() => expect(calls).toHaveLength(1));
+    controller.abort();
+    await expect(search).rejects.toThrow();
+    expect(calls).toHaveLength(1);
+  });
+
+  it('stops without sending anything more when the lookup is aborted', async () => {
+    const { calls, fetch } = site();
+    const controller = new AbortController();
+    controller.abort();
+    await expect(searchBedetheque({ text: 'Blacksad', volume: '1' }, options(fetch, controller.signal))).rejects.toThrow();
+    expect(calls).toEqual([]);
+  });
+
+  it('does not serve an aborted request to the next search', async () => {
+    const { calls, fetch } = site();
+    const controller = new AbortController();
+    controller.abort();
+    await expect(searchBedetheque({ text: 'Blacksad', volume: '1' }, options(fetch, controller.signal))).rejects.toThrow();
+    const found = await searchBedetheque({ text: 'Blacksad', volume: '1' }, options(fetch));
+    expect(found).toHaveLength(1);
+    expect(calls).toHaveLength(3);
   });
 });

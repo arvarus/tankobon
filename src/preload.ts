@@ -186,6 +186,8 @@ export interface MetadataApi {
   search(query: MetadataQuery): Promise<MetadataSearchResult>;
   /** Reads a book from the page at `url`, a link the user pasted (Bédéthèque album, BDfugue product or Nautiljon volume). */
   fromPage(url: string): Promise<MetadataPageResult>;
+  /** Stops the lookup this window is waiting for (`search()` or `fromPage()`): its requests are aborted and the call fails. Does nothing when none is under way. */
+  cancel(): Promise<void>;
   /** Saves what the user accepted in the lookup dialog: updates the library entry, rewrites the `.nfo` beside the file and makes the cover thumbnail if it has none; resolves with the updated entry, or null if it is gone. */
   apply(id: string, update: MetadataUpdate): Promise<LibraryEntry | null>;
 }
@@ -419,6 +421,7 @@ const api: TankobonApi = {
   metadata: {
     search: (query) => ipcRenderer.invoke('metadata:search', query),
     fromPage: (url) => ipcRenderer.invoke('metadata:from-page', url),
+    cancel: () => ipcRenderer.invoke('metadata:cancel'),
     apply: (id, update) => ipcRenderer.invoke('metadata:apply', id, update),
   },
   achievements: {

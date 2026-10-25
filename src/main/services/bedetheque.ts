@@ -9,6 +9,8 @@ import type { CreditInput, CreditRole } from '../../shared/library';
 import { isBedethequeAlbumUrl, type MetadataCandidate, type MetadataQuery } from '../../shared/metadata';
 import { splitPersonName } from '../../shared/title-parsing';
 import { getHtml, getJson, type HttpOptions } from './http-json';
+import { createPromiseCache } from './promise-cache';
+import { createRequestPacer, type RequestPacer } from './request-pacer';
 
 const SOURCE = 'Bédéthèque';
 
@@ -126,7 +128,10 @@ export function parseBedethequeAlbum(html: string, url: string): MetadataCandida
   };
 }
 
-/** Downloads and parses a Bédéthèque album page. Throws a translated message on failure. */
+/**
+ * Downloads and parses a Bédéthèque album page (remembered for a while, and spaced from the other
+ * requests to the site). Throws a translated message on failure.
+ */
 export async function fetchBedethequeAlbum(url: string, http: HttpOptions): Promise<MetadataCandidate> {
   if (!isBedethequeAlbumUrl(url)) {
     throw new Error(t('errors:metadata.notAlbumUrl', { source: SOURCE }));
@@ -134,7 +139,8 @@ export async function fetchBedethequeAlbum(url: string, http: HttpOptions): Prom
   const normalized = new URL(url.trim());
   normalized.protocol = 'https:';
   normalized.hash = '';
-  return parseBedethequeAlbum(await getHtml(normalized.toString(), http, SOURCE), normalized.toString());
+  const page = normalized.toString();
+  return albumPages.get(page, async () => parseBedethequeAlbum(await getHtml(page, paced(http), SOURCE), page));
 }
 
 /** The site's search box: the series (ids `S123`) and authors (`A123`) whose name contains the term. */
@@ -145,9 +151,12 @@ const MIN_SEARCH_LENGTH = 3;
 const SERIES_PAGE_URL = 'https://www.bedetheque.com/serie/index/s/';
 /** At most this many albums of a series are offered when none could be told to be the right one. */
 const MAX_SERIES_CANDIDATES = 30;
-/** How long a series' album list is remembered, so picking several volumes of it reads its page once. */
-const SERIES_TTL_MS = 10 * 60 * 1000;
-const SERIES_CACHE_SIZE = 20;
+/** How long what the site answered is remembered, so asking again (another volume, the same search) costs no request. */
+const CACHE_TTL_MS = 10 * 60 * 1000;
+/** The pages and answers kept per kind. */
+const CACHE_SIZE = 30;
+/** Least time between two requests to the site, whoever asks: a burst of searches is spread out over time. */
+const MIN_REQUEST_INTERVAL_MS = 1000;
 
 /** A series found by the search box. */
 export interface BedethequeSeries {
@@ -302,34 +311,38 @@ function listCandidate(album: SeriesAlbum, series: string): MetadataCandidate {
   };
 }
 
-/** The albums of series pages already read, by series id. Rejections aren't kept. */
-const seriesCache = new Map<string, { at: number; albums: Promise<SeriesAlbum[]> }>();
+/** Spaces every request this module sends to the site. */
+let pacer: RequestPacer = createRequestPacer(MIN_REQUEST_INTERVAL_MS);
 
-/** The album list of a series page, read once per {@link SERIES_TTL_MS}. */
-function albumsOfSeries(id: string, http: HttpOptions): Promise<SeriesAlbum[]> {
-  const known = seriesCache.get(id);
-  if (known && Date.now() - known.at < SERIES_TTL_MS) {
-    return known.albums;
-  }
-  const albums = getHtml(`${SERIES_PAGE_URL}${id}`, http, SOURCE).then(parseSeriesAlbums);
-  seriesCache.delete(id);
-  seriesCache.set(id, { at: Date.now(), albums });
-  albums.catch(() => seriesCache.delete(id));
-  // A Map iterates in insertion order: the first key is the oldest.
-  if (seriesCache.size > SERIES_CACHE_SIZE) {
-    seriesCache.delete(seriesCache.keys().next().value as string);
-  }
-  return albums;
+/** The same `http`, each request waiting for its slot first (and giving up its wait when the lookup is stopped). */
+function paced(http: HttpOptions): HttpOptions {
+  return {
+    ...http,
+    fetch: async (input, init) => {
+      await pacer.wait(init?.signal ?? http.signal);
+      return http.fetch(input, init);
+    },
+  };
 }
 
-/** Forgets the series pages already read (the tests start from nothing). */
-export function clearSeriesCache(): void {
-  seriesCache.clear();
+/** What the site answered, by what was asked: the search box's series, the series pages' albums, the album pages. */
+const seriesSearches = createPromiseCache<BedethequeSeries[]>(CACHE_TTL_MS, CACHE_SIZE);
+const seriesAlbums = createPromiseCache<SeriesAlbum[]>(CACHE_TTL_MS, CACHE_SIZE);
+const albumPages = createPromiseCache<MetadataCandidate>(CACHE_TTL_MS, CACHE_SIZE);
+
+/** Forgets what was remembered, and lets the next request through at once (the tests start from nothing). */
+export function resetBedethequeState(minIntervalMs = MIN_REQUEST_INTERVAL_MS): void {
+  seriesSearches.clear();
+  seriesAlbums.clear();
+  albumPages.clear();
+  pacer = createRequestPacer(minIntervalMs);
 }
 
 /**
  * Finds a book by series name and volume, in three sequential requests at most: the search box's
  * JSON for the series, the series page for its album list, then the album's page for its credits.
+ * The requests are spaced out and what the site answered is remembered for a while (see
+ * {@link resetBedethequeState}), so repeated searches stay light on it.
  * Returns that one album when the volume is found (or the series has a single album); otherwise the
  * series' albums as candidates, with no credits yet (the album page is read when one is picked).
  * Nothing is returned when no series matches, or the text is too short for the site's search box.
@@ -339,12 +352,16 @@ export async function searchBedetheque(query: MetadataQuery, http: HttpOptions):
   if (text.length < MIN_SEARCH_LENGTH) {
     return [];
   }
-  const found = parseSeriesSearch(await getJson(`${SERIES_SEARCH_URL}?term=${encodeURIComponent(text)}`, http, SOURCE));
+  const found = await seriesSearches.get(normalizeName(text), async () =>
+    parseSeriesSearch(await getJson(`${SERIES_SEARCH_URL}?term=${encodeURIComponent(text)}`, paced(http), SOURCE)),
+  );
   const series = pickSeries(found, text);
   if (!series) {
     return [];
   }
-  const albums = await albumsOfSeries(series.id, http);
+  const albums = await seriesAlbums.get(series.id, async () =>
+    parseSeriesAlbums(await getHtml(`${SERIES_PAGE_URL}${series.id}`, paced(http), SOURCE)),
+  );
   const album = pickAlbum(albums, query.volume);
   if (album) {
     return [await fetchBedethequeAlbum(album.url, http)];

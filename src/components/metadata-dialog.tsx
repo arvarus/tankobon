@@ -1,5 +1,5 @@
 import { ArrowLeft, Globe, Loader2, Search, Square } from 'lucide-react';
-import { useReducer, useRef, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
@@ -90,6 +90,12 @@ export function MetadataDialog({
   const [{ step }, dispatch] = useReducer(lookupReducer, INITIAL_LOOKUP);
   const [applying, setApplying] = useState(false);
   const searchCount = useRef(0);
+  // Closing the dialog gives up what it is waiting for: the requests to the sites are aborted, not just ignored.
+  useEffect(() => () => void window.tankobon.metadata.cancel(), []);
+  const stop = () => {
+    dispatch({ type: 'reset' });
+    void window.tankobon.metadata.cancel();
+  };
 
   const runSearch = async () => {
     const id = ++searchCount.current;
@@ -277,7 +283,7 @@ export function MetadataDialog({
         )}
         <div className="flex gap-2">
           {step.kind === 'searching' ? (
-            <Button type="button" size="sm" variant="outline" onClick={() => dispatch({ type: 'reset' })}>
+            <Button type="button" size="sm" variant="outline" onClick={stop}>
               <Square />
               {t('stop')}
             </Button>

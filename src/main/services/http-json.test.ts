@@ -66,3 +66,19 @@ describe('redirects', () => {
     await expect(getJson('https://api.example/x', options(elsewhere), 'API')).rejects.toThrow(/autre site/);
   });
 });
+
+describe('stopping a lookup', () => {
+  /** A fetch that never answers on its own: it only fails when the signal it was given is aborted. */
+  const hanging = (): typeof fetch =>
+    ((_input, init) =>
+      new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true });
+      })) as typeof fetch;
+
+  it('aborts the request when the lookup is stopped', async () => {
+    const controller = new AbortController();
+    const request = getHtml(PAGE, { fetch: hanging(), userAgent: 'test', timeoutMs: 60_000, signal: controller.signal }, 'Bédéthèque');
+    controller.abort();
+    await expect(request).rejects.toThrow(/Bédéthèque/);
+  });
+});
