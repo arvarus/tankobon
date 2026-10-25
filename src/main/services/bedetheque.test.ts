@@ -291,7 +291,8 @@ describe('parseSeriesAlbums', () => {
 
 /** A one-shot's series page: a presentation with the album only as its cover (Vitesse moderne). */
 const ONE_SHOT_PAGE = `<html><body>
-  <section class="bdt-ah bdt-ah--serie"><h1><span class="bdt-ah-type">One shot :</span></h1></section>
+  <section class="bdt-ah bdt-ah--serie"><h1><span class="bdt-ah-type">One shot :</span>
+    <a href="https://www.bedetheque.com/serie-4603-BD-Vitesse-moderne.html">Vitesse moderne</a></h1></section>
   <div class="bdt-sh-tomes n1">
     <a class="bdt-img" href="https://www.bedetheque.com/BD-Vitesse-moderne-19759.html" title="Vitesse moderne">
       <img src="https://www.bedetheque.com/cache/thb_couv/vitessemoderne.JPG" alt="Vitesse moderne">
@@ -339,8 +340,6 @@ describe('a one-shot series page', () => {
 
 /** The same one-shot with its album detail, as the site serves the album page (the series page). */
 const ONE_SHOT_ALBUM_PAGE = `${ONE_SHOT_PAGE}
-  <section class="bdt-ah bdt-ah--serie"><h1><span class="bdt-ah-type">One shot :</span>
-    <a href="https://www.bedetheque.com/serie-4603-BD-Vitesse-moderne.html">Vitesse moderne</a></h1></section>
   <article class="bdt-edition bdt-edition--detail" id="ed-19759" itemscope>
     <h3><a itemprop="url" href="https://www.bedetheque.com/BD-Vitesse-moderne-19759.html"><span itemprop="name"><span class="bdt-numa"></span>Vitesse moderne</span></a></h3>
     <img itemprop="image" src="https://www.bedetheque.com/cache/thb_couv/vitessemoderne.JPG" alt="">
