@@ -41,6 +41,19 @@ export function queryFromRule(entry: LibraryEntry, rule: string): MetadataQuery 
 }
 
 /**
+ * What the dialog opens with for a book that has no information: the most recently used rule that
+ * reads its file name, with the search it gives, so the user doesn't have to pick it again. When no
+ * previous rule fits, the latest one is still shown (and the search is the plain file name).
+ */
+export function initialRuleState(entry: LibraryEntry, used: readonly string[]): { rule: string; query: MetadataQuery } {
+  for (const rule of used) {
+    const query = queryFromRule(entry, rule);
+    if (query) return { rule, query };
+  }
+  return { rule: used[0] ?? '', query: initialLookupQuery(entry) };
+}
+
+/**
  * The rules to offer: those used before (most recent first), then the library's file name template,
  * written the same way, without repeats.
  */

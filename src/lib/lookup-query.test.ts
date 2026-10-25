@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { LibraryEntry } from '@/shared/library';
 import { MAX_FILE_NAME_RULES } from '@/shared/settings';
 
-import { fileStem, initialLookupQuery, offeredRules, queryFromRule, rememberRule } from './lookup-query';
+import { fileStem, initialLookupQuery, initialRuleState, offeredRules, queryFromRule, rememberRule } from './lookup-query';
 
 const entry = (patch: Partial<LibraryEntry> = {}) =>
   ({ path: '/books/Blacksad_T02.cbz', title: 'Blacksad_T02', series: null, volume: null, releaseDate: null, language: null, credits: [], ...patch }) as LibraryEntry;
@@ -40,6 +40,26 @@ describe('queryFromRule', () => {
 
   it('is null when the name does not fit', () => {
     expect(queryFromRule(entry(), '{series} - {volume}')).toBeNull();
+  });
+});
+
+describe('initialRuleState', () => {
+  it('applies the most recent used rule that fits the name', () => {
+    expect(initialRuleState(entry(), ['{series} - {volume}', '{series} T{volume}'])).toEqual({
+      rule: '{series} T{volume}',
+      query: { text: 'Blacksad', volume: '02' },
+    });
+  });
+
+  it('shows the latest rule with the plain file name when none fits', () => {
+    expect(initialRuleState(entry(), ['{series} - {volume}'])).toEqual({
+      rule: '{series} - {volume}',
+      query: { text: 'Blacksad_T02', volume: null },
+    });
+  });
+
+  it('starts empty without any previous rule', () => {
+    expect(initialRuleState(entry(), [])).toEqual({ rule: '', query: { text: 'Blacksad_T02', volume: null } });
   });
 });
 
