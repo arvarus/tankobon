@@ -16,7 +16,7 @@ import {
 } from '@/lib/metadata-review';
 import { hasFiche } from '@/lib/library-filter';
 import { INITIAL_LOOKUP, lookupReducer } from '@/lib/metadata-lookup';
-import { initialLookupQuery, offeredRules, queryFromRule, rememberRule } from '@/lib/lookup-query';
+import { initialLookupQuery, initialRuleState, offeredRules, queryFromRule, rememberRule } from '@/lib/lookup-query';
 import { cn, formatLanguage } from '@/lib/utils';
 import { fileNameTemplateError } from '@/shared/file-name-template';
 import { CREDIT_ROLES, type CreditRole, type LibraryEntry } from '@/shared/library';
@@ -57,12 +57,18 @@ export function MetadataDialog({
   const { t } = useTranslation(['metadata', 'common']);
   const { settings, update } = useSettings();
   const [mode, setMode] = useState<Mode>('api');
-  const [query, setQuery] = useState<MetadataQuery>(() => initialLookupQuery(entry));
-  const [pageUrl, setPageUrl] = useState('');
-  // A book with no information yet starts from its file name: a rule can read it into the fields.
+  // A book with no information yet starts from its file name: a rule can read it into the fields,
+  // and the last rule used that fits is applied at once.
   const needsRule = !hasFiche(entry);
+  const [initial] = useState(() =>
+    needsRule
+      ? initialRuleState(entry, settings?.fileNameRules ?? [])
+      : { rule: '', query: initialLookupQuery(entry) },
+  );
+  const [query, setQuery] = useState<MetadataQuery>(initial.query);
+  const [pageUrl, setPageUrl] = useState('');
   const rules = offeredRules(settings?.fileNameRules ?? [], settings?.libraryFileName ?? '');
-  const [rule, setRule] = useState('');
+  const [rule, setRule] = useState(initial.rule);
   const [ruleMisses, setRuleMisses] = useState(false);
   const ruleError = rule === '' ? null : fileNameTemplateError(rule);
   const applyRule = () => {
