@@ -39,13 +39,21 @@ function ReaderPage() {
   const navigate = useNavigate();
   const { confirmWithChoice, dialog: confirmDialog } = useConfirm();
   const [removeError, setRemoveError] = useState<string | null>(null);
-  const { comic, page, pageUrl, pageKey, error, loading, pickAndOpen, openFile, reopen, close, next, prev } = useComic({
+  const { comic, page, pageUrl, pageKey, error, loading, pickAndOpen, openFile, reopen, close: closeComic, next, prev } = useComic({
     loadPages: settings.readingMode !== 'continuous',
   });
   const { fullscreen, toggle: toggleFullscreen } = useReaderFullscreen(comic !== null);
   const nextInList = useNextInList(list, comic?.libraryId ?? undefined);
   useOpeningAchievements(comic?.id ?? null);
   useReadingTime(comic?.libraryId ?? null);
+
+  // A book opened from the library (or a list) goes back there once closed, instead of leaving an empty reader.
+  const close = useCallback(() => {
+    void closeComic();
+    if (!book) return;
+    if (list) void navigate({ to: '/lists/$listId', params: { listId: list } });
+    else void navigate({ to: '/library' });
+  }, [closeComic, book, list, navigate]);
 
   useEffect(() => {
     if (book) void openFile(book);
