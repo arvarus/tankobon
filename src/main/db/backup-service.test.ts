@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   applyPendingRestore,
+  backupDatabaseFile,
   backupDirectory,
   createBackup,
   isBackupDue,
@@ -40,6 +41,22 @@ describe('backup-service', () => {
     const copy = new DatabaseSync(path.join(root, '.tankobon', backup.name));
     expect(copy.prepare('SELECT v FROM t').get()).toEqual({ v: 'one' });
     copy.close();
+  });
+
+  it('copies a database file through a connection of its own, while the app\'s stays open and writable', () => {
+    const backup = backupDatabaseFile(dbFile, root, new Date(2026, 0, 2, 3, 4, 5));
+    expect(backup.name).toBe('tankobon-20260102-030405.db');
+    const copy = new DatabaseSync(path.join(root, '.tankobon', backup.name));
+    expect(copy.prepare('SELECT v FROM t').get()).toEqual({ v: 'one' });
+    copy.close();
+    // The source was only read: the app's connection still writes, and the copy doesn't follow.
+    db.exec("INSERT INTO t VALUES ('two')");
+    expect(db.prepare('SELECT COUNT(*) AS n FROM t').get()).toEqual({ n: 2 });
+  });
+
+  it('fails without leaving a temporary file when the database file is missing', () => {
+    expect(() => backupDatabaseFile(path.join(root, 'missing.db'), root)).toThrow();
+    expect(existsSync(path.join(root, '.tankobon'))).toBe(false);
   });
 
   it('never overwrites a copy made in the same second', () => {

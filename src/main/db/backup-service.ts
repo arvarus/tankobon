@@ -5,10 +5,11 @@
  */
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import type { DatabaseSync } from 'node:sqlite';
+import { DatabaseSync } from 'node:sqlite';
 
 import type { BackupInfo } from '../../shared/data';
 import { t } from '../../shared/i18n';
+import { configureConnection } from './schema';
 
 /** Directory holding the copies, beside the database file. */
 export const BACKUP_DIR_NAME = '.tankobon';
@@ -79,6 +80,21 @@ export function createBackup(db: DatabaseSync, databaseDirectory: string, now = 
     throw error;
   }
   return { name, createdAt: now.toISOString(), size: statSync(target).size };
+}
+
+/**
+ * Copies the database stored in `databaseFile` through a read-only connection of its own (the app's connection
+ * stays untouched, and a writer holding the lock makes this one wait up to the busy timeout), for the backup
+ * worker thread. Same copy and same file name as {@link createBackup}.
+ */
+export function backupDatabaseFile(databaseFile: string, databaseDirectory: string, now = new Date()): BackupInfo {
+  const db = new DatabaseSync(databaseFile, { readOnly: true });
+  try {
+    configureConnection(db);
+    return createBackup(db, databaseDirectory, now);
+  } finally {
+    db.close();
+  }
 }
 
 /** Deletes the oldest copies so that at most `keep` remain; returns how many were deleted. */
