@@ -3,6 +3,7 @@ import type { DatabaseSync } from 'node:sqlite';
 
 import type { ClearCacheResult, ClearLibraryResult, ExportResult, ImportResult } from '../../shared/data';
 import { t } from '../../shared/i18n';
+import { clearLibraryData } from '../db/clear-library';
 import { buildExport, exportFileName } from '../db/export-service';
 import { applyImport, parseExport, readExportFile } from '../db/import-service';
 import type { DecoderClient } from '../decoder/decoder-client';
@@ -90,8 +91,7 @@ export function registerDataIpc(
 
   handle(DATA_CHANNELS.clearLibrary, args(), async (): Promise<ClearLibraryResult> => {
     try {
-      const readingLists = readingListRepo.clear();
-      const entries = libraryRepo.clear();
+      const { entries, readingLists } = clearLibraryData(db, libraryRepo, readingListRepo);
       notify({ scope: 'library' });
       notify({ scope: 'readingLists' });
       // Every thumbnail now belongs to a book that is no longer in the library.
