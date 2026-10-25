@@ -1,6 +1,7 @@
 // The metadata lookup dialog ("Look up details"): search, results, review.
 export default {
   title: 'Look up details',
+  seriesTitle: 'Look up details ({{index}}/{{total}})',
   queryLabel: 'Title or series',
   queryPlaceholder: 'Title or series',
   volumeLabel: 'Volume or issue number',

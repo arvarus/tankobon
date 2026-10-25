@@ -3,6 +3,7 @@ import type { Translation } from '../types';
 
 const metadata: Translation<typeof en> = {
   title: 'Rechercher les infos',
+  seriesTitle: 'Rechercher les infos ({{index}}/{{total}})',
   queryLabel: 'Titre ou série',
   queryPlaceholder: 'Titre ou série',
   volumeLabel: 'Tome ou numéro',
