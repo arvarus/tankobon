@@ -172,20 +172,20 @@ app.whenReady().then(() => {
     organizer,
     activeUser,
   );
-  registerLibraryIpc(
-    libraryRepo,
-    folderRepo,
+  registerLibraryIpc({
+    repo: libraryRepo,
+    folders: folderRepo,
     resynchronizer,
     settingsRepo,
     decoder,
-    broadcastDataChange,
+    notify: broadcastDataChange,
     imageScanner,
     organizer,
-    createLibraryCleaner(libraryRepo, decoder, broadcastDataChange, organizer.lock),
-    createCbrConverter(libraryRepo, settingsRepo, decoder, broadcastDataChange, organizer.lock),
-    createFolderCleaner(settingsRepo, organizer.lock),
+    cleaner: createLibraryCleaner(libraryRepo, decoder, broadcastDataChange, organizer.lock),
+    converter: createCbrConverter(libraryRepo, settingsRepo, decoder, broadcastDataChange, organizer.lock),
+    folderCleaner: createFolderCleaner(settingsRepo, organizer.lock),
     activeUser,
-  );
+  });
   registerReadingListIpc(readingListRepo, broadcastDataChange);
   registerStatsIpc(statsRepo);
   registerSettingsIpc(settingsRepo, broadcastDataChange, decoder);

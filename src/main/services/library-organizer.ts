@@ -4,7 +4,7 @@
  * @module
  */
 import { constants } from 'node:fs';
-import { copyFile, mkdir, rename, rmdir, stat, unlink } from 'node:fs/promises';
+import { copyFile, mkdir, rename, rmdir, unlink } from 'node:fs/promises';
 import path from 'node:path';
 
 import { moveArticleToEnd } from '../../shared/articles';
@@ -17,6 +17,7 @@ import type { LibraryRepository } from '../db/library-repository';
 import { coverSidecarPath } from './cover-sidecar';
 import { nfoPathFor } from './nfo';
 import { isInside } from './library-sync';
+import { pathExists } from './organized-folder';
 
 /**
  * Longest file or folder name, in UTF-8 bytes: 255 on Linux (ext4…) and macOS (APFS). Windows (NTFS)
@@ -218,15 +219,6 @@ function isInPlace(target: OrganizationTarget, entry: OrganizedEntry): boolean {
   return organizedPaths(target, entry).includes(entry.path);
 }
 
-async function exists(filePath: string): Promise<boolean> {
-  try {
-    await stat(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 /**
  * Moves a file, creating the destination's folder. Refuses to overwrite an existing destination. A
  * move to another drive (`EXDEV`, which `rename` can't do) copies then deletes the original; if
@@ -234,7 +226,7 @@ async function exists(filePath: string): Promise<boolean> {
  * so the file is never left in two places.
  */
 export async function moveFile(from: string, to: string): Promise<void> {
-  if (await exists(to)) {
+  if (await pathExists(to)) {
     throw Object.assign(new Error(`${to} already exists`), { code: 'EEXIST' });
   }
   const folder = path.dirname(to);
