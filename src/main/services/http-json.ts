@@ -12,6 +12,8 @@ export interface HttpOptions {
   userAgent: string;
   /** Per-request timeout, in milliseconds. */
   timeoutMs: number;
+  /** Aborts the requests when the user stops the lookup; they then fail like a timeout. */
+  signal?: AbortSignal;
 }
 
 /** Largest response body read, in bytes: the pages and answers of the sources are a few hundred kilobytes at most. */
@@ -32,7 +34,9 @@ async function get(url: string, options: HttpOptions, source: string, accept: st
   try {
     response = await options.fetch(url, {
       headers: { Accept: accept, 'User-Agent': options.userAgent },
-      signal: AbortSignal.timeout(options.timeoutMs),
+      signal: options.signal
+        ? AbortSignal.any([AbortSignal.timeout(options.timeoutMs), options.signal])
+        : AbortSignal.timeout(options.timeoutMs),
     });
   } catch (error) {
     if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {

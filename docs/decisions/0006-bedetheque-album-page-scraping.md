@@ -1,6 +1,6 @@
 # 0006. Bédéthèque album pages read from a pasted link
 
-- **Status:** Accepted
+- **Status:** Accepted; its "not a search source" part is superseded by [0026](./0026-bedetheque-series-search.md)
 - **Date:** 2026-10-01
 
 ## Context

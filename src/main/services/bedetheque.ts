@@ -1,13 +1,16 @@
 /**
- * Reads a book's information from a Bédéthèque album page, whose link the user pasted. Bédéthèque
- * (the BDGest' database) has no public API: the page's HTML is parsed.
+ * Reads a book's information from a Bédéthèque album page, whose link the user pasted, or finds the
+ * album of a series by name and volume. Bédéthèque (the BDGest' database) has no public API: the
+ * pages' HTML is parsed, and the series is found through the JSON the BDGest search box uses.
  * @module
  */
 import { t } from '../../shared/i18n';
 import type { CreditInput, CreditRole } from '../../shared/library';
-import { isBedethequeAlbumUrl, type MetadataCandidate } from '../../shared/metadata';
+import { isBedethequeAlbumUrl, type MetadataCandidate, type MetadataQuery } from '../../shared/metadata';
 import { splitPersonName } from '../../shared/title-parsing';
-import { getHtml, type HttpOptions } from './http-json';
+import { getHtml, getJson, type HttpOptions } from './http-json';
+import { createPromiseCache } from './promise-cache';
+import { createRequestPacer, type RequestPacer } from './request-pacer';
 
 const SOURCE = 'Bédéthèque';
 
@@ -125,7 +128,10 @@ export function parseBedethequeAlbum(html: string, url: string): MetadataCandida
   };
 }
 
-/** Downloads and parses a Bédéthèque album page. Throws a translated message on failure. */
+/**
+ * Downloads and parses a Bédéthèque album page (remembered for a while, and spaced from the other
+ * requests to the site). Throws a translated message on failure.
+ */
 export async function fetchBedethequeAlbum(url: string, http: HttpOptions): Promise<MetadataCandidate> {
   if (!isBedethequeAlbumUrl(url)) {
     throw new Error(t('errors:metadata.notAlbumUrl', { source: SOURCE }));
@@ -133,5 +139,232 @@ export async function fetchBedethequeAlbum(url: string, http: HttpOptions): Prom
   const normalized = new URL(url.trim());
   normalized.protocol = 'https:';
   normalized.hash = '';
-  return parseBedethequeAlbum(await getHtml(normalized.toString(), http, SOURCE), normalized.toString());
+  const page = normalized.toString();
+  return albumPages.get(page, async () => parseBedethequeAlbum(await getHtml(page, paced(http), SOURCE), page));
+}
+
+/** The site's search box: the series (ids `S123`) and authors (`A123`) whose name contains the term. */
+const SERIES_SEARCH_URL = 'https://www.bdgest.com/ajax/tout';
+/** Shorter terms are refused by the search box itself. */
+const MIN_SEARCH_LENGTH = 3;
+/** The page that redirects to a series' page from its id, as the site's own search box does. */
+const SERIES_PAGE_URL = 'https://www.bedetheque.com/serie/index/s/';
+/** At most this many albums of a series are offered when none could be told to be the right one. */
+const MAX_SERIES_CANDIDATES = 30;
+/** How long what the site answered is remembered, so asking again (another volume, the same search) costs no request. */
+const CACHE_TTL_MS = 10 * 60 * 1000;
+/** The pages and answers kept per kind. */
+const CACHE_SIZE = 30;
+/** Least time between two requests to the site, whoever asks: a burst of searches is spread out over time. */
+const MIN_REQUEST_INTERVAL_MS = 1000;
+
+/** A series found by the search box. */
+export interface BedethequeSeries {
+  /** The numeric part of the site's `S<id>`. */
+  id: string;
+  /** The name shown, with the language in parentheses for a translation: `Blacksad (en allemand)`. */
+  label: string;
+}
+
+/** What a line of a series' album list is: a numbered album, a special issue or an omnibus. */
+export type SeriesAlbumKind = 'album' | 'hs' | 'int';
+
+/** One line of a series' album list. */
+export interface SeriesAlbum {
+  url: string;
+  /** The number as the site writes it: `1`, `HS`, `HS2`, `INT01`; empty for a one-shot. */
+  number: string;
+  title: string;
+  /** `YYYY-MM`, or `YYYY`; null when the list shows none. */
+  releaseDate: string | null;
+  kind: SeriesAlbumKind;
+}
+
+/** Lower case, no accents, letters and digits only: how series names are compared. */
+function normalizeName(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+/** The series in the search box's answer (an array of `{ id, label, category }`); anything else is ignored. */
+export function parseSeriesSearch(body: unknown): BedethequeSeries[] {
+  if (!Array.isArray(body)) {
+    return [];
+  }
+  const series: BedethequeSeries[] = [];
+  for (const item of body) {
+    const { id, label } = (typeof item === 'object' && item !== null ? item : {}) as Record<string, unknown>;
+    const match = typeof id === 'string' ? /^S(\d+)$/.exec(id) : null;
+    if (match && typeof label === 'string' && label.trim()) {
+      series.push({ id: match[1], label: label.trim() });
+    }
+  }
+  return series;
+}
+
+/**
+ * The series that is the one asked for: the name equal to the text (accents and case ignored), else
+ * the shortest name starting with it, else the shortest containing it. A translation of a series
+ * (`Blacksad (en allemand)`) only wins when nothing else matches; null when no name contains the text.
+ */
+export function pickSeries(candidates: BedethequeSeries[], text: string): BedethequeSeries | null {
+  const wanted = normalizeName(text);
+  if (!wanted) {
+    return null;
+  }
+  const isTranslation = (series: BedethequeSeries) => /\(\s*en\s[^)]*\)\s*$/i.test(series.label);
+  const rank = (series: BedethequeSeries): number => {
+    const name = normalizeName(series.label);
+    const bare = normalizeName(series.label.replace(/\([^)]*\)\s*$/, ''));
+    if (name === wanted) return 0;
+    if (!isTranslation(series) && bare === wanted) return 1;
+    if (!isTranslation(series) && name.startsWith(wanted)) return 2;
+    if (!isTranslation(series) && name.includes(wanted)) return 3;
+    if (bare === wanted) return 4;
+    return name.includes(wanted) ? 5 : Infinity;
+  };
+  const ranked = candidates
+    .map((series, index) => ({ series, index, rank: rank(series) }))
+    .filter((entry) => entry.rank !== Infinity)
+    .sort((a, b) => a.rank - b.rank || a.series.label.length - b.series.label.length || a.index - b.index);
+  return ranked[0]?.series ?? null;
+}
+
+/** `MM/YYYY` (or `YYYY`) as the list shows the legal deposit, to `YYYY-MM` (or `YYYY`). */
+function listDate(text: string): string | null {
+  const monthYear = /^(\d{2})\/(\d{4})$/.exec(text);
+  if (monthYear) {
+    return `${monthYear[2]}-${monthYear[1]}`;
+  }
+  return /^\d{4}$/.test(text) ? text : null;
+}
+
+/**
+ * The albums of a series page, from the box that lists all of them (14 for Blacksad, specials and
+ * omnibuses included, with no paging). The preview of the first covers and the paged detail further
+ * down the page are not read. The `<li>` class says what a line is: none for an album, `is-hs` for a
+ * special issue, `is-int` for an omnibus; the group headings are skipped.
+ */
+export function parseSeriesAlbums(html: string): SeriesAlbum[] {
+  const list = /<ul class="bdt-box-albums-liste">([\s\S]*?)<\/ul>/i.exec(html)?.[1];
+  if (!list) {
+    return [];
+  }
+  const albums: SeriesAlbum[] = [];
+  for (const item of list.matchAll(/<li\b([^>]*)>([\s\S]*?)<\/li>/gi)) {
+    const classes = /class="([^"]*)"/i.exec(item[1])?.[1].split(/\s+/) ?? [];
+    const url = /<a\s+href="([^"]+)"/i.exec(item[2])?.[1];
+    if (classes.includes('bdt-box-albums-grp') || !url || !isBedethequeAlbumUrl(url)) {
+      continue;
+    }
+    albums.push({
+      url,
+      number: decodeEntities(/<span class="bdt-box-albums-num" title="([^"]*)"/i.exec(item[2])?.[1] ?? '').trim(),
+      title: textOf(/<span class="bdt-box-albums-titre">([\s\S]*?)<\/span>/i.exec(item[2])?.[1] ?? ''),
+      releaseDate: listDate(textOf(/<span class="bdt-box-albums-dl">([\s\S]*?)<\/span>/i.exec(item[2])?.[1] ?? '')),
+      kind: classes.includes('is-hs') ? 'hs' : classes.includes('is-int') ? 'int' : 'album',
+    });
+  }
+  return albums;
+}
+
+/** A volume number as compared: upper case, leading zeros of a plain number dropped (`01` is `1`). */
+function normalizeNumber(text: string): string {
+  return text.trim().toUpperCase().replace(/^0+(?=\d)/, '');
+}
+
+/**
+ * The album of `volume` in a series: the line whose number is that volume (`3`, `HS1`, `INT01`),
+ * numbered albums first. Without a volume, the series' only numbered album (a one-shot), or its
+ * only album when it has no other kind. Null when none can be told to be the right one.
+ */
+export function pickAlbum(albums: SeriesAlbum[], volume: string | null): SeriesAlbum | null {
+  const wanted = normalizeNumber(volume ?? '');
+  if (wanted) {
+    const matches = albums.filter((album) => normalizeNumber(album.number) === wanted);
+    return matches.find((album) => album.kind === 'album') ?? matches[0] ?? null;
+  }
+  const numbered = albums.filter((album) => album.kind === 'album');
+  if (numbered.length === 1) {
+    return numbered[0];
+  }
+  return numbered.length === 0 && albums.length === 1 ? albums[0] : null;
+}
+
+/** An album of the list as a candidate: what the list shows, the credits left for the album page. */
+function listCandidate(album: SeriesAlbum, series: string): MetadataCandidate {
+  return {
+    source: 'bedetheque',
+    sourceId: /-(\d+)\.html$/i.exec(new URL(album.url).pathname)?.[1] ?? album.url,
+    sourceUrl: album.url,
+    coverUrl: null,
+    title: album.title || null,
+    series,
+    volume: album.number || null,
+    releaseDate: album.releaseDate,
+    language: null,
+    credits: [],
+  };
+}
+
+/** Spaces every request this module sends to the site. */
+let pacer: RequestPacer = createRequestPacer(MIN_REQUEST_INTERVAL_MS);
+
+/** The same `http`, each request waiting for its slot first (and giving up its wait when the lookup is stopped). */
+function paced(http: HttpOptions): HttpOptions {
+  return {
+    ...http,
+    fetch: async (input, init) => {
+      await pacer.wait(init?.signal ?? http.signal);
+      return http.fetch(input, init);
+    },
+  };
+}
+
+/** What the site answered, by what was asked: the search box's series, the series pages' albums, the album pages. */
+const seriesSearches = createPromiseCache<BedethequeSeries[]>(CACHE_TTL_MS, CACHE_SIZE);
+const seriesAlbums = createPromiseCache<SeriesAlbum[]>(CACHE_TTL_MS, CACHE_SIZE);
+const albumPages = createPromiseCache<MetadataCandidate>(CACHE_TTL_MS, CACHE_SIZE);
+
+/** Forgets what was remembered, and lets the next request through at once (the tests start from nothing). */
+export function resetBedethequeState(minIntervalMs = MIN_REQUEST_INTERVAL_MS): void {
+  seriesSearches.clear();
+  seriesAlbums.clear();
+  albumPages.clear();
+  pacer = createRequestPacer(minIntervalMs);
+}
+
+/**
+ * Finds a book by series name and volume, in three sequential requests at most: the search box's
+ * JSON for the series, the series page for its album list, then the album's page for its credits.
+ * The requests are spaced out and what the site answered is remembered for a while (see
+ * {@link resetBedethequeState}), so repeated searches stay light on it.
+ * Returns that one album when the volume is found (or the series has a single album); otherwise the
+ * series' albums as candidates, with no credits yet (the album page is read when one is picked).
+ * Nothing is returned when no series matches, or the text is too short for the site's search box.
+ */
+export async function searchBedetheque(query: MetadataQuery, http: HttpOptions): Promise<MetadataCandidate[]> {
+  const text = query.text.trim();
+  if (text.length < MIN_SEARCH_LENGTH) {
+    return [];
+  }
+  const found = await seriesSearches.get(normalizeName(text), async () =>
+    parseSeriesSearch(await getJson(`${SERIES_SEARCH_URL}?term=${encodeURIComponent(text)}`, paced(http), SOURCE)),
+  );
+  const series = pickSeries(found, text);
+  if (!series) {
+    return [];
+  }
+  const albums = await seriesAlbums.get(series.id, async () =>
+    parseSeriesAlbums(await getHtml(`${SERIES_PAGE_URL}${series.id}`, paced(http), SOURCE)),
+  );
+  const album = pickAlbum(albums, query.volume);
+  if (album) {
+    return [await fetchBedethequeAlbum(album.url, http)];
+  }
+  return albums.slice(0, MAX_SERIES_CANDIDATES).map((entry) => listCandidate(entry, series.label));
 }

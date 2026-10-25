@@ -7,7 +7,7 @@
  * @module
  */
 import { CREDIT_ROLES, type CreditInput, type CreditRole, type MetadataUpdate } from '../../shared/library';
-import type { MetadataQuery } from '../../shared/metadata';
+import { METADATA_API_SOURCES, type MetadataQuery } from '../../shared/metadata';
 
 /** Longest string accepted for a free-form field (a title, a tag, a search text), in characters. */
 export const MAX_TEXT_LENGTH = 10_000;
@@ -106,7 +106,7 @@ export function expectMetadataQuery(value: unknown): MetadataQuery {
     volume: expectNullableString(input.volume, 'query.volume'),
   };
   if (input.sources !== undefined) {
-    if (!Array.isArray(input.sources) || !input.sources.every((s) => s === 'comicvine' || s === 'googlebooks')) {
+    if (!Array.isArray(input.sources) || !input.sources.every((s) => METADATA_API_SOURCES.some((source) => source === s))) {
       throw new IpcArgumentError('query.sources', 'a list of API sources');
     }
     query.sources = input.sources;

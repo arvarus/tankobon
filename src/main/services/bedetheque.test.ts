@@ -1,12 +1,23 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { applyLanguage } from '../../shared/i18n';
 import { isBedethequeAlbumUrl, pageSourceOf } from '../../shared/metadata';
-import { fetchBedethequeAlbum, parseBedethequeAlbum } from './bedetheque';
+import {
+  resetBedethequeState,
+  fetchBedethequeAlbum,
+  parseBedethequeAlbum,
+  parseSeriesAlbums,
+  parseSeriesSearch,
+  pickAlbum,
+  pickSeries,
+  searchBedetheque,
+} from './bedetheque';
 import type { HttpOptions } from './http-json';
 
 // The user-facing messages are checked in French; English is the interface's default.
 beforeAll(() => applyLanguage('fr'));
+// Nothing is remembered from one test to the next, and the requests are not spaced out.
+beforeEach(() => resetBedethequeState(0));
 
 const URL_1 = 'https://www.bedetheque.com/BD-Winged-Mermaids-Tome-1-311296.html';
 
@@ -150,5 +161,308 @@ describe('pageSourceOf', () => {
     expect(pageSourceOf('https://www.nautiljon.com/mangas/knights+of+sidonia/')).toBeNull();
     expect(pageSourceOf('https://example.com/knights-of-sidonia-tome-15')).toBeNull();
     expect(pageSourceOf('not a link')).toBeNull();
+  });
+});
+
+/** The search box's answer for "blacksad" (shortened): the series, their translations, an author. */
+const SEARCH_BLACKSAD = [
+  { id: 'S86490', label: 'Blacksad (en allemand)', value: 'Blacksad (en allemand)', desc: 'skin/flags/Germany.png', category: 'Séries' },
+  { id: 'S500', label: 'Blacksad', value: 'Blacksad', desc: 'skin/flags/France.png', category: 'Séries' },
+  { id: 'S95276', label: 'Blacksad Stories', value: 'Blacksad Stories', desc: 'skin/flags/France.png', category: 'Séries' },
+  { id: 'A543', label: 'Díaz Canalès, Juan', value: 'Díaz Canalès, Juan', desc: '', category: 'Auteurs' },
+];
+
+/** One line of the series page's album box, as the site writes it. */
+function albumLine(slug: string, number: string, title: string, date: string, kind = '') {
+  return `<li${kind ? ` class="${kind}"` : ''}>
+    <a href="https://www.bedetheque.com/BD-Blacksad-${slug}.html" title="${title}">
+      <span class="bdt-box-albums-num" title="${number}">${kind === '' ? `${number}<span class="bdt-numa"></span>` : `<span class="bdt-numa">${number}</span>`}</span>
+      <span class="bdt-box-albums-titre">${title}</span>
+      <span class="bdt-box-albums-dl">${date}</span>
+    </a>
+  </li>`;
+}
+
+/** A trimmed-down series page: the preview of four covers, the album box, and the paged detail. */
+const SERIES_PAGE = `<html><body>
+<div class="bdt-sh-tomes n4">
+  <a class="bdt-img" href="https://www.bedetheque.com/BD-Blacksad-Tome-1-Quelque-part-entre-les-ombres-15161.html" title="Blacksad -1- Quelque part entre les ombres"></a>
+</div>
+<div class="bdt bdt-dense bdt-side-box">
+  <div class="bdt-side-sheet bdt-box-albums is-hs-ouvert is-int-ouvert">
+    <div class="bdt-kicker">Les 14 albums de la série</div>
+    <ul class="bdt-box-albums-liste">
+      ${albumLine('Tome-1-Quelque-part-entre-les-ombres-15161', '1', 'Quelque part entre les ombres', '11/2000')}
+      ${albumLine('Tome-2-Arctic-Nation-24600', '2', 'Arctic-Nation', '03/2003')}
+      ${albumLine('Tome-10-Dix-1', '10', 'Dix', '2030')}
+      <li class="bdt-box-albums-grp"><button type="button" data-groupe="hs">4 hors-séries</button></li>
+      ${albumLine('HS-What-s-News-426397', 'HS', "What&#039;s News", '11/2020', 'is-hs')}
+      ${albumLine('HS1-L-histoire-des-aquarelles-51853', 'HS1', "L&#039;histoire des aquarelles", '11/2005', 'is-hs')}
+      <li class="bdt-box-albums-grp"><button type="button" data-groupe="int">3 intégrales</button></li>
+      ${albumLine('INT01-L-Integrale-226936', 'INT01', "L&#039;Intégrale", '11/2014', 'is-int')}
+    </ul>
+  </div>
+</div>
+<article class="bdt-edition bdt-edition--detail" itemscope itemtype="https://schema.org/Book">
+  <a itemprop="url" href="https://www.bedetheque.com/BD-Blacksad-Tome-9-Detail-9.html"><span itemprop="name">9. Detail</span></a>
+</article>
+</body></html>`;
+
+describe('parseSeriesSearch', () => {
+  it('keeps the series, not the authors', () => {
+    expect(parseSeriesSearch(SEARCH_BLACKSAD).map((series) => series.id)).toEqual(['86490', '500', '95276']);
+  });
+
+  it('ignores an answer that is not a list', () => {
+    expect(parseSeriesSearch({ error: 'nope' })).toEqual([]);
+    expect(parseSeriesSearch([null, 'S1', { id: 'S2' }, { id: 'S3', label: ' ' }])).toEqual([]);
+  });
+});
+
+describe('pickSeries', () => {
+  const series = parseSeriesSearch(SEARCH_BLACKSAD);
+
+  it('takes the name equal to the text, ignoring case and accents, before its translations', () => {
+    expect(pickSeries(series, 'BLACKSAD')?.id).toBe('500');
+    expect(pickSeries([{ id: '1', label: 'Pokémon' }], 'pokemon')?.id).toBe('1');
+  });
+
+  it('takes the shortest name starting with the text when none is equal', () => {
+    expect(pickSeries(series.slice(2), 'Blacksad St')?.id).toBe('95276');
+    expect(pickSeries(series, 'Blacksa')?.id).toBe('500');
+  });
+
+  it('only falls back on a translation when nothing else matches', () => {
+    expect(pickSeries([series[0]], 'Blacksad')?.id).toBe('86490');
+  });
+
+  it('finds nothing when no name contains the text', () => {
+    expect(pickSeries(series, 'Corto Maltese')).toBeNull();
+    expect(pickSeries(series, '   ')).toBeNull();
+  });
+});
+
+describe('parseSeriesAlbums', () => {
+  it('reads the album box: links, numbers, titles, dates and kinds', () => {
+    expect(parseSeriesAlbums(SERIES_PAGE)).toEqual([
+      {
+        url: 'https://www.bedetheque.com/BD-Blacksad-Tome-1-Quelque-part-entre-les-ombres-15161.html',
+        number: '1',
+        title: 'Quelque part entre les ombres',
+        releaseDate: '2000-11',
+        kind: 'album',
+      },
+      {
+        url: 'https://www.bedetheque.com/BD-Blacksad-Tome-2-Arctic-Nation-24600.html',
+        number: '2',
+        title: 'Arctic-Nation',
+        releaseDate: '2003-03',
+        kind: 'album',
+      },
+      { url: 'https://www.bedetheque.com/BD-Blacksad-Tome-10-Dix-1.html', number: '10', title: 'Dix', releaseDate: '2030', kind: 'album' },
+      {
+        url: 'https://www.bedetheque.com/BD-Blacksad-HS-What-s-News-426397.html',
+        number: 'HS',
+        title: "What's News",
+        releaseDate: '2020-11',
+        kind: 'hs',
+      },
+      {
+        url: 'https://www.bedetheque.com/BD-Blacksad-HS1-L-histoire-des-aquarelles-51853.html',
+        number: 'HS1',
+        title: "L'histoire des aquarelles",
+        releaseDate: '2005-11',
+        kind: 'hs',
+      },
+      {
+        url: 'https://www.bedetheque.com/BD-Blacksad-INT01-L-Integrale-226936.html',
+        number: 'INT01',
+        title: "L'Intégrale",
+        releaseDate: '2014-11',
+        kind: 'int',
+      },
+    ]);
+  });
+
+  it('finds nothing on a page without the box', () => {
+    expect(parseSeriesAlbums('<html><body>Série</body></html>')).toEqual([]);
+  });
+});
+
+describe('pickAlbum', () => {
+  const albums = parseSeriesAlbums(SERIES_PAGE);
+
+  it('finds a volume by its number, leading zeros ignored', () => {
+    expect(pickAlbum(albums, '2')?.title).toBe('Arctic-Nation');
+    expect(pickAlbum(albums, '02')?.title).toBe('Arctic-Nation');
+    expect(pickAlbum(albums, '10')?.title).toBe('Dix');
+  });
+
+  it('finds the special issues and the omnibuses by their own number', () => {
+    expect(pickAlbum(albums, 'hs1')?.kind).toBe('hs');
+    expect(pickAlbum(albums, 'INT1')).toBeNull();
+    expect(pickAlbum(albums, 'INT01')?.kind).toBe('int');
+  });
+
+  it('finds nothing for an unknown volume', () => {
+    expect(pickAlbum(albums, '99')).toBeNull();
+  });
+
+  it('takes the only album of a one-shot, but not one of many without a volume', () => {
+    expect(pickAlbum(albums.slice(0, 1), null)?.number).toBe('1');
+    expect(pickAlbum([{ ...albums[0], number: '', kind: 'album' }, albums[3]], '')?.title).toBe(albums[0].title);
+    expect(pickAlbum(albums, null)).toBeNull();
+  });
+});
+
+describe('searchBedetheque', () => {
+  /** Answers each of the three pages; the calls are recorded in order. */
+  function site(search: unknown = SEARCH_BLACKSAD, series = SERIES_PAGE) {
+    const calls: string[] = [];
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      calls.push(url);
+      if (url.startsWith('https://www.bdgest.com/ajax/tout')) return Response.json(search);
+      if (url.startsWith('https://www.bedetheque.com/serie/index/s/')) return new Response(series, { status: 200 });
+      return new Response(albumPage(), { status: 200 });
+    });
+    const http: HttpOptions = { fetch: fetch as typeof globalThis.fetch, userAgent: 'Tankobon/test', timeoutMs: 1000 };
+    return { calls, http };
+  }
+
+  it('finds the series, then the volume, then reads that album: three requests', async () => {
+    const { calls, http } = site();
+    const found = await searchBedetheque({ text: 'blacksad', volume: '2' }, http);
+    expect(calls).toEqual([
+      'https://www.bdgest.com/ajax/tout?term=blacksad',
+      'https://www.bedetheque.com/serie/index/s/500',
+      'https://www.bedetheque.com/BD-Blacksad-Tome-2-Arctic-Nation-24600.html',
+    ]);
+    expect(found).toHaveLength(1);
+    expect(found[0].credits.length).toBeGreaterThan(0);
+  });
+
+  it('reads a series page once for several volumes', async () => {
+    const { calls, http } = site();
+    await searchBedetheque({ text: 'Blacksad', volume: '1' }, http);
+    await searchBedetheque({ text: 'Blacksad', volume: '2' }, http);
+    expect(calls.filter((url) => url.includes('/serie/index/s/'))).toHaveLength(1);
+  });
+
+  it('offers the albums of the series when the volume is not there, without reading any album', async () => {
+    const { calls, http } = site();
+    const found = await searchBedetheque({ text: 'Blacksad', volume: '99' }, http);
+    expect(calls).toHaveLength(2);
+    expect(found.map((candidate) => candidate.volume)).toEqual(['1', '2', '10', 'HS', 'HS1', 'INT01']);
+    expect(found[0]).toMatchObject({
+      source: 'bedetheque',
+      sourceId: '15161',
+      series: 'Blacksad',
+      title: 'Quelque part entre les ombres',
+      releaseDate: '2000-11',
+      credits: [],
+    });
+  });
+
+  it('offers the albums when no volume is asked and the series has several', async () => {
+    const { http } = site();
+    expect(await searchBedetheque({ text: 'Blacksad', volume: null }, http)).toHaveLength(6);
+  });
+
+  it('finds nothing, with no further request, when no series matches or the text is too short', async () => {
+    const { calls, http } = site();
+    expect(await searchBedetheque({ text: 'Corto Maltese', volume: null }, http)).toEqual([]);
+    expect(await searchBedetheque({ text: 'Di', volume: null }, http)).toEqual([]);
+    expect(calls).toEqual(['https://www.bdgest.com/ajax/tout?term=Corto%20Maltese']);
+  });
+
+  it('does not keep a series page that failed to load', async () => {
+    const missing = site();
+    const failing: HttpOptions = {
+      ...missing.http,
+      fetch: (async (input: string | URL | Request) =>
+        String(input).includes('/serie/index/s/')
+          ? new Response('Not found', { status: 404 })
+          : missing.http.fetch(input)) as typeof globalThis.fetch,
+    };
+    await expect(searchBedetheque({ text: 'blacksad', volume: '1' }, failing)).rejects.toThrow(
+      "Bédéthèque : cette page n'existe pas.",
+    );
+    const working = site();
+    expect(await searchBedetheque({ text: 'blacksad', volume: '1' }, working.http)).toHaveLength(1);
+    expect(working.calls.filter((url) => url.includes('/serie/index/s/'))).toHaveLength(1);
+  });
+});
+
+describe('searchBedetheque: a light touch on the site', () => {
+  const albumHtml = albumPage();
+  function site(calls: string[] = []) {
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      calls.push(url);
+      if (url.startsWith('https://www.bdgest.com/ajax/tout')) return Response.json(SEARCH_BLACKSAD);
+      if (url.includes('/serie/index/s/')) return new Response(SERIES_PAGE, { status: 200 });
+      return new Response(albumHtml, { status: 200 });
+    });
+    return { calls, fetch };
+  }
+  const options = (fetch: ReturnType<typeof site>['fetch'], signal?: AbortSignal): HttpOptions => ({
+    fetch: fetch as unknown as typeof globalThis.fetch,
+    userAgent: 'Tankobon/test',
+    timeoutMs: 1000,
+    signal,
+  });
+
+  it('asks nothing again for the same search within a few minutes', async () => {
+    const { calls, fetch } = site();
+    await searchBedetheque({ text: 'Blacksad', volume: '1' }, options(fetch));
+    await searchBedetheque({ text: ' blacksad ', volume: '1' }, options(fetch));
+    expect(calls).toHaveLength(3);
+  });
+
+  it('reads the series box and the album pages only once each across volumes', async () => {
+    const { calls, fetch } = site();
+    await searchBedetheque({ text: 'Blacksad', volume: '1' }, options(fetch));
+    await searchBedetheque({ text: 'Blacksad', volume: '2' }, options(fetch));
+    expect(calls.filter((url) => url.includes('/ajax/tout'))).toHaveLength(1);
+    expect(calls.filter((url) => url.includes('/serie/index/s/'))).toHaveLength(1);
+    expect(calls.filter((url) => url.includes('/BD-'))).toHaveLength(2);
+  });
+
+  it('reads an album page once, whether it was found by a search or picked from the list', async () => {
+    const { calls, fetch } = site();
+    const [album] = await searchBedetheque({ text: 'Blacksad', volume: '1' }, options(fetch));
+    await fetchBedethequeAlbum(album.sourceUrl as string, options(fetch));
+    expect(calls.filter((url) => url.includes('/BD-'))).toHaveLength(1);
+  });
+
+  it('spaces the requests it sends to the site', async () => {
+    resetBedethequeState(60_000);
+    const { calls, fetch } = site();
+    const controller = new AbortController();
+    const search = searchBedetheque({ text: 'Blacksad', volume: '1' }, options(fetch, controller.signal));
+    // The first request goes at once; the second waits for its slot, a minute away.
+    await vi.waitFor(() => expect(calls).toHaveLength(1));
+    controller.abort();
+    await expect(search).rejects.toThrow();
+    expect(calls).toHaveLength(1);
+  });
+
+  it('stops without sending anything more when the lookup is aborted', async () => {
+    const { calls, fetch } = site();
+    const controller = new AbortController();
+    controller.abort();
+    await expect(searchBedetheque({ text: 'Blacksad', volume: '1' }, options(fetch, controller.signal))).rejects.toThrow();
+    expect(calls).toEqual([]);
+  });
+
+  it('does not serve an aborted request to the next search', async () => {
+    const { calls, fetch } = site();
+    const controller = new AbortController();
+    controller.abort();
+    await expect(searchBedetheque({ text: 'Blacksad', volume: '1' }, options(fetch, controller.signal))).rejects.toThrow();
+    const found = await searchBedetheque({ text: 'Blacksad', volume: '1' }, options(fetch));
+    expect(found).toHaveLength(1);
+    expect(calls).toHaveLength(3);
   });
 });

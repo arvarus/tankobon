@@ -1,5 +1,5 @@
 import { ArrowLeft, Globe, Loader2, Search, Square } from 'lucide-react';
-import { useReducer, useRef, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
@@ -32,7 +32,7 @@ import { formatPersonName } from '@/shared/title-parsing';
 /** How to look the book up: in the public APIs, or from the link of a page of a supported site. */
 type Mode = 'api' | 'site';
 
-/** The APIs the user can tick, in display order. */
+/** The APIs that are ticked per search once enabled in the settings, in display order. */
 const API_SOURCES: MetadataApiSource[] = ['comicvine', 'googlebooks'];
 
 const INPUT_CLASS =
@@ -76,13 +76,26 @@ export function MetadataDialog({
     source === 'comicvine' ? settings?.comicVineEnabled : settings?.googleBooksEnabled,
   );
   const [unticked, setUnticked] = useState<Set<MetadataApiSource>>(new Set());
-  const sources = enabledSources.filter((source) => !unticked.has(source));
+  // Bédéthèque has no key to enable: its box is always there, starting as the setting says.
+  const [bedethequeChoice, setBedethequeChoice] = useState<boolean | null>(null);
+  const bedethequeTicked = bedethequeChoice ?? settings?.bedethequeSearchByDefault ?? false;
+  const sources: MetadataApiSource[] = [
+    ...enabledSources.filter((source) => !unticked.has(source)),
+    ...(bedethequeTicked ? (['bedetheque'] as const) : []),
+  ];
+  const [picking, setPicking] = useState(false);
   // Nothing is searched until the user asks: the dialog opens on the options. Only the awaited search
   // may update the dialog, so an earlier, slower answer never shows stale results; stopping a search
   // (or closing the dialog) abandons it.
   const [{ step }, dispatch] = useReducer(lookupReducer, INITIAL_LOOKUP);
   const [applying, setApplying] = useState(false);
   const searchCount = useRef(0);
+  // Closing the dialog gives up what it is waiting for: the requests to the sites are aborted, not just ignored.
+  useEffect(() => () => void window.tankobon.metadata.cancel(), []);
+  const stop = () => {
+    dispatch({ type: 'reset' });
+    void window.tankobon.metadata.cancel();
+  };
 
   const runSearch = async () => {
     const id = ++searchCount.current;
@@ -111,6 +124,18 @@ export function MetadataDialog({
   };
 
   const canSearch = mode === 'site' ? pageSourceOf(pageUrl) !== null : query.text.trim() !== '' && sources.length > 0;
+
+  // A line of a Bédéthèque series list has no credits yet: the album's own page is read when it is picked.
+  const pick = async (candidate: MetadataCandidate) => {
+    if (candidate.source !== 'bedetheque' || candidate.credits.length > 0 || !candidate.sourceUrl) {
+      dispatch({ type: 'picked', review: buildReview(entry, candidate) });
+      return;
+    }
+    setPicking(true);
+    const result = await window.tankobon.metadata.fromPage(candidate.sourceUrl);
+    setPicking(false);
+    dispatch({ type: 'picked', review: buildReview(entry, result.status === 'ok' ? result.candidate : candidate) });
+  };
 
   const apply = async (review: MetadataReview) => {
     const update = reviewToUpdate(entry, review);
@@ -234,6 +259,14 @@ export function MetadataDialog({
                   {METADATA_SOURCE_LABELS[source]}
                 </label>
               ))}
+              <label className="flex items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  checked={bedethequeTicked}
+                  onChange={(event) => setBedethequeChoice(event.target.checked)}
+                />
+                {METADATA_SOURCE_LABELS.bedetheque}
+              </label>
             </fieldset>
           </>
         ) : (
@@ -250,7 +283,7 @@ export function MetadataDialog({
         )}
         <div className="flex gap-2">
           {step.kind === 'searching' ? (
-            <Button type="button" size="sm" variant="outline" onClick={() => dispatch({ type: 'reset' })}>
+            <Button type="button" size="sm" variant="outline" onClick={stop}>
               <Square />
               {t('stop')}
             </Button>
@@ -275,7 +308,8 @@ export function MetadataDialog({
           <CandidateList
             candidates={step.candidates}
             errors={step.errors}
-            onPick={(candidate) => dispatch({ type: 'picked', review: buildReview(entry, candidate) })}
+            disabled={picking}
+            onPick={(candidate) => void pick(candidate)}
           />
         )}
         {step.kind === 'review' && (
@@ -311,10 +345,12 @@ function candidateHeading(candidate: MetadataCandidate, t: TFunction<'metadata'>
 function CandidateList({
   candidates,
   errors,
+  disabled,
   onPick,
 }: {
   candidates: MetadataCandidate[];
   errors: string[];
+  disabled: boolean;
   onPick: (candidate: MetadataCandidate) => void;
 }) {
   const { t } = useTranslation('metadata');
@@ -333,8 +369,9 @@ function CandidateList({
             <li key={`${candidate.source}-${candidate.sourceId}`}>
               <button
                 type="button"
+                disabled={disabled}
                 onClick={() => onPick(candidate)}
-                className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-accent"
+                className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-accent disabled:opacity-60"
               >
                 {candidate.coverUrl ? (
                   <img src={candidate.coverUrl} alt="" className="h-16 w-11 shrink-0 rounded-sm object-cover" />

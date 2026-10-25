@@ -72,6 +72,16 @@ function MetadataSettingsPage() {
         />
         <p className="text-sm text-muted-foreground">{t('googleBooksHint')}</p>
       </SettingsSection>
+
+      <SettingsSection title={t('bedetheque')}>
+        <SourceToggle
+          id="bedetheque-search-default"
+          label={t('bedethequeDefault')}
+          checked={settings.bedethequeSearchByDefault}
+          onChange={(checked) => update('bedethequeSearchByDefault', checked)}
+        />
+        <p className="text-sm text-muted-foreground">{t('bedethequeHint')}</p>
+      </SettingsSection>
     </>
   );
 }

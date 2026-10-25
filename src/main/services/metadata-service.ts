@@ -5,6 +5,7 @@
 import { t } from '../../shared/i18n';
 import { validReleaseDate } from '../../shared/release-date';
 import {
+  type MetadataApiSource,
   type MetadataCandidate,
   type MetadataPageResult,
   type MetadataQuery,
@@ -12,7 +13,7 @@ import {
   pageSourceOf,
 } from '../../shared/metadata';
 import type { AppSettings } from '../../shared/settings';
-import { fetchBedethequeAlbum } from './bedetheque';
+import { fetchBedethequeAlbum, searchBedetheque } from './bedetheque';
 import { fetchStructuredPage } from './structured-page';
 import { ComicVineClient } from './comic-vine';
 import { GoogleBooksClient } from './google-books';
@@ -21,7 +22,7 @@ import type { HttpOptions } from './http-json';
 /** The settings a lookup needs: which sources are enabled, and their API keys. */
 export type SourceSettings = Pick<
   AppSettings,
-  'comicVineEnabled' | 'comicVineApiKey' | 'googleBooksEnabled' | 'googleBooksApiKey'
+  'comicVineEnabled' | 'comicVineApiKey' | 'googleBooksEnabled' | 'googleBooksApiKey' | 'bedethequeSearchByDefault'
 >;
 
 /** A client of one source, as the lookup sees it. */
@@ -63,12 +64,16 @@ export async function searchMetadata(
   const volume = query.volume?.trim() || null;
 
   const clients: MetadataClient[] = [];
-  const wanted = (source: 'comicvine' | 'googlebooks') => !query.sources || query.sources.includes(source);
+  const wanted = (source: MetadataApiSource) => !query.sources || query.sources.includes(source);
   if (wanted('comicvine') && settings.comicVineEnabled && settings.comicVineApiKey.trim()) {
     clients.push(new ComicVineClient(settings.comicVineApiKey.trim(), http));
   }
   if (wanted('googlebooks') && settings.googleBooksEnabled) {
     clients.push(new GoogleBooksClient(settings.googleBooksApiKey.trim(), http));
+  }
+  // Bédéthèque has no switch of its own: the dialog's box says so, and its default is a setting.
+  if (query.sources ? query.sources.includes('bedetheque') : settings.bedethequeSearchByDefault) {
+    clients.push({ search: (q) => searchBedetheque(q, http) });
   }
   if (clients.length === 0) {
     return {

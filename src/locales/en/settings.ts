@@ -191,6 +191,9 @@ export default {
     googleBooksEnable: 'Query Google Books',
     googleBooksKey: 'API key (optional)',
     googleBooksHint: 'Covers French editions and manga, but doesn’t tell the writer from the artist: everyone found there is an “author”. Without a key, requests share an anonymous quota that can run out.',
+    bedetheque: 'Bédéthèque (BD, manga)',
+    bedethequeDefault: 'Search Bédéthèque by default',
+    bedethequeHint: 'Finds the series on Bédéthèque and opens the album of the volume asked for, with its writers, artists and release date. It has no API, so the site’s own pages are read (three requests per search, at most), only when you start a search. The lookup dialog always has a Bédéthèque box: this setting only says whether it starts ticked.',
   },
   data: {
     importExport: 'Import / export',

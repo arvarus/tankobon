@@ -1,8 +1,9 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { applyLanguage } from '../../shared/i18n';
 import type { MetadataCandidate } from '../../shared/metadata';
 import { DEFAULT_SETTINGS } from '../../shared/settings';
+import { resetBedethequeState } from './bedetheque';
 import { comicVineCredits } from './comic-vine';
 import { googleBooksCandidate } from './google-books';
 import type { HttpOptions } from './http-json';
@@ -10,6 +11,7 @@ import { fetchMetadataPage, rankCandidates, searchMetadata } from './metadata-se
 
 // The user-facing messages are checked in French; English is the interface's default.
 beforeAll(() => applyLanguage('fr'));
+beforeEach(() => resetBedethequeState(0));
 
 /** A fake `fetch` answering each URL with the first route whose pattern it matches. */
 function fakeFetch(routes: [RegExp, unknown, number?][]) {
@@ -127,6 +129,28 @@ describe('searchMetadata', () => {
     const urls = fetch.mock.calls.map(([url]) => String(url));
     expect(urls.length).toBeGreaterThan(0);
     expect(urls.every((url) => url.includes('googleapis'))).toBe(true);
+  });
+
+  it('leaves Bédéthèque out unless it is named or on by default', async () => {
+    const fetch = fakeFetch([[/googleapis/, { items: [] }]]);
+    await searchMetadata({ text: 'Blacksad', volume: '1' }, settings, http(fetch));
+    expect(fetch.mock.calls.map(([url]) => String(url)).some((url) => url.includes('bdgest.com'))).toBe(false);
+  });
+
+  it('queries Bédéthèque when the query names it, even if it is not on by default', async () => {
+    const fetch = fakeFetch([[/bdgest\.com\/ajax\/tout/, []]]);
+    const result = await searchMetadata({ text: 'Blacksad', volume: '1', sources: ['bedetheque'] }, settings, http(fetch));
+    expect(fetch.mock.calls.map(([url]) => String(url))).toEqual(['https://www.bdgest.com/ajax/tout?term=Blacksad']);
+    expect(result).toEqual({ status: 'ok', candidates: [], errors: [] });
+  });
+
+  it('queries Bédéthèque when no source is named and it is on by default', async () => {
+    const fetch = fakeFetch([
+      [/bdgest\.com\/ajax\/tout/, []],
+      [/googleapis/, { items: [] }],
+    ]);
+    await searchMetadata({ text: 'Blacksad', volume: null }, { ...settings, bedethequeSearchByDefault: true }, http(fetch));
+    expect(fetch.mock.calls.map(([url]) => String(url)).some((url) => url.includes('bdgest.com'))).toBe(true);
   });
 
   it('is an error when the named sources are all unavailable', async () => {

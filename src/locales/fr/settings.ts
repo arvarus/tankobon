@@ -193,6 +193,9 @@ const settings: Translation<typeof en> = {
     googleBooksEnable: 'Interroger Google Books',
     googleBooksKey: 'Clé API (facultative)',
     googleBooksHint: 'Couvre les éditions françaises et les mangas, mais ne distingue pas le scénariste du dessinateur : les personnes trouvées y sont toutes « auteur ». Sans clé, les requêtes partagent un quota anonyme qui peut être épuisé.',
+    bedetheque: 'Bédéthèque (BD, manga)',
+    bedethequeDefault: 'Rechercher sur Bédéthèque par défaut',
+    bedethequeHint: "Retrouve la série sur Bédéthèque et ouvre l'album du tome demandé, avec ses scénaristes, dessinateurs et sa date de parution. Bédéthèque n'a pas d'API : ce sont les pages du site qui sont lues (trois requêtes au plus par recherche), seulement quand tu lances une recherche. La fenêtre de recherche propose toujours la case Bédéthèque : ce réglage dit seulement si elle est cochée au départ.",
   },
   data: {
     importExport: 'Import / export',
