@@ -206,7 +206,7 @@ See [ADR 0012](./decisions/0012-decoder-utility-process.md). Parsing a comic fil
 
 ### CBR: the wasm file
 
-`node-unrar-js`'s Emscripten glue locates its `.wasm` relative to its own `__dirname`, which breaks once Vite bundles it into `decoder-worker.cjs`. `vite.decoder.config.mts` copies `unrar.wasm` next to the bundle (`vite-plugin-static-copy`), and `cbr-archive.ts` reads it itself and passes it as `wasmBinary`. A CBR is read fully into memory when opened, as the buffer `readFile` returned (no copy: it would double the memory of every open CBR).
+`node-unrar-js`'s Emscripten glue locates its `.wasm` relative to its own `__dirname`, which breaks once Vite bundles it into `decoder-worker.cjs`. `vite.decoder.config.mts` copies `unrar.wasm` next to the bundle (`vite-plugin-static-copy`), and `cbr-archive.ts` reads it itself and passes it as `wasmBinary`. A CBR is read fully into memory when opened, as the buffer `readFile` returned (no copy: it would double the memory of every open CBR). A CBR and a PDF (also read whole) are refused above `MAX_WHOLE_FILE_SIZE` (1 GiB, `readWholeFile()`, `comic-archive.ts`, also used by the CBR conversion) with a translated message, before anything is read: up to `MAX_OPEN_ARCHIVES` of them are held at once, and `readFile` fails above 2 GiB with a message nobody can act on. A CBZ is read entry by entry from the disk and has no such limit.
 
 ### CBR: one wasm module for every archive
 

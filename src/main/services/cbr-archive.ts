@@ -8,7 +8,7 @@ import { join } from 'node:path';
 
 import type { ComicPage } from '../../shared/comic';
 import { t } from '../../shared/i18n';
-import { imageMimeType, isPageEntry, MAX_ENTRY_SIZE, sortPages, type ComicArchive } from './comic-archive';
+import { imageMimeType, isPageEntry, MAX_ENTRY_SIZE, readWholeFile, sortPages, type ComicArchive } from './comic-archive';
 import { checkedPage } from './image-size';
 
 /**
@@ -62,7 +62,7 @@ export class CbrArchive implements ComicArchive {
 
   /** Reads and indexes the archive; throws when it holds no image. */
   static async open(filePath: string): Promise<CbrArchive> {
-    const data = exactArrayBuffer(await readFile(filePath));
+    const data = exactArrayBuffer(await readWholeFile(filePath));
     // The generator must be drained fully, or the underlying archive handle leaks.
     const files = await withExtractor(data, (extractor) =>
       [...extractor.getFileList().fileHeaders].filter((header) => !header.flags.directory),
