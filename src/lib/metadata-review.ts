@@ -44,6 +44,10 @@ export interface CreditReview extends CreditInput {
 export interface MetadataReview {
   fields: FieldReview[];
   credits: CreditReview[];
+  /** The candidate's cover picture, if it has one. */
+  coverUrl: string | null;
+  /** Whether the cover picture replaces the book's cover (off by default: the user opts in). */
+  coverAccepted: boolean;
 }
 
 function currentValue(entry: LibraryEntry, field: ReviewField): string | null {
@@ -81,7 +85,7 @@ export function buildReview(entry: LibraryEntry, candidate: MetadataCandidate): 
       .filter((credit) => !known.has(creditKey(credit)))
       .map((credit, index) => ({ ...credit, key: `proposed-${index}`, origin: 'proposed' as const, accepted: true })),
   ];
-  return { fields, credits };
+  return { fields, credits, coverUrl: candidate.coverUrl, coverAccepted: false };
 }
 
 /**

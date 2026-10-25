@@ -11,6 +11,7 @@ export default {
   readingPage: 'Reading the page…',
   searching: 'Searching…',
   otherResults: 'Other results',
+  useCover: 'Use this cover for the book',
   apply: 'Apply',
   untitled: 'Untitled',
   noResults: 'No results. Try the series name alone, without a volume number, or look the book up from the link of its page.',

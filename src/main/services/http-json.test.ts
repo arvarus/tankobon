@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { applyLanguage } from '../../shared/i18n';
-import { getHtml, getJson, MAX_RESPONSE_BYTES, type HttpOptions } from './http-json';
+import { getHtml, getImage, getJson, MAX_RESPONSE_BYTES, type HttpOptions } from './http-json';
 
 // The user-facing messages are checked in French; English is the interface's default.
 beforeAll(() => applyLanguage('fr'));
@@ -80,5 +80,21 @@ describe('stopping a lookup', () => {
     const request = getHtml(PAGE, { fetch: hanging(), userAgent: 'test', timeoutMs: 60_000, signal: controller.signal }, 'Bédéthèque');
     controller.abort();
     await expect(request).rejects.toThrow(/Bédéthèque/);
+  });
+});
+
+describe('getImage', () => {
+  it('returns the bytes of the picture', async () => {
+    const bytes = await getImage('https://books.google.com/c.jpg', options(() => new Response(new Uint8Array([1, 2, 3]))), 'Google Books', 10);
+    expect([...bytes]).toEqual([1, 2, 3]);
+  });
+
+  it('refuses a picture above the limit and an error status', async () => {
+    await expect(
+      getImage('https://books.google.com/c.jpg', options(() => new Response(new Uint8Array(11))), 'Google Books', 10),
+    ).rejects.toThrow(/trop volumineuse/);
+    await expect(
+      getImage('https://books.google.com/c.jpg', options(() => new Response('', { status: 404 })), 'Google Books', 10),
+    ).rejects.toThrow();
   });
 });

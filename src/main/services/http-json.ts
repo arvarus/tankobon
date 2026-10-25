@@ -54,17 +54,17 @@ async function get(url: string, options: HttpOptions, source: string, accept: st
 /** A response above {@link MAX_RESPONSE_BYTES}. */
 class ResponseTooLargeError extends Error {}
 
-/** Reads a response body as text, giving up as soon as it is known to be above {@link MAX_RESPONSE_BYTES}. */
-async function readText(response: Response, source: string): Promise<string> {
+/** Reads a response body, giving up as soon as it is known to be above `max` bytes. */
+async function readBytes(response: Response, source: string, max: number): Promise<Buffer> {
   const tooLarge = () => new ResponseTooLargeError(t('errors:metadata.tooLarge', { source }));
-  if (Number(response.headers.get('content-length')) > MAX_RESPONSE_BYTES) {
+  if (Number(response.headers.get('content-length')) > max) {
     await response.body?.cancel().catch(() => undefined);
     throw tooLarge();
   }
   if (!response.body) {
-    const text = await response.text();
-    if (Buffer.byteLength(text) > MAX_RESPONSE_BYTES) throw tooLarge();
-    return text;
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (bytes.byteLength > max) throw tooLarge();
+    return bytes;
   }
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -73,13 +73,18 @@ async function readText(response: Response, source: string): Promise<string> {
     const { done, value } = await reader.read();
     if (done) break;
     total += value.byteLength;
-    if (total > MAX_RESPONSE_BYTES) {
+    if (total > max) {
       await reader.cancel().catch(() => undefined);
       throw tooLarge();
     }
     chunks.push(value);
   }
-  return Buffer.concat(chunks).toString('utf-8');
+  return Buffer.concat(chunks);
+}
+
+/** Reads a response body as text, giving up as soon as it is known to be above {@link MAX_RESPONSE_BYTES}. */
+async function readText(response: Response, source: string): Promise<string> {
+  return (await readBytes(response, source, MAX_RESPONSE_BYTES)).toString('utf-8');
 }
 
 /**
@@ -130,4 +135,16 @@ export async function getHtml(url: string, options: HttpOptions, source: string)
     throw new Error(t('errors:metadata.sourceError', { source, message: t('errors:metadata.httpError', { status: response.status }) }));
   }
   return readText(response, source);
+}
+
+/**
+ * GETs an image and returns its bytes. Throws `"<source>: …"` (translated) like {@link getHtml}, and when the
+ * body is above `maxBytes`.
+ */
+export async function getImage(url: string, options: HttpOptions, source: string, maxBytes: number): Promise<Buffer> {
+  const response = await get(url, options, source, 'image/*');
+  if (!response.ok) {
+    throw new Error(t('errors:metadata.sourceError', { source, message: t('errors:metadata.httpError', { status: response.status }) }));
+  }
+  return readBytes(response, source, maxBytes);
 }

@@ -188,8 +188,8 @@ export interface MetadataApi {
   fromPage(url: string): Promise<MetadataPageResult>;
   /** Stops the lookup this window is waiting for (`search()` or `fromPage()`): its requests are aborted and the call fails. Does nothing when none is under way. */
   cancel(): Promise<void>;
-  /** Saves what the user accepted in the lookup dialog: updates the library entry, rewrites the `.nfo` beside the file and makes the cover thumbnail if it has none; resolves with the updated entry, or null if it is gone. */
-  apply(id: string, update: MetadataUpdate): Promise<LibraryEntry | null>;
+  /** Saves what the user accepted in the lookup dialog: updates the library entry, rewrites the `.nfo` beside the file and makes the cover thumbnail if it has none, or replaces it with the picture at `coverUrl` (an address of the sources' cover hosts, else ignored; a picture that can't be downloaded keeps the current cover); resolves with the updated entry, or null if it is gone. */
+  apply(id: string, update: MetadataUpdate, coverUrl: string | null): Promise<LibraryEntry | null>;
 }
 
 /** The user's settings, as `window.tankobon.settings`. */
@@ -422,7 +422,7 @@ const api: TankobonApi = {
     search: (query) => ipcRenderer.invoke('metadata:search', query),
     fromPage: (url) => ipcRenderer.invoke('metadata:from-page', url),
     cancel: () => ipcRenderer.invoke('metadata:cancel'),
-    apply: (id, update) => ipcRenderer.invoke('metadata:apply', id, update),
+    apply: (id, update, coverUrl) => ipcRenderer.invoke('metadata:apply', id, update, coverUrl),
   },
   achievements: {
     list: () => ipcRenderer.invoke('achievements:list'),

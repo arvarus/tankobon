@@ -29,6 +29,26 @@ export const METADATA_SOURCE_LABELS: Record<MetadataSource, string> = {
   nautiljon: 'Nautiljon',
 };
 
+/** Hosts the cover pictures of the sources are served from: the ones the CSP's `img-src` allows (`*.` matches subdomains). */
+const COVER_HOSTS = ['comicvine.gamespot.com', 'books.google.com', 'www.bedetheque.com', '*.bdfugue.com', '*.nautiljon.com'];
+
+/**
+ * Whether `text` is an `https` address on one of the sources' cover hosts: the only pictures
+ * `metadata.apply()` downloads, since the main process must not fetch whatever address a response names.
+ */
+export function isCoverUrl(text: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(text);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== 'https:' || url.username !== '' || url.password !== '') return false;
+  return COVER_HOSTS.some((host) =>
+    host.startsWith('*.') ? url.hostname.endsWith(host.slice(1)) : url.hostname === host,
+  );
+}
+
 /**
  * Whether `text` is the link of a Bédéthèque album page (`https://www.bedetheque.com/BD-….html`),
  * which `metadata.fromPage()` can read instead of running a search.
