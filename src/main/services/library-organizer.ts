@@ -16,7 +16,7 @@ import type { LibraryLevel, LibraryOrganization } from '../../shared/settings';
 import type { LibraryRepository } from '../db/library-repository';
 import { coverSidecarPath } from './cover-sidecar';
 import { nfoPathFor } from './nfo';
-import { isInside } from './library-sync';
+import { isInside } from '../path-containment';
 
 /**
  * Longest file or folder name, in UTF-8 bytes: 255 on Linux (ext4…) and macOS (APFS). Windows (NTFS)
