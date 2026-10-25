@@ -171,4 +171,22 @@ describe('resyncLibrary covers', () => {
     expect(asked.sort()).toEqual(['a.cbz', 'b.cbz']);
     expect(summary.coversExtracted).toBe(1);
   });
+
+  // A book whose library folder has no path on this machine keeps its stored form (`root:<id>/…`); its absence
+  // says nothing, even when the stored form happens to name a readable directory relative to the working directory.
+  it('keeps the books of a folder that is not linked on this machine', async () => {
+    const root = await tree(['elsewhere/root:abc/.keep']);
+    const folder = await tree(['one.cbz']);
+    const repo = repository();
+    repo.register('root:abc/gone.cbz', 'gone', 10, 10, 0);
+    const previous = process.cwd();
+    process.chdir(path.join(root, 'elsewhere'));
+    try {
+      const summary = await resyncLibrary(repo, [folder], noProgress, inspect);
+      expect(summary.removed).toBe(0);
+    } finally {
+      process.chdir(previous);
+    }
+    expect(repo.hasPath('root:abc/gone.cbz')).toBe(true);
+  });
 });
