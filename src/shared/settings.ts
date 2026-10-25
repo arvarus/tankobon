@@ -289,6 +289,11 @@ export interface AppSettings {
    */
   fileNameRules: string[];
   /**
+   * Whether the file name rule block of the lookup dialog is folded (only its title shows): the choice
+   * is kept so the user doesn't fold or unfold it at each lookup.
+   */
+  lookupRuleCollapsed: boolean;
+  /**
    * The duplicate groups the user chose to keep as they are ("Tout garder"), as `duplicateGroupKey()`s:
    * the duplicates search doesn't offer them again unless asked. At most {@link MAX_IGNORED_DUPLICATES}.
    */
@@ -341,6 +346,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   librarySidecarCovers: true,
   libraryWriteNfo: true,
   fileNameRules: [],
+  lookupRuleCollapsed: false,
   ignoredDuplicates: [],
 };
 
@@ -460,6 +466,7 @@ export const SETTING_VALIDATORS: SettingValidators = {
   libraryWriteNfo: isBoolean,
   fileNameRules: (value): value is string[] =>
     Array.isArray(value) && value.length <= MAX_FILE_NAME_RULES && value.every((rule) => isFileNameTemplate(rule) && rule !== ''),
+  lookupRuleCollapsed: isBoolean,
   ignoredDuplicates: (value): value is string[] =>
     Array.isArray(value) && value.length <= MAX_IGNORED_DUPLICATES && value.every(isString),
 };

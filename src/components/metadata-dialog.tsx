@@ -1,4 +1,4 @@
-import { ArrowLeft, Globe, Loader2, Search, Square, X } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, Globe, Loader2, Search, Square, X } from 'lucide-react';
 import { useEffect, useReducer, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
@@ -80,6 +80,7 @@ export function MetadataDialog({
   const rules = offeredRules(settings?.fileNameRules ?? [], settings?.libraryFileName ?? '');
   const [rule, setRule] = useState(initial.rule);
   const [ruleMisses, setRuleMisses] = useState(false);
+  const ruleCollapsed = settings?.lookupRuleCollapsed ?? false;
   const ruleError = rule === '' ? null : fileNameTemplateError(rule);
   const applyRule = () => {
     const found = queryFromRule(entry, rule);
@@ -236,7 +237,17 @@ export function MetadataDialog({
                   />
                 </div>
                 <div className="flex flex-col gap-1 rounded-md border p-2">
-                  <span className="text-xs text-muted-foreground">{t('ruleHint')}</span>
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 text-left text-xs font-medium text-muted-foreground hover:text-foreground"
+                    aria-expanded={!ruleCollapsed}
+                    onClick={() => update('lookupRuleCollapsed', !ruleCollapsed)}
+                  >
+                    {ruleCollapsed ? <ChevronRight className="size-3" /> : <ChevronDown className="size-3" />}
+                    {t('ruleLabel')}
+                  </button>
+                  {!ruleCollapsed && <span className="text-xs text-muted-foreground">{t('ruleHint')}</span>}
+                  {!ruleCollapsed && (
                   <div className="flex flex-wrap items-center gap-2">
                     <input
                       aria-label={t('ruleLabel')}
@@ -258,7 +269,8 @@ export function MetadataDialog({
                       {t('applyRule')}
                     </Button>
                   </div>
-                  {rules.length > 0 && (
+                  )}
+                  {!ruleCollapsed && rules.length > 0 && (
                     <ul className="flex flex-wrap gap-1" aria-label={t('previousRules')}>
                       {rules.map((previous) => (
                         <li key={previous} className="flex items-center rounded-md border text-xs">
@@ -287,8 +299,8 @@ export function MetadataDialog({
                       ))}
                     </ul>
                   )}
-                  {ruleError && <p className="text-xs text-destructive">{t('ruleInvalid')}</p>}
-                  {ruleMisses && <p className="text-xs text-destructive">{t('ruleNoMatch')}</p>}
+                  {!ruleCollapsed && ruleError && <p className="text-xs text-destructive">{t('ruleInvalid')}</p>}
+                  {!ruleCollapsed && ruleMisses && <p className="text-xs text-destructive">{t('ruleNoMatch')}</p>}
                 </div>
                 <fieldset className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                   <legend className="sr-only">{t('sourcesLabel')}</legend>
