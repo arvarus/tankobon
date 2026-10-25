@@ -442,7 +442,6 @@ export async function searchBedetheque(query: MetadataQuery, http: HttpOptions):
     parseSeriesSearch(await getJson(`${SERIES_SEARCH_URL}?term=${encodeURIComponent(text)}`, paced(http), SOURCE)),
   );
   const series = pickSeries(found, text);
-  console.warn('[bedetheque-debug] search', JSON.stringify({ text, volume: query.volume, found, series }));
   if (!series) {
     return [];
   }
@@ -450,16 +449,8 @@ export async function searchBedetheque(query: MetadataQuery, http: HttpOptions):
     parseSeriesAlbums(await getHtml(`${SERIES_PAGE_URL}${series.id}`, paced(http), SOURCE)),
   );
   const album = pickAlbum(albums, query.volume);
-  console.warn('[bedetheque-debug] albums', JSON.stringify({ albums, album }));
   if (album) {
-    try {
-      const candidate = await fetchBedethequeAlbum(album.url, http);
-      console.warn('[bedetheque-debug] album page', JSON.stringify(candidate));
-      return [candidate];
-    } catch (error) {
-      console.warn('[bedetheque-debug] album page failed', String(error));
-      throw error;
-    }
+    return [await fetchBedethequeAlbum(album.url, http)];
   }
   return albums.slice(0, MAX_SERIES_CANDIDATES).map((entry) => listCandidate(entry, series.label));
 }

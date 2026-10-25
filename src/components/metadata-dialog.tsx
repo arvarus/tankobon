@@ -177,191 +177,194 @@ export function MetadataDialog({
       description={entry.path}
       className="max-w-3xl"
     >
-      <div className="flex items-center gap-3 rounded-md border bg-muted/30 p-2">
-        <BookCover entryId={entry.id} title={entry.title} className="h-20 w-14" />
-        <p className="min-w-0 truncate text-sm font-medium" title={entry.title}>
-          {entry.title}
-        </p>
-      </div>
+      {/* Everything but the footer scrolls together: the options can fill a short window, and the results below must stay reachable. */}
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
+        <div className="flex items-center gap-3 rounded-md border bg-muted/30 p-2">
+          <BookCover entryId={entry.id} title={entry.title} className="h-20 w-14" />
+          <p className="min-w-0 truncate text-sm font-medium" title={entry.title}>
+            {entry.title}
+          </p>
+        </div>
 
-      <div role="tablist" className="flex gap-1">
-        {(['api', 'site'] as const).map((value) => (
-          <Button
-            key={value}
-            role="tab"
-            aria-selected={mode === value}
-            type="button"
-            size="sm"
-            variant={mode === value ? 'secondary' : 'ghost'}
-            disabled={step.kind === 'searching'}
-            onClick={() => {
-              setMode(value);
-              dispatch({ type: 'reset' });
-            }}
-          >
-            {value === 'api' ? <Search /> : <Globe />}
-            {t(value === 'api' ? 'modeApi' : 'modeSite')}
-          </Button>
-        ))}
-      </div>
+        <div role="tablist" className="flex gap-1">
+          {(['api', 'site'] as const).map((value) => (
+            <Button
+              key={value}
+              role="tab"
+              aria-selected={mode === value}
+              type="button"
+              size="sm"
+              variant={mode === value ? 'secondary' : 'ghost'}
+              disabled={step.kind === 'searching'}
+              onClick={() => {
+                setMode(value);
+                dispatch({ type: 'reset' });
+              }}
+            >
+              {value === 'api' ? <Search /> : <Globe />}
+              {t(value === 'api' ? 'modeApi' : 'modeSite')}
+            </Button>
+          ))}
+        </div>
 
-      <form
-        className="flex flex-col gap-3"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (canSearch && step.kind !== 'searching') void runSearch();
-        }}
-      >
-        {mode === 'api' ? (
-          <>
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                aria-label={t('queryLabel')}
-                placeholder={t('queryPlaceholder')}
-                className={cn(INPUT_CLASS, 'min-w-48 flex-1')}
-                value={query.text}
-                onChange={(event) => setQuery({ ...query, text: event.target.value })}
-              />
-              <input
-                aria-label={t('volumeLabel')}
-                placeholder={t('volumePlaceholder')}
-                className={cn(INPUT_CLASS, 'w-24')}
-                value={query.volume ?? ''}
-                onChange={(event) => setQuery({ ...query, volume: event.target.value || null })}
-              />
-            </div>
-            <div className="flex flex-col gap-1 rounded-md border p-2">
-              <span className="text-xs text-muted-foreground">{t('ruleHint')}</span>
+        <form
+          className="flex flex-col gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (canSearch && step.kind !== 'searching') void runSearch();
+          }}
+        >
+          {mode === 'api' ? (
+            <>
               <div className="flex flex-wrap items-center gap-2">
                 <input
-                  aria-label={t('ruleLabel')}
-                  placeholder={t('rulePlaceholder')}
-                  className={cn(INPUT_CLASS, 'min-w-48 flex-1 font-mono')}
-                  value={rule}
-                  onChange={(event) => {
-                    setRule(event.target.value);
-                    setRuleMisses(false);
-                  }}
+                  aria-label={t('queryLabel')}
+                  placeholder={t('queryPlaceholder')}
+                  className={cn(INPUT_CLASS, 'min-w-48 flex-1')}
+                  value={query.text}
+                  onChange={(event) => setQuery({ ...query, text: event.target.value })}
                 />
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={rule === '' || ruleError !== null}
-                  onClick={applyRule}
-                >
-                  {t('applyRule')}
-                </Button>
+                <input
+                  aria-label={t('volumeLabel')}
+                  placeholder={t('volumePlaceholder')}
+                  className={cn(INPUT_CLASS, 'w-24')}
+                  value={query.volume ?? ''}
+                  onChange={(event) => setQuery({ ...query, volume: event.target.value || null })}
+                />
               </div>
-              {rules.length > 0 && (
-                <ul className="flex flex-wrap gap-1" aria-label={t('previousRules')}>
-                  {rules.map((previous) => (
-                    <li key={previous} className="flex items-center rounded-md border text-xs">
-                      <button
-                        type="button"
-                        className="px-2 py-0.5 font-mono hover:bg-accent"
-                        onClick={() => {
-                          setRule(previous);
-                          setRuleMisses(false);
-                        }}
-                      >
-                        {previous}
-                      </button>
-                      {(settings?.fileNameRules ?? []).includes(previous) && (
+              <div className="flex flex-col gap-1 rounded-md border p-2">
+                <span className="text-xs text-muted-foreground">{t('ruleHint')}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    aria-label={t('ruleLabel')}
+                    placeholder={t('rulePlaceholder')}
+                    className={cn(INPUT_CLASS, 'min-w-48 flex-1 font-mono')}
+                    value={rule}
+                    onChange={(event) => {
+                      setRule(event.target.value);
+                      setRuleMisses(false);
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={rule === '' || ruleError !== null}
+                    onClick={applyRule}
+                  >
+                    {t('applyRule')}
+                  </Button>
+                </div>
+                {rules.length > 0 && (
+                  <ul className="flex flex-wrap gap-1" aria-label={t('previousRules')}>
+                    {rules.map((previous) => (
+                      <li key={previous} className="flex items-center rounded-md border text-xs">
                         <button
                           type="button"
-                          className="px-1 py-0.5 text-muted-foreground hover:text-foreground"
-                          aria-label={t('forgetRule', { rule: previous })}
-                          title={t('forgetRule', { rule: previous })}
-                          onClick={() => update('fileNameRules', forgetRule(settings?.fileNameRules ?? [], previous))}
+                          className="px-2 py-0.5 font-mono hover:bg-accent"
+                          onClick={() => {
+                            setRule(previous);
+                            setRuleMisses(false);
+                          }}
                         >
-                          <X className="size-3" />
+                          {previous}
                         </button>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {ruleError && <p className="text-xs text-destructive">{t('ruleInvalid')}</p>}
-              {ruleMisses && <p className="text-xs text-destructive">{t('ruleNoMatch')}</p>}
-            </div>
-            <fieldset className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-              <legend className="sr-only">{t('sourcesLabel')}</legend>
-              <span className="text-muted-foreground">{t('sourcesLabel')}</span>
-              {enabledSources.length === 0 && <span className="text-muted-foreground">{t('noApiEnabled')}</span>}
-              {enabledSources.map((source) => (
-                <label key={source} className="flex items-center gap-1.5">
+                        {(settings?.fileNameRules ?? []).includes(previous) && (
+                          <button
+                            type="button"
+                            className="px-1 py-0.5 text-muted-foreground hover:text-foreground"
+                            aria-label={t('forgetRule', { rule: previous })}
+                            title={t('forgetRule', { rule: previous })}
+                            onClick={() => update('fileNameRules', forgetRule(settings?.fileNameRules ?? [], previous))}
+                          >
+                            <X className="size-3" />
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {ruleError && <p className="text-xs text-destructive">{t('ruleInvalid')}</p>}
+                {ruleMisses && <p className="text-xs text-destructive">{t('ruleNoMatch')}</p>}
+              </div>
+              <fieldset className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                <legend className="sr-only">{t('sourcesLabel')}</legend>
+                <span className="text-muted-foreground">{t('sourcesLabel')}</span>
+                {enabledSources.length === 0 && <span className="text-muted-foreground">{t('noApiEnabled')}</span>}
+                {enabledSources.map((source) => (
+                  <label key={source} className="flex items-center gap-1.5">
+                    <input
+                      type="checkbox"
+                      checked={!unticked.has(source)}
+                      onChange={(event) =>
+                        setUnticked((current) => {
+                          const next = new Set(current);
+                          if (event.target.checked) next.delete(source);
+                          else next.add(source);
+                          return next;
+                        })
+                      }
+                    />
+                    {METADATA_SOURCE_LABELS[source]}
+                  </label>
+                ))}
+                <label className="flex items-center gap-1.5">
                   <input
                     type="checkbox"
-                    checked={!unticked.has(source)}
-                    onChange={(event) =>
-                      setUnticked((current) => {
-                        const next = new Set(current);
-                        if (event.target.checked) next.delete(source);
-                        else next.add(source);
-                        return next;
-                      })
-                    }
+                    checked={bedethequeTicked}
+                    onChange={(event) => setBedethequeChoice(event.target.checked)}
                   />
-                  {METADATA_SOURCE_LABELS[source]}
+                  {METADATA_SOURCE_LABELS.bedetheque}
                 </label>
-              ))}
-              <label className="flex items-center gap-1.5">
-                <input
-                  type="checkbox"
-                  checked={bedethequeTicked}
-                  onChange={(event) => setBedethequeChoice(event.target.checked)}
-                />
-                {METADATA_SOURCE_LABELS.bedetheque}
-              </label>
-            </fieldset>
-          </>
-        ) : (
-          <div className="flex flex-col gap-1">
-            <input
-              aria-label={t('pageUrlLabel')}
-              placeholder={t('pageUrlPlaceholder')}
-              className={cn(INPUT_CLASS, 'w-full')}
-              value={pageUrl}
-              onChange={(event) => setPageUrl(event.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">{t('pageSitesHint')}</p>
-          </div>
-        )}
-        <div className="flex gap-2">
-          {step.kind === 'searching' ? (
-            <Button type="button" size="sm" variant="outline" onClick={stop}>
-              <Square />
-              {t('stop')}
-            </Button>
+              </fieldset>
+            </>
           ) : (
-            <Button type="submit" size="sm" variant="outline" disabled={!canSearch}>
-              {mode === 'site' ? <Globe /> : <Search />}
-              {t(mode === 'site' ? 'readPage' : 'search')}
-            </Button>
+            <div className="flex flex-col gap-1">
+              <input
+                aria-label={t('pageUrlLabel')}
+                placeholder={t('pageUrlPlaceholder')}
+                className={cn(INPUT_CLASS, 'w-full')}
+                value={pageUrl}
+                onChange={(event) => setPageUrl(event.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">{t('pageSitesHint')}</p>
+            </div>
+          )}
+          <div className="flex gap-2">
+            {step.kind === 'searching' ? (
+              <Button type="button" size="sm" variant="outline" onClick={stop}>
+                <Square />
+                {t('stop')}
+              </Button>
+            ) : (
+              <Button type="submit" size="sm" variant="outline" disabled={!canSearch}>
+                {mode === 'site' ? <Globe /> : <Search />}
+                {t(mode === 'site' ? 'readPage' : 'search')}
+              </Button>
+            )}
+          </div>
+        </form>
+
+        <div>
+          {step.kind === 'searching' && (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              {mode === 'site' ? t('readingPage') : t('searching')}
+            </p>
+          )}
+          {step.kind === 'error' && <p className="text-sm whitespace-pre-line text-destructive">{step.message}</p>}
+          {step.kind === 'results' && (
+            <CandidateList
+              candidates={step.candidates}
+              errors={step.errors}
+              disabled={picking}
+              onPick={(candidate) => void pick(candidate)}
+            />
+          )}
+          {step.kind === 'review' && (
+            <ReviewForm review={step.review} onChange={(review) => dispatch({ type: 'reviewChanged', review })} />
           )}
         </div>
-      </form>
-
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        {step.kind === 'searching' && (
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            {mode === 'site' ? t('readingPage') : t('searching')}
-          </p>
-        )}
-        {step.kind === 'error' && <p className="text-sm whitespace-pre-line text-destructive">{step.message}</p>}
-        {step.kind === 'results' && (
-          <CandidateList
-            candidates={step.candidates}
-            errors={step.errors}
-            disabled={picking}
-            onPick={(candidate) => void pick(candidate)}
-          />
-        )}
-        {step.kind === 'review' && (
-          <ReviewForm review={step.review} onChange={(review) => dispatch({ type: 'reviewChanged', review })} />
-        )}
       </div>
 
       {step.kind === 'review' && (
