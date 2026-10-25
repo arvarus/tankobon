@@ -65,3 +65,8 @@ export function offeredRules(used: readonly string[], libraryFileName: string): 
 export function rememberRule(used: readonly string[], rule: string): string[] {
   return [rule, ...used.filter((other) => other !== rule)].slice(0, MAX_FILE_NAME_RULES);
 }
+
+/** The rules to store after the user forgot `rule`: the others, in the same order. */
+export function forgetRule(used: readonly string[], rule: string): string[] {
+  return used.filter((other) => other !== rule);
+}

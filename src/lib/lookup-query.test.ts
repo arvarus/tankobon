@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { LibraryEntry } from '@/shared/library';
 import { MAX_FILE_NAME_RULES } from '@/shared/settings';
 
-import { fileStem, initialLookupQuery, initialRuleState, offeredRules, queryFromRule, rememberRule } from './lookup-query';
+import { fileStem, forgetRule, initialLookupQuery, initialRuleState, offeredRules, queryFromRule, rememberRule } from './lookup-query';
 
 const entry = (patch: Partial<LibraryEntry> = {}) =>
   ({ path: '/books/Blacksad_T02.cbz', title: 'Blacksad_T02', series: null, volume: null, releaseDate: null, language: null, credits: [], ...patch }) as LibraryEntry;
@@ -74,5 +74,12 @@ describe('rules', () => {
     expect(rememberRule(['{a}', '{b}'], '{b}')).toEqual(['{b}', '{a}']);
     const many = Array.from({ length: MAX_FILE_NAME_RULES }, (_, index) => `x${index}{title}`);
     expect(rememberRule(many, '{series}')).toHaveLength(MAX_FILE_NAME_RULES);
+  });
+});
+
+describe('forgetRule', () => {
+  it('drops only the given rule and keeps the order', () => {
+    expect(forgetRule(['{a}', '{b}', '{c}'], '{b}')).toEqual(['{a}', '{c}']);
+    expect(forgetRule(['{a}'], '{z}')).toEqual(['{a}']);
   });
 });

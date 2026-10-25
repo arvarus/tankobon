@@ -44,4 +44,6 @@ export default {
   applyRule: 'Read the name',
   ruleInvalid: 'This rule is not valid: use only the fields above, without / or \\.',
   ruleNoMatch: 'The file name doesn’t fit this rule.',
+  previousRules: 'Previous rules',
+  forgetRule: 'Forget the rule {{rule}}',
 };

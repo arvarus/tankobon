@@ -46,6 +46,8 @@ const metadata: Translation<typeof en> = {
   applyRule: 'Lire le nom',
   ruleInvalid: "Cette règle n'est pas valide : utilise seulement les champs ci-dessus, sans / ni \\.",
   ruleNoMatch: "Le nom du fichier ne correspond pas à cette règle.",
+  previousRules: 'Règles précédentes',
+  forgetRule: 'Oublier la règle {{rule}}',
 };
 
 export default metadata;
