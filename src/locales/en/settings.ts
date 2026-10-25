@@ -292,6 +292,7 @@ export default {
     repository: 'Source code (GitHub)',
     releases: 'Releases',
     issues: 'Report a problem',
+    discord: 'Join the Discord server',
     license: 'License',
     licenseName: 'Tankōbon is free software, distributed under the MIT license.',
     disclaimer:

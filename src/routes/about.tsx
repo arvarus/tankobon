@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { BookText, Bug, Check, Code, Copy, Download, RefreshCw, Scale, Tag, type LucideIcon } from 'lucide-react';
+import { BookText, Bug, Check, Code, Copy, Download, MessageCircle, RefreshCw, Scale, Tag, type LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -18,6 +18,7 @@ const LINKS: { link: Exclude<AppLink, 'license'>; icon: LucideIcon }[] = [
   { link: 'repository', icon: Code },
   { link: 'releases', icon: Tag },
   { link: 'issues', icon: Bug },
+  { link: 'discord', icon: MessageCircle },
 ];
 
 function AboutPage() {
