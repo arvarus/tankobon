@@ -127,6 +127,8 @@ While the app loads its data (settings and language), the window shows a centere
 
 The button at the top of the sidebar collapses it to a column of icons, to give more room to the reader. The state is remembered like the other settings.
 
+Changing page (a sidebar entry, a book, a settings section) always opens the new page at its top, whatever the scroll position of the previous one.
+
 "Listes de lecture" lists every reading list underneath it, for direct access to a list's page. Clicking "Listes de lecture" opens the page of all lists and unfolds them; its chevron folds or unfolds them without leaving the current page. "Paramètres" unfolds its sections the same way. Sub-entries are hidden while the sidebar is collapsed to icons. The reading lists can be put in any order by dragging them in the sidebar (a line shows where the list will land); that order is kept and used on the page of all lists too. A new list goes last.
 
 ## About

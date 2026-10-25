@@ -1,4 +1,5 @@
 import { Outlet, createRootRoute } from '@tanstack/react-router';
+import { useRef } from 'react';
 
 import { AchievementToasts } from '@/components/achievement-toasts';
 import { ImageScanBar } from '@/components/layout/image-scan-bar';
@@ -8,6 +9,7 @@ import { UpdateToast } from '@/components/update-toast';
 import { useAchievementTracker } from '@/hooks/use-achievements';
 import { useFullscreen } from '@/hooks/use-fullscreen';
 import { useLaunchFile } from '@/hooks/use-launch-file';
+import { useScrollToTopOnNavigation } from '@/hooks/use-scroll-to-top-on-navigation';
 import { useSettings } from '@/hooks/use-settings';
 import { useUsers } from '@/hooks/use-users';
 
@@ -23,12 +25,15 @@ function RootLayout() {
   const activeUserId = useUsers()?.activeId;
   // A comic opened from the file explorer.
   useLaunchFile();
+  // The scrolling area outlives the routes: each new page starts at its top.
+  const mainRef = useRef<HTMLElement>(null);
+  useScrollToTopOnNavigation(mainRef);
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex min-h-0 flex-1">
         <Sidebar />
-        <main className="flex-1 overflow-auto">
+        <main ref={mainRef} className="flex-1 overflow-auto">
           <Outlet />
         </main>
       </div>
