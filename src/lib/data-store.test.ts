@@ -128,6 +128,45 @@ describe('DataStore', () => {
     expect(source.library.list).toHaveBeenCalledTimes(2);
   });
 
+  // `library:list` is a snapshot of when the main process served it; the event of a write made right after can
+  // reach the renderer before that answer, while there is no library yet to apply it to.
+  it('loads again when a targeted change arrives before the first load answers', async () => {
+    const { source, emit } = fakeSource();
+    let answerFirst: (entries: LibraryEntry[]) => void = () => undefined;
+    source.library.list.mockImplementationOnce(() => new Promise<LibraryEntry[]>((resolve) => (answerFirst = resolve)));
+    const store = new DataStore(source);
+    store.start();
+    await flush();
+
+    emit({ scope: 'library', upserted: [entry('a', '2026-05', { rating: 5 })] });
+    // The snapshot predates the change; the next list holds it.
+    source.library.list.mockImplementationOnce(async () => [entry('a', '2026-05', { rating: 5 })]);
+    answerFirst([entry('a', '2026-01')]);
+    await flush();
+
+    expect(source.library.list).toHaveBeenCalledTimes(2);
+    expect(store.getLibrary()?.[0]).toMatchObject({ lastOpenedAt: '2026-05', rating: 5 });
+  });
+
+  it('loads again when a change arrives during a reload, and not otherwise', async () => {
+    const { source, emit } = fakeSource({ library: [entry('a', '2026-01')] });
+    const store = new DataStore(source);
+    store.start();
+    await flush();
+    let answer: (entries: LibraryEntry[]) => void = () => undefined;
+    source.library.list.mockImplementationOnce(() => new Promise<LibraryEntry[]>((resolve) => (answer = resolve)));
+    void store.reloadLibrary();
+    emit({ scope: 'library', upserted: [entry('a', '2026-01', { rating: 3 })] });
+    answer([entry('a', '2026-01')]);
+    await flush();
+    expect(source.library.list).toHaveBeenCalledTimes(3);
+
+    // A change with no load under way triggers nothing.
+    emit({ scope: 'library', upserted: [entry('a', '2026-01', { rating: 4 })] });
+    await flush();
+    expect(source.library.list).toHaveBeenCalledTimes(3);
+  });
+
   it('reloads the reading lists and the settings on their changes', async () => {
     const { source, emit } = fakeSource();
     const store = new DataStore(source);
