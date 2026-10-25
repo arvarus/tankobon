@@ -337,6 +337,40 @@ describe('a one-shot series page', () => {
   });
 });
 
+/** The same one-shot with its album detail, as the site serves the album page (the series page). */
+const ONE_SHOT_ALBUM_PAGE = `${ONE_SHOT_PAGE}
+  <section class="bdt-ah bdt-ah--serie"><h1><span class="bdt-ah-type">One shot :</span>
+    <a href="https://www.bedetheque.com/serie-4603-BD-Vitesse-moderne.html">Vitesse moderne</a></h1></section>
+  <article class="bdt-edition bdt-edition--detail" id="ed-19759" itemscope>
+    <h3><a itemprop="url" href="https://www.bedetheque.com/BD-Vitesse-moderne-19759.html"><span itemprop="name"><span class="bdt-numa"></span>Vitesse moderne</span></a></h3>
+    <img itemprop="image" src="https://www.bedetheque.com/cache/thb_couv/vitessemoderne.JPG" alt="">
+    <dl class="bdt-sheet">
+      <dt>Scénario</dt><dd><a href="/auteur-193-BD-Blutch.html"><span itemprop="author">Blutch</span></a></dd>
+      <dt>Dessin</dt><dd><a href="/auteur-193-BD-Blutch.html"><span itemprop="illustrator">Blutch</span></a></dd>
+      <dt>Couleurs</dt><dd><a href="/auteur-610-BD-Ruby.html"><span itemprop="illustrator">Ruby</span></a></dd>
+      <dt>Dépôt légal</dt><dd>09/2002 <meta itemprop="datePublished" content="2002-09-01"></dd>
+    </dl>
+  </article>`;
+
+describe('a one-shot album page served as its series page', () => {
+  it('is read from the album detail', () => {
+    const album = parseBedethequeAlbum(ONE_SHOT_ALBUM_PAGE, 'https://www.bedetheque.com/BD-Vitesse-moderne-19759.html');
+    expect(album).toMatchObject({
+      sourceId: '19759',
+      title: 'Vitesse moderne',
+      series: 'Vitesse moderne',
+      volume: null,
+      releaseDate: '2002-09',
+      coverUrl: 'https://www.bedetheque.com/cache/thb_couv/vitessemoderne.JPG',
+    });
+    expect(album.credits).toEqual([
+      { firstName: '', lastName: 'Blutch', role: 'writer' },
+      { firstName: '', lastName: 'Blutch', role: 'artist' },
+      { firstName: '', lastName: 'Ruby', role: 'colorist' },
+    ]);
+  });
+});
+
 describe('pickAlbum', () => {
   const albums = parseSeriesAlbums(SERIES_PAGE);
 
