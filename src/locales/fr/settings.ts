@@ -294,6 +294,7 @@ const settings: Translation<typeof en> = {
     repository: 'Code source (GitHub)',
     releases: 'Versions publiées',
     issues: 'Signaler un problème',
+    discord: 'Rejoindre le serveur Discord',
     license: 'Licence',
     licenseName: 'Tankōbon est un logiciel libre, distribué sous licence MIT.',
     disclaimer:

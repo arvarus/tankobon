@@ -37,6 +37,8 @@ export const APP_LINKS = {
   releases: 'https://github.com/arvarus/tankobon/releases',
   /** Bug reports and feature requests. */
   issues: 'https://github.com/arvarus/tankobon/issues',
+  /** Invitation to the Arvarus Discord server. */
+  discord: 'https://discord.gg/zYCnEK2J8',
   /** Full text of the MIT license the app is distributed under. */
   license: 'https://github.com/arvarus/tankobon/blob/master/LICENSE',
 } as const;

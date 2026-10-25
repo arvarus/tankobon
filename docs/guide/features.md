@@ -134,7 +134,7 @@ Changing page (a sidebar entry, a book, a settings section) always opens the new
 
 ## About
 
-"À propos" (its own entry in the sidebar, under Paramètres, not a setting) shows the app's version, along with the versions of Electron, Chromium, Node.js and V8 and the operating system. "Copier les informations" copies them as text, to paste into a bug report. Buttons open the documentation, the source code on GitHub, the published versions (installers and changelog) and the issue tracker in the default browser.
+"À propos" (its own entry in the sidebar, under Paramètres, not a setting) shows the app's version, along with the versions of Electron, Chromium, Node.js and V8 and the operating system. "Copier les informations" copies them as text, to paste into a bug report. Buttons open the documentation, the source code on GitHub, the published versions (installers and changelog) the issue tracker and the invitation to the Arvarus Discord server in the default browser.
 
 **License**: Tankōbon is free software under the MIT license. The "Licence" section of the "À propos" page says so, recalls that the app is provided "as is", without warranty (the authors aren't liable for lost data or damaged files, so keep backups and export the library regularly), and "Lire la licence" opens the full text on GitHub.
 
