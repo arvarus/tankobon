@@ -40,6 +40,7 @@ export default {
     hint: 'An empty value clears the field on every book. Authors replace the whole list of each book. The title is not editable here.',
     apply_one: 'Apply to {{count}} book',
     apply_other: 'Apply to {{count}} books',
+    saveFailed: 'The books could not be updated. Nothing was changed.',
   },
   errors: {
     emptyTitle: 'The title can’t be empty.',

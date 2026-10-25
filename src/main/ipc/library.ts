@@ -38,6 +38,7 @@ import {
   args,
   booleanArg,
   expectBytes,
+  expectIdArray,
   expectInteger,
   expectMetadataUpdate,
   expectNonEmptyString,
@@ -242,7 +243,7 @@ export function registerLibraryIpc(
   // Both steps report over the scan channel, which the library page already follows.
   handle(
     LIBRARY_CHANNELS.analyzeCleanup,
-    args((ids) => expectStringArray(ids, 'ids')),
+    args((ids) => expectIdArray(ids, 'ids')),
     (event, ids) =>
       cleaner.analyze(ids, (progress) => {
         if (!event.sender.isDestroyed()) {
@@ -361,7 +362,7 @@ export function registerLibraryIpc(
 
   handle(
     LIBRARY_CHANNELS.removeMany,
-    args((ids) => expectStringArray(ids, 'ids'), booleanArg),
+    args((ids) => expectIdArray(ids, 'ids'), booleanArg),
     async (_event, ids, deleteFiles): Promise<RemoveEntriesResult> => {
       const result: RemoveEntriesResult = { removed: 0, filesDeleted: 0, filesFailed: 0 };
       const removed: string[] = [];
@@ -452,7 +453,7 @@ export function registerLibraryIpc(
 
   handle(
     LIBRARY_CHANNELS.updateMetadataMany,
-    args((ids) => expectStringArray(ids, 'ids'), expectMetadataUpdate),
+    args((ids) => expectIdArray(ids, 'ids'), expectMetadataUpdate),
     (_event, ids, update) => {
       const updated = repo.updateMetadataMany(ids, update);
       if (updated.length > 0) notify({ scope: 'library', upserted: updated });
