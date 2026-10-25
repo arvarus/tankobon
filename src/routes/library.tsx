@@ -74,6 +74,8 @@ function LibraryPage() {
   const [scan, setScan] = useState<ScanProgress | null>(null);
   const [scanStatus, setScanStatus] = useState<string | null>(null);
   const [lookupEntry, setLookupEntry] = useState<LibraryEntry | null>(null);
+  // Looking up a selection: the books in screen order and the one being looked up.
+  const [lookupSeries, setLookupSeries] = useState<{ entries: LibraryEntry[]; index: number } | null>(null);
   const [editEntry, setEditEntry] = useState<LibraryEntry | null>(null);
   const [bulkEntries, setBulkEntries] = useState<LibraryEntry[] | null>(null);
   const [listEntries, setListEntries] = useState<LibraryEntry[] | null>(null);
@@ -223,6 +225,7 @@ function LibraryPage() {
           onClear={clearSelection}
           onAddToList={() => setListEntries(selection)}
           onEdit={() => setBulkEntries(selection)}
+          onLookup={() => setLookupSeries({ entries: selection, index: 0 })}
         />
       )}
 
@@ -393,6 +396,20 @@ function LibraryPage() {
 
       {lookupEntry && (
         <MetadataDialog entry={lookupEntry} onClose={() => setLookupEntry(null)} onApplied={replaceEntry} />
+      )}
+      {lookupSeries && (
+        <MetadataDialog
+          key={lookupSeries.entries[lookupSeries.index].id}
+          entry={lookupSeries.entries[lookupSeries.index]}
+          position={{ index: lookupSeries.index + 1, total: lookupSeries.entries.length }}
+          onApplied={replaceEntry}
+          onClose={() => setLookupSeries(null)}
+          onDone={() =>
+            setLookupSeries((current) =>
+              current && current.index + 1 < current.entries.length ? { ...current, index: current.index + 1 } : null,
+            )
+          }
+        />
       )}
       {bulkEntries && <BookBulkEditDialog entries={bulkEntries} onClose={() => setBulkEntries(null)} />}
       {editEntry && <BookEditDialog entry={editEntry} onClose={() => setEditEntry(null)} onSaved={replaceEntry} />}

@@ -44,15 +44,23 @@ const INPUT_CLASS =
  * on opening: the user picks how (the enabled public APIs, or the link of a page of Bédéthèque,
  * BDfugue or Nautiljon, which skips the results and goes straight to the review), ticks the
  * options, starts the search and can stop it. Saving also updates the `.nfo` and the cover.
+ *
+ * Within a series (several selected books), `position` shows which book this is and `onDone` is
+ * called once its details are saved (or there is nothing to change), where the caller moves on to
+ * the next book; `onClose` (the cross, "Cancel") stops the series.
  */
 export function MetadataDialog({
   entry,
   onClose,
   onApplied,
+  position,
+  onDone,
 }: {
   entry: LibraryEntry;
   onClose: () => void;
   onApplied: (entry: LibraryEntry) => void;
+  position?: { index: number; total: number };
+  onDone?: () => void;
 }) {
   const { t } = useTranslation(['metadata', 'common']);
   const { settings, update } = useSettings();
@@ -145,22 +153,23 @@ export function MetadataDialog({
 
   const apply = async (review: MetadataReview) => {
     const update = reviewToUpdate(entry, review);
+    const finish = onDone ?? onClose;
     if (isEmptyUpdate(update)) {
-      onClose();
+      finish();
       return;
     }
     setApplying(true);
     const updated = await window.tankobon.metadata.apply(entry.id, update);
     setApplying(false);
     if (updated) onApplied(updated);
-    onClose();
+    finish();
   };
 
   return (
     <Dialog
       open
       onOpenChange={(open) => !open && onClose()}
-      title={t('title')}
+      title={position ? t('seriesTitle', position) : t('title')}
       description={entry.path}
       className="max-w-3xl"
     >
