@@ -68,10 +68,10 @@ export function MetadataDialog({
   const { settings, update } = useSettings();
   const [mode, setMode] = useState<Mode>('api');
   // A book with no information yet starts from its file name: a rule can read it into the fields,
-  // and the last rule used that fits is applied at once.
-  const needsRule = !hasFiche(entry);
+  // and the last rule used that fits is applied at once. A book that has some starts from them, but
+  // the rule zone stays available to search from the file name instead.
   const [initial] = useState(() =>
-    needsRule
+    !hasFiche(entry)
       ? initialRuleState(entry, settings?.fileNameRules ?? [])
       : { rule: '', query: initialLookupQuery(entry) },
   );
@@ -230,40 +230,38 @@ export function MetadataDialog({
                 onChange={(event) => setQuery({ ...query, volume: event.target.value || null })}
               />
             </div>
-            {needsRule && (
-              <div className="flex flex-col gap-1 rounded-md border p-2">
-                <span className="text-xs text-muted-foreground">{t('ruleHint')}</span>
-                <div className="flex flex-wrap items-center gap-2">
-                  <input
-                    aria-label={t('ruleLabel')}
-                    placeholder={t('rulePlaceholder')}
-                    list="file-name-rules"
-                    className={cn(INPUT_CLASS, 'min-w-48 flex-1 font-mono')}
-                    value={rule}
-                    onChange={(event) => {
-                      setRule(event.target.value);
-                      setRuleMisses(false);
-                    }}
-                  />
-                  <datalist id="file-name-rules">
-                    {rules.map((previous) => (
-                      <option key={previous} value={previous} />
-                    ))}
-                  </datalist>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={rule === '' || ruleError !== null}
-                    onClick={applyRule}
-                  >
-                    {t('applyRule')}
-                  </Button>
-                </div>
-                {ruleError && <p className="text-xs text-destructive">{t('ruleInvalid')}</p>}
-                {ruleMisses && <p className="text-xs text-destructive">{t('ruleNoMatch')}</p>}
+            <div className="flex flex-col gap-1 rounded-md border p-2">
+              <span className="text-xs text-muted-foreground">{t('ruleHint')}</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  aria-label={t('ruleLabel')}
+                  placeholder={t('rulePlaceholder')}
+                  list="file-name-rules"
+                  className={cn(INPUT_CLASS, 'min-w-48 flex-1 font-mono')}
+                  value={rule}
+                  onChange={(event) => {
+                    setRule(event.target.value);
+                    setRuleMisses(false);
+                  }}
+                />
+                <datalist id="file-name-rules">
+                  {rules.map((previous) => (
+                    <option key={previous} value={previous} />
+                  ))}
+                </datalist>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={rule === '' || ruleError !== null}
+                  onClick={applyRule}
+                >
+                  {t('applyRule')}
+                </Button>
               </div>
-            )}
+              {ruleError && <p className="text-xs text-destructive">{t('ruleInvalid')}</p>}
+              {ruleMisses && <p className="text-xs text-destructive">{t('ruleNoMatch')}</p>}
+            </div>
             <fieldset className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
               <legend className="sr-only">{t('sourcesLabel')}</legend>
               <span className="text-muted-foreground">{t('sourcesLabel')}</span>
