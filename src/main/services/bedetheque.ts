@@ -252,7 +252,7 @@ function listDate(text: string): string | null {
 export function parseSeriesAlbums(html: string): SeriesAlbum[] {
   const list = /<ul class="bdt-box-albums-liste">([\s\S]*?)<\/ul>/i.exec(html)?.[1];
   if (!list) {
-    return [];
+    return parseCoverAlbums(html);
   }
   const albums: SeriesAlbum[] = [];
   for (const item of list.matchAll(/<li\b([^>]*)>([\s\S]*?)<\/li>/gi)) {
@@ -272,6 +272,29 @@ export function parseSeriesAlbums(html: string): SeriesAlbum[] {
   return albums;
 }
 
+/**
+ * The albums of a series page that has no album list: a one-shot's page is a presentation, where
+ * the album only shows as its cover in the `bdt-sh-tomes` block (a link to the album page, titled
+ * with its name). Such an album has no number and no date (the album page gives it).
+ */
+function parseCoverAlbums(html: string): SeriesAlbum[] {
+  const block = /<div class="bdt-sh-tomes\b[^"]*">([\s\S]*?)<\/div>/i.exec(html)?.[1] ?? '';
+  const albums: SeriesAlbum[] = [];
+  for (const link of block.matchAll(/<a\b([^>]*)>/gi)) {
+    const url = /href="([^"]+)"/i.exec(link[1])?.[1];
+    if (url && isBedethequeAlbumUrl(url) && !albums.some((album) => album.url === url)) {
+      albums.push({
+        url,
+        number: '',
+        title: textOf(/title="([^"]*)"/i.exec(link[1])?.[1] ?? ''),
+        releaseDate: null,
+        kind: 'album',
+      });
+    }
+  }
+  return albums;
+}
+
 /** A volume number as compared: upper case, leading zeros of a plain number dropped (`01` is `1`). */
 function normalizeNumber(text: string): string {
   return text.trim().toUpperCase().replace(/^0+(?=\d)/, '');
@@ -286,7 +309,13 @@ export function pickAlbum(albums: SeriesAlbum[], volume: string | null): SeriesA
   const wanted = normalizeNumber(volume ?? '');
   if (wanted) {
     const matches = albums.filter((album) => normalizeNumber(album.number) === wanted);
-    return matches.find((album) => album.kind === 'album') ?? matches[0] ?? null;
+    const match = matches.find((album) => album.kind === 'album') ?? matches[0];
+    if (match) {
+      return match;
+    }
+    // A one-shot has no number: its file may still call it volume 1.
+    const numbered = albums.filter((album) => album.kind === 'album');
+    return wanted === '1' && numbered.length === 1 && !numbered[0].number ? numbered[0] : null;
   }
   const numbered = albums.filter((album) => album.kind === 'album');
   if (numbered.length === 1) {

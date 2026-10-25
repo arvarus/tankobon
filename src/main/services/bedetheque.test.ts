@@ -289,6 +289,54 @@ describe('parseSeriesAlbums', () => {
   });
 });
 
+/** A one-shot's series page: a presentation with the album only as its cover (Vitesse moderne). */
+const ONE_SHOT_PAGE = `<html><body>
+  <section class="bdt-ah bdt-ah--serie"><h1><span class="bdt-ah-type">One shot :</span></h1></section>
+  <div class="bdt-sh-tomes n1">
+    <a class="bdt-img" href="https://www.bedetheque.com/BD-Vitesse-moderne-19759.html" title="Vitesse moderne">
+      <img src="https://www.bedetheque.com/cache/thb_couv/vitessemoderne.JPG" alt="Vitesse moderne">
+    </a>
+  </div>
+</body></html>`;
+
+describe('a one-shot series page', () => {
+  it('gives the album shown as its cover, with no number', () => {
+    expect(parseSeriesAlbums(ONE_SHOT_PAGE)).toEqual([
+      {
+        url: 'https://www.bedetheque.com/BD-Vitesse-moderne-19759.html',
+        number: '',
+        title: 'Vitesse moderne',
+        releaseDate: null,
+        kind: 'album',
+      },
+    ]);
+  });
+
+  it('is picked with no volume or with volume 1, not with another', () => {
+    const albums = parseSeriesAlbums(ONE_SHOT_PAGE);
+    expect(pickAlbum(albums, null)?.title).toBe('Vitesse moderne');
+    expect(pickAlbum(albums, '1')?.title).toBe('Vitesse moderne');
+    expect(pickAlbum(albums, '2')).toBeNull();
+  });
+
+  it('is found by searchBedetheque, reading the album page', async () => {
+    const calls: string[] = [];
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      calls.push(url);
+      if (url.startsWith('https://www.bdgest.com/ajax/tout')) {
+        return Response.json([{ id: 'S4603', label: 'Vitesse moderne', category: 'Séries' }]);
+      }
+      if (url.startsWith('https://www.bedetheque.com/serie/index/s/')) return new Response(ONE_SHOT_PAGE);
+      return new Response(albumPage());
+    });
+    const http: HttpOptions = { fetch: fetch as typeof globalThis.fetch, userAgent: 'Tankobon/test', timeoutMs: 1000 };
+    const found = await searchBedetheque({ text: 'Vitesse moderne', volume: null }, http);
+    expect(calls.at(-1)).toBe('https://www.bedetheque.com/BD-Vitesse-moderne-19759.html');
+    expect(found).toHaveLength(1);
+  });
+});
+
 describe('pickAlbum', () => {
   const albums = parseSeriesAlbums(SERIES_PAGE);
 
