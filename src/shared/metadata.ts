@@ -11,8 +11,14 @@ import type { CreditInput } from './library';
  */
 export type MetadataSource = 'comicvine' | 'googlebooks' | 'bedetheque' | 'bdfugue' | 'nautiljon';
 
-/** The sources a search can query (the others are only read from a pasted page link). */
-export type MetadataApiSource = Extract<MetadataSource, 'comicvine' | 'googlebooks'>;
+/**
+ * The sources a search can query (the others are only read from a pasted page link). Bédéthèque has
+ * no API: its series search goes through the site's own pages, only when the user ticks it.
+ */
+export type MetadataApiSource = Extract<MetadataSource, 'comicvine' | 'googlebooks' | 'bedetheque'>;
+
+/** Every {@link MetadataApiSource}, in display order. */
+export const METADATA_API_SOURCES: readonly MetadataApiSource[] = ['comicvine', 'googlebooks', 'bedetheque'];
 
 /** Display names of the sources, for the UI. */
 export const METADATA_SOURCE_LABELS: Record<MetadataSource, string> = {

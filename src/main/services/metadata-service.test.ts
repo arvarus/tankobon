@@ -129,6 +129,28 @@ describe('searchMetadata', () => {
     expect(urls.every((url) => url.includes('googleapis'))).toBe(true);
   });
 
+  it('leaves Bédéthèque out unless it is named or on by default', async () => {
+    const fetch = fakeFetch([[/googleapis/, { items: [] }]]);
+    await searchMetadata({ text: 'Blacksad', volume: '1' }, settings, http(fetch));
+    expect(fetch.mock.calls.map(([url]) => String(url)).some((url) => url.includes('bdgest.com'))).toBe(false);
+  });
+
+  it('queries Bédéthèque when the query names it, even if it is not on by default', async () => {
+    const fetch = fakeFetch([[/bdgest\.com\/ajax\/tout/, []]]);
+    const result = await searchMetadata({ text: 'Blacksad', volume: '1', sources: ['bedetheque'] }, settings, http(fetch));
+    expect(fetch.mock.calls.map(([url]) => String(url))).toEqual(['https://www.bdgest.com/ajax/tout?term=Blacksad']);
+    expect(result).toEqual({ status: 'ok', candidates: [], errors: [] });
+  });
+
+  it('queries Bédéthèque when no source is named and it is on by default', async () => {
+    const fetch = fakeFetch([
+      [/bdgest\.com\/ajax\/tout/, []],
+      [/googleapis/, { items: [] }],
+    ]);
+    await searchMetadata({ text: 'Blacksad', volume: null }, { ...settings, bedethequeSearchByDefault: true }, http(fetch));
+    expect(fetch.mock.calls.map(([url]) => String(url)).some((url) => url.includes('bdgest.com'))).toBe(true);
+  });
+
   it('is an error when the named sources are all unavailable', async () => {
     const result = await searchMetadata({ text: 'X', volume: null, sources: [] }, settings, http(fakeFetch([])));
     expect(result.status).toBe('error');

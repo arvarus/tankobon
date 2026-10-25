@@ -203,6 +203,11 @@ export interface AppSettings {
   googleBooksEnabled: boolean;
   /** Optional Google Books API key; without one, requests share Google's anonymous quota. */
   googleBooksApiKey: string;
+  /**
+   * Whether the lookup dialog's Bédéthèque box (search of the series on the site) starts ticked.
+   * Bédéthèque has no API, so it is off by default; the box is always offered and can be ticked for one search.
+   */
+  bedethequeSearchByDefault: boolean;
   /** Whether the library is resynchronized with its folders in the background at every start. */
   resyncOnStartup: boolean;
   /**
@@ -316,6 +321,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   comicVineApiKey: '',
   googleBooksEnabled: true,
   googleBooksApiKey: '',
+  bedethequeSearchByDefault: false,
   resyncOnStartup: false,
   checkUpdatesOnStartup: true,
   askUserOnStartup: false,
@@ -431,6 +437,7 @@ export const SETTING_VALIDATORS: SettingValidators = {
   comicVineApiKey: isShortString,
   googleBooksEnabled: isBoolean,
   googleBooksApiKey: isShortString,
+  bedethequeSearchByDefault: isBoolean,
   resyncOnStartup: isBoolean,
   checkUpdatesOnStartup: isBoolean,
   askUserOnStartup: isBoolean,

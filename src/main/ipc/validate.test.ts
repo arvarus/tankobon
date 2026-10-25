@@ -69,6 +69,15 @@ describe('expectMetadataQuery', () => {
     expect(() => expectMetadataQuery({ text: 'x' })).toThrow(IpcArgumentError);
     expect(() => expectMetadataQuery({ text: 1, volume: null })).toThrow(IpcArgumentError);
   });
+
+  it('accepts the API sources by name, Bédéthèque included, and refuses any other', () => {
+    expect(expectMetadataQuery({ text: 'x', volume: null, sources: ['comicvine', 'bedetheque'] }).sources).toEqual([
+      'comicvine',
+      'bedetheque',
+    ]);
+    expect(() => expectMetadataQuery({ text: 'x', volume: null, sources: ['bdfugue'] })).toThrow(IpcArgumentError);
+    expect(() => expectMetadataQuery({ text: 'x', volume: null, sources: 'bedetheque' })).toThrow(IpcArgumentError);
+  });
 });
 
 describe('args', () => {
