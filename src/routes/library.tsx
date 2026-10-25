@@ -79,6 +79,8 @@ function LibraryPage() {
   const [editEntry, setEditEntry] = useState<LibraryEntry | null>(null);
   const [bulkEntries, setBulkEntries] = useState<LibraryEntry[] | null>(null);
   const [listEntries, setListEntries] = useState<LibraryEntry[] | null>(null);
+  // Whether the open list dialog was started from the selection (and so ends it) or from one row.
+  const [listFromSelection, setListFromSelection] = useState(false);
   // The input follows the keystrokes; filtering and re-laying out the list can lag behind them.
   const deferredFilters = useDeferredValue(filters);
   const { editions, visible, tags, rows, shown, toggleSeries } = useLibraryRows(entries, deferredFilters, grouped, sort);
@@ -223,7 +225,10 @@ function LibraryPage() {
           shown={shown.length}
           onToggleAll={tickAllShown}
           onClear={clearSelection}
-          onAddToList={() => setListEntries(selection)}
+          onAddToList={() => {
+            setListFromSelection(true);
+            setListEntries(selection);
+          }}
           onEdit={() => setBulkEntries(selection)}
           onLookup={() => setLookupSeries({ entries: selection, index: 0 })}
         />
@@ -268,7 +273,10 @@ function LibraryPage() {
                           onOpen: () => void navigate({ to: '/reader', search: { book: entry.id } }),
                           onEdit: () => setEditEntry(entry),
                           onLookup: () => setLookupEntry(entry),
-                          onAddToList: () => setListEntries([entry]),
+                          onAddToList: () => {
+                            setListFromSelection(false);
+                            setListEntries([entry]);
+                          },
                           onRemove: () => void remove(entry),
                         }}
                       />
@@ -351,7 +359,10 @@ function LibraryPage() {
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  onClick={() => setListEntries([entry])}
+                  onClick={() => {
+                    setListFromSelection(false);
+                    setListEntries([entry]);
+                  }}
                   title={t('addToList')}
                   aria-label={t('addToList')}
                 >
@@ -403,17 +414,39 @@ function LibraryPage() {
           entry={lookupSeries.entries[lookupSeries.index]}
           position={{ index: lookupSeries.index + 1, total: lookupSeries.entries.length }}
           onApplied={replaceEntry}
-          onClose={() => setLookupSeries(null)}
-          onDone={() =>
-            setLookupSeries((current) =>
-              current && current.index + 1 < current.entries.length ? { ...current, index: current.index + 1 } : null,
-            )
-          }
+          // The lookup is over, finished or stopped: books that gained a fiche may have left the filter.
+          onClose={() => {
+            setLookupSeries(null);
+            clearSelection();
+          }}
+          onDone={() => {
+            if (lookupSeries.index + 1 < lookupSeries.entries.length) setLookupSeries({ ...lookupSeries, index: lookupSeries.index + 1 });
+            else {
+              setLookupSeries(null);
+              clearSelection();
+            }
+          }}
         />
       )}
-      {bulkEntries && <BookBulkEditDialog entries={bulkEntries} onClose={() => setBulkEntries(null)} />}
+      {bulkEntries && (
+        <BookBulkEditDialog
+          entries={bulkEntries}
+          onClose={() => {
+            setBulkEntries(null);
+            clearSelection();
+          }}
+        />
+      )}
       {editEntry && <BookEditDialog entry={editEntry} onClose={() => setEditEntry(null)} onSaved={replaceEntry} />}
-      {listEntries && <AddToListDialog entries={listEntries} onClose={() => setListEntries(null)} />}
+      {listEntries && (
+        <AddToListDialog
+          entries={listEntries}
+          onClose={() => {
+            setListEntries(null);
+            if (listFromSelection) clearSelection();
+          }}
+        />
+      )}
       {confirmDialog}
     </div>
   );
