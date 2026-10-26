@@ -1,6 +1,7 @@
 import { app, BrowserWindow, session } from 'electron';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { Worker } from 'node:worker_threads';
 import started from 'electron-squirrel-startup';
 
 import { applyAppMenu } from './main/app-menu';
@@ -23,6 +24,7 @@ import { announceLaunchFile, registerAppIpc } from './main/ipc/app';
 import { registerComicIpc } from './main/ipc/comic';
 import { LaunchFiles } from './main/ipc/launch-files';
 import { PickedFiles } from './main/ipc/picked-files';
+import { createBackupMaker, createBackupRunner } from './main/db/backup-runner';
 import { registerDatabaseIpc, runBackup } from './main/ipc/database';
 import { registerDataIpc } from './main/ipc/data';
 import { broadcastImageScanProgress, registerLibraryIpc } from './main/ipc/library';
@@ -195,7 +197,12 @@ app.whenReady().then(() => {
   const pickedFiles = new PickedFiles();
   const launchFiles = new LaunchFiles(pickedFiles, announceLaunchFile);
   registerComicIpc(libraryRepo, settingsRepo, decoder, broadcastDataChange, imageScanner, pickedFiles);
-  registerDatabaseIpc(db, settingsRepo, broadcastDataChange);
+  // The copies of the database are made in a worker thread (backup-worker.cjs, next to this bundle), not here.
+  const makeBackup = createBackupMaker(
+    createBackupRunner((job) => new Worker(path.join(__dirname, 'backup-worker.cjs'), { workerData: job })),
+    db,
+  );
+  registerDatabaseIpc(makeBackup, settingsRepo, broadcastDataChange);
   registerMetadataIpc(settingsRepo, libraryRepo, decoder, broadcastDataChange);
   registerAchievementsIpc(achievementRepo, broadcastDataChange);
   registerAppIpc(launchFiles);
@@ -225,7 +232,7 @@ app.whenReady().then(() => {
   // Scheduled copies of the database: checked at start-up, then every hour for sessions that stay open.
   const backupIfDue = () => {
     const { backupIntervalDays, lastBackupAt } = settingsRepo.getAll();
-    if (isBackupDue(lastBackupAt, backupIntervalDays)) runBackup(db, settingsRepo, broadcastDataChange);
+    if (isBackupDue(lastBackupAt, backupIntervalDays)) void runBackup(makeBackup, settingsRepo, broadcastDataChange);
   };
   backupIfDue();
   const backupTimer = setInterval(backupIfDue, 60 * 60 * 1000);

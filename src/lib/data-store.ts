@@ -104,6 +104,12 @@ export class DataStore {
   private started = false;
   /** Counts the switches of user: an answer that was requested before one belongs to the previous user and is dropped. */
   private epoch = 0;
+  /**
+   * Counts the targeted library changes received. A `library:list` answer is a snapshot of the moment the
+   * main process served it, which can predate a change whose event reached the renderer before the answer:
+   * a load that sees this counter move while it waits loads again.
+   */
+  private libraryChanges = 0;
 
   constructor(private readonly source: DataSource) {}
 
@@ -146,10 +152,14 @@ export class DataStore {
   /** Fetches the whole library again. */
   async reloadLibrary(): Promise<void> {
     const epoch = this.epoch;
+    const changes = this.libraryChanges;
     const loaded = await this.source.library.list();
     if (epoch !== this.epoch) return;
     this.library = loaded;
     this.emit('library');
+    // A change arrived while the list was on its way (and, with no library yet, was set aside): the snapshot may
+    // not hold it, so ask again.
+    if (changes !== this.libraryChanges) void this.reloadLibrary();
   }
 
   /** Fetches the reading lists again. */
@@ -212,7 +222,8 @@ export class DataStore {
           void this.reloadLibrary();
           return;
         }
-        if (!this.library) return; // The first load will bring the final state.
+        this.libraryChanges += 1;
+        if (!this.library) return; // The load under way brings the final state (and starts again if it predates this change).
         const upserted = change.upserted?.filter((entry) => !this.pending.has(`entry:${entry.id}`));
         this.library = applyLibraryChange(this.library, { ...change, upserted });
         this.emit('library');

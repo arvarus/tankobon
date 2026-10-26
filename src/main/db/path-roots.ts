@@ -64,7 +64,15 @@ export function fileRootsStore(filePath: string): RootsStore {
       }
     },
     save(roots) {
-      fs.writeFileSync(filePath, JSON.stringify(roots, null, 2));
+      // Written aside then renamed: an interruption must not leave a truncated file, which reads as no folder at all.
+      const temporary = `${filePath}.${process.pid}.tmp`;
+      try {
+        fs.writeFileSync(temporary, JSON.stringify(roots, null, 2));
+        fs.renameSync(temporary, filePath);
+      } catch (error) {
+        fs.rmSync(temporary, { force: true });
+        throw error;
+      }
     },
   };
 }
