@@ -8,7 +8,6 @@ import {
   checkDirectoryUsable,
   databaseFileNameError,
   normalizeDatabaseFileName,
-  readLocationPointer,
   resolveDatabaseLocation,
   writeFileNamePointer,
   writeLocationPointer,
@@ -29,7 +28,6 @@ describe('db-location', () => {
   });
 
   it('defaults to the user data directory when no pointer file exists', () => {
-    expect(readLocationPointer(userData)).toBeNull();
     expect(resolveDatabaseLocation(userData)).toEqual({
       directory: userData,
       fileName: 'tankobon.db',
@@ -95,10 +93,10 @@ describe('db-location', () => {
   // The app has to start even if this file gets hand-edited or mangled by a sync tool.
   it('falls back to the default on a malformed pointer file', () => {
     writeFileSync(path.join(userData, 'db-location.json'), 'not json', 'utf-8');
-    expect(readLocationPointer(userData)).toBeNull();
+    expect(resolveDatabaseLocation(userData)).toMatchObject({ directory: userData, isDefault: true });
 
     writeFileSync(path.join(userData, 'db-location.json'), '{"directory":""}', 'utf-8');
-    expect(readLocationPointer(userData)).toBeNull();
+    expect(resolveDatabaseLocation(userData)).toMatchObject({ directory: userData, isDefault: true });
   });
 
   it('accepts a writable directory, creating it if needed', () => {

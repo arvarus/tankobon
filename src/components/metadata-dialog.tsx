@@ -106,6 +106,7 @@ export function MetadataDialog({
   // (or closing the dialog) abandons it.
   const [{ step }, dispatch] = useReducer(lookupReducer, INITIAL_LOOKUP);
   const [applying, setApplying] = useState(false);
+  const [applyFailed, setApplyFailed] = useState(false);
   const searchCount = useRef(0);
   // Closing the dialog gives up what it is waiting for: the requests to the sites are aborted, not just ignored.
   useEffect(() => () => void window.tankobon.metadata.cancel(), []);
@@ -117,27 +118,32 @@ export function MetadataDialog({
   const runSearch = async () => {
     const id = ++searchCount.current;
     dispatch({ type: 'searchStarted', id });
-    if (mode === 'site') {
-      const result = await window.tankobon.metadata.fromPage(pageUrl.trim());
+    try {
+      if (mode === 'site') {
+        const result = await window.tankobon.metadata.fromPage(pageUrl.trim());
+        dispatch({
+          type: 'searchDone',
+          id,
+          step:
+            result.status === 'ok'
+              ? { kind: 'review', candidates: [result.candidate], review: buildReview(entry, result.candidate) }
+              : { kind: 'error', message: result.message },
+        });
+        return;
+      }
+      const result = await window.tankobon.metadata.search({ ...query, sources });
       dispatch({
         type: 'searchDone',
         id,
         step:
           result.status === 'ok'
-            ? { kind: 'review', candidates: [result.candidate], review: buildReview(entry, result.candidate) }
+            ? { kind: 'results', candidates: result.candidates, errors: result.errors }
             : { kind: 'error', message: result.message },
       });
-      return;
+    } catch {
+      // The call itself failed (refused arguments, main process error): without this the dialog waited forever.
+      dispatch({ type: 'searchDone', id, step: { kind: 'error', message: t('searchFailed') } });
     }
-    const result = await window.tankobon.metadata.search({ ...query, sources });
-    dispatch({
-      type: 'searchDone',
-      id,
-      step:
-        result.status === 'ok'
-          ? { kind: 'results', candidates: result.candidates, errors: result.errors }
-          : { kind: 'error', message: result.message },
-    });
   };
 
   const canSearch = mode === 'site' ? pageSourceOf(pageUrl) !== null : query.text.trim() !== '' && sources.length > 0;
@@ -149,9 +155,15 @@ export function MetadataDialog({
       return;
     }
     setPicking(true);
-    const result = await window.tankobon.metadata.fromPage(candidate.sourceUrl);
-    setPicking(false);
-    dispatch({ type: 'picked', review: buildReview(entry, result.status === 'ok' ? result.candidate : candidate) });
+    try {
+      const result = await window.tankobon.metadata.fromPage(candidate.sourceUrl);
+      dispatch({ type: 'picked', review: buildReview(entry, result.status === 'ok' ? result.candidate : candidate) });
+    } catch {
+      // The album page couldn't be read: the list line's own information is reviewed instead.
+      dispatch({ type: 'picked', review: buildReview(entry, candidate) });
+    } finally {
+      setPicking(false);
+    }
   };
 
   const apply = async (review: MetadataReview) => {
@@ -163,7 +175,16 @@ export function MetadataDialog({
       return;
     }
     setApplying(true);
-    const updated = await window.tankobon.metadata.apply(entry.id, update, coverUrl);
+    setApplyFailed(false);
+    let updated: LibraryEntry | null;
+    try {
+      updated = await window.tankobon.metadata.apply(entry.id, update, coverUrl);
+    } catch {
+      // Nothing was saved: the review stays open, with what the user accepted, and says so.
+      setApplying(false);
+      setApplyFailed(true);
+      return;
+    }
     setApplying(false);
     if (coverUrl !== null) bumpCoverRevision(entry.id);
     if (updated) onApplied(updated);
@@ -383,6 +404,12 @@ export function MetadataDialog({
           )}
         </div>
       </div>
+
+      {step.kind === 'review' && applyFailed && (
+        <p role="alert" className="text-sm text-destructive">
+          {t('applyFailed')}
+        </p>
+      )}
 
       {step.kind === 'review' && (
         <div className="flex justify-between gap-2">

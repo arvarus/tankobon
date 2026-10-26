@@ -34,6 +34,8 @@ export default {
   modeSite: 'From a page link',
   sourcesLabel: 'Search in:',
   noApiEnabled: 'No API enabled: turn one on in Settings › Metadata.',
+  searchFailed: 'The search failed. Try again.',
+  applyFailed: 'The details could not be saved. Nothing was changed.',
   pageUrlLabel: 'Link of the book’s page',
   pageUrlPlaceholder: 'https://…',
   pageSitesHint: 'Supported sites: Bédéthèque (album page), BDfugue (product page) and Nautiljon (volume page).',
