@@ -33,6 +33,7 @@ export function BookBulkEditDialog({ entries, onClose }: { entries: readonly Lib
   const [form, setForm] = useState<BulkForm>(() => emptyBulkForm(current));
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
   const errors = validateBulkForm(form);
   const shown = submitted ? errors : {};
   const values = form.values;
@@ -57,14 +58,19 @@ export function BookBulkEditDialog({ entries, onClose }: { entries: readonly Lib
     setSubmitted(true);
     if (Object.keys(errors).length > 0 || form.enabled.size === 0) return;
     setSaving(true);
+    setSaveFailed(false);
     try {
       await window.tankobon.library.updateMetadataMany(
         entries.map((entry) => entry.id),
         bulkToUpdate(form),
       );
-    } finally {
+    } catch {
+      // Refused or failed: the dialog stays open with what was typed, and says so.
+      setSaveFailed(true);
       setSaving(false);
+      return;
     }
+    setSaving(false);
     onClose();
   };
 
@@ -204,6 +210,11 @@ export function BookBulkEditDialog({ entries, onClose }: { entries: readonly Lib
         </table>
         <p className="mt-3 text-xs text-muted-foreground">{t('bulk.hint')}</p>
       </form>
+      {saveFailed && (
+        <p role="alert" className="text-sm text-destructive">
+          {t('bulk.saveFailed')}
+        </p>
+      )}
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" size="sm" onClick={onClose}>

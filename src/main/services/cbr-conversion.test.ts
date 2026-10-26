@@ -71,6 +71,18 @@ describe('createCbrConverter', () => {
     expect(await converter.count()).toMatchObject({ count: 0, deletedFiles: 1, deletedBytes: 4 });
   });
 
+  // A name that merely starts with two dots is inside the folder (the default layout names a book's folder after its file).
+  it('converts a CBR in a folder whose name starts with two dots', async () => {
+    await addBook('Serie (a)/x.cbr');
+    await addBook('...Et alors (b)/y.cbr');
+    const { converter } = setup();
+
+    expect(await converter.count()).toMatchObject({ status: 'ok', count: 2 });
+    expect(await converter.convert()).toEqual({ status: 'ok', converted: 2, failed: 0 });
+    expect(await readdir(join(root, '...Et alors (b)'))).toEqual(['y.cbz']);
+    expect(repo.get(repo.idOfPath(join(root, '...Et alors (b)', 'y.cbz'))!)).not.toBeNull();
+  });
+
   it('ignores a CBR outside the organized folder', async () => {
     const outside = await mkdtemp(join(tmpdir(), 'tankobon-cbr-outside-'));
     try {

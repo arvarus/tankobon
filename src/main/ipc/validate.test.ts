@@ -5,6 +5,9 @@ import {
   args,
   idArg,
   pageIndexArg,
+  MAX_ID_LENGTH,
+  MAX_LIBRARY_IDS,
+  expectIdArray,
   expectInteger,
   expectMetadataQuery,
   expectMetadataUpdate,
@@ -19,6 +22,27 @@ describe('expectStringArray', () => {
 
   it.each([null, undefined, 'a', [1], [null], {}])('refuses %j', (value) => {
     expect(() => expectStringArray(value, 'tags')).toThrow(IpcArgumentError);
+  });
+});
+
+describe('expectIdArray', () => {
+  it('accepts a selection of a whole large library', () => {
+    const ids = Array.from({ length: 20_000 }, (_, i) => `id-${i}`);
+    expect(expectIdArray(ids, 'ids')).toHaveLength(20_000);
+  });
+
+  it('is not bound by the 1 000 items of the other lists', () => {
+    expect(() => expectStringArray(Array.from({ length: 1_001 }, () => 'a'), 'tags')).toThrow(IpcArgumentError);
+    expect(expectIdArray(Array.from({ length: 1_001 }, () => 'a'), 'ids')).toHaveLength(1_001);
+  });
+
+  it.each([null, undefined, 'a', [1], [null], {}])('refuses %j', (value) => {
+    expect(() => expectIdArray(value, 'ids')).toThrow(IpcArgumentError);
+  });
+
+  it('refuses too many ids and ids that are too long', () => {
+    expect(() => expectIdArray(new Array(MAX_LIBRARY_IDS + 1).fill('a'), 'ids')).toThrow(IpcArgumentError);
+    expect(() => expectIdArray(['a'.repeat(MAX_ID_LENGTH + 1)], 'ids')).toThrow(IpcArgumentError);
   });
 });
 
