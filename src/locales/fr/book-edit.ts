@@ -42,6 +42,7 @@ const bookEdit: Translation<typeof en> = {
     hint: 'Une valeur vide efface le champ de chaque livre. Les auteurs remplacent toute la liste de chaque livre. Le titre ne se modifie pas ici.',
     apply_one: 'Appliquer à {{count}} livre',
     apply_other: 'Appliquer à {{count}} livres',
+    saveFailed: 'Les livres n’ont pas pu être modifiés. Rien n’a été changé.',
   },
   errors: {
     emptyTitle: 'Le titre ne peut pas être vide.',
