@@ -153,8 +153,8 @@ export function structureFolders(
 
 /**
  * The name, without extension, that the template `fileName` (`AppSettings.libraryFileName`) gives
- * `entry`'s file: each field filled from the entry (a missing series, volume, year or author giving the
- * translated "Unknown"; the author as in the `author` level), then made safe like a folder name and cut
+ * `entry`'s file: each field filled from the entry (a missing series, year or author giving the
+ * translated "Unknown", a missing volume being left out with the text glued before it; the author as in the `author` level), then made safe like a folder name and cut
  * so that `extension` still fits in {@link MAX_NAME_BYTES}. With `articles`, a leading article of the series and
  * of the title goes to the end (`Vent du nord (Le)`).
  */
@@ -167,7 +167,7 @@ export function templatedStem(
   const unknown = t('library:organizationUnknown');
   const name = fillFileNameTemplate(fileName, {
     series: moveArticleToEnd(entry.series?.trim() ?? '', articles) || unknown,
-    volume: entry.volume?.trim() || unknown,
+    volume: entry.volume?.trim() ?? '',
     title: moveArticleToEnd(entry.title, articles),
     year: levelValue('year', entry) ?? unknown,
     author: authorName(entry) ?? unknown,

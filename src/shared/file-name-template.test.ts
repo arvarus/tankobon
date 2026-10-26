@@ -36,6 +36,14 @@ describe('fillFileNameTemplate', () => {
     expect(fillFileNameTemplate('{series} - T{volume} - {title}', values)).toBe('Tintin - T20 - Tintin au Tibet');
     expect(fillFileNameTemplate('{author} {year} {author}', values)).toBe('Hergé 1960 Hergé');
   });
+
+  it('leaves an empty volume out with its prefix and the separator before it', () => {
+    const values = { series: 'Tintin', volume: '', title: 'Tintin au Tibet', year: '1960', author: 'Hergé' };
+    expect(fillFileNameTemplate('{series} - T{volume} - {title}', values)).toBe('Tintin - Tintin au Tibet');
+    expect(fillFileNameTemplate('{series} T{volume:2}', values)).toBe('Tintin');
+    expect(fillFileNameTemplate('T{volume} - {series}', values)).toBe('Tintin');
+    expect(fillFileNameTemplate('{series} Vol. {volume}', values)).toBe('Tintin Vol.');
+  });
 });
 
 describe('parseFileName', () => {

@@ -348,8 +348,14 @@ describe('templatedStem', () => {
   it('writes "Unknown" for a missing field and makes the name safe', () => {
     const bare = entry({ series: null, volume: '  ', releaseDate: null, credits: [], title: 'Quoi?' });
     expect(templatedStem('{series} - T{volume} - {title} {year} {author}', bare, '.cbz')).toBe(
-      'Unknown - TUnknown - Quoi_ Unknown Unknown',
+      'Unknown - Quoi_ Unknown Unknown',
     );
+  });
+
+  it('leaves a missing volume out with the text glued before it', () => {
+    const noVolume = entry({ volume: null });
+    expect(templatedStem('{series} - T{volume} - {title}', noVolume, '.cbz')).toBe('Tintin - Tintin au Tibet');
+    expect(templatedStem('{series} T{volume}', noVolume, '.cbz')).toBe('Tintin');
   });
 
   it('cuts a long name so that the extension still fits', () => {
