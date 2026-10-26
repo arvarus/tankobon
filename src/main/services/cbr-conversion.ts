@@ -19,6 +19,7 @@ import {
 } from '../../shared/library';
 import type { LibraryRepository } from '../db/library-repository';
 import type { SettingsRepository } from '../db/settings-repository';
+import { isInside } from '../path-containment';
 import type { ConvertedArchive } from './cbr-converter';
 import { coverSidecarPath } from './cover-sidecar';
 import { moveFile } from './library-organizer';
@@ -42,12 +43,6 @@ export interface CbrConverter {
   convert(onProgress?: (progress: ScanProgress) => void): Promise<ConvertCbrResult>;
   /** Deletes everything in `.deletedByTankobon` for good. Holds the shared lock. */
   emptyDeleted(): Promise<EmptyDeletedResult>;
-}
-
-/** Whether `file` is inside `folder` (never `folder` itself). */
-function isInside(folder: string, file: string): boolean {
-  const relative = path.relative(folder, file);
-  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
 }
 
 /** Files at the top of `folder` (what the conversion puts there) and their total size; both 0 when it doesn't exist. */

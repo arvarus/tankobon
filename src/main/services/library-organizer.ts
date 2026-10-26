@@ -16,7 +16,7 @@ import type { LibraryLevel, LibraryOrganization } from '../../shared/settings';
 import type { LibraryRepository } from '../db/library-repository';
 import { coverSidecarPath } from './cover-sidecar';
 import { nfoPathFor } from './nfo';
-import { isInside } from './library-sync';
+import { isInside } from '../path-containment';
 import { pathExists } from './organized-folder';
 
 /**

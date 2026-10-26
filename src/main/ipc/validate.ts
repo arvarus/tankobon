@@ -13,6 +13,10 @@ import { METADATA_API_SOURCES, type MetadataQuery } from '../../shared/metadata'
 export const MAX_TEXT_LENGTH = 10_000;
 /** Longest list accepted (tags, credits, ids of a reorder). */
 export const MAX_LIST_LENGTH = 1_000;
+/** Most library entry ids accepted in one call (a bulk action over a whole library of 20 000 books and more). */
+export const MAX_LIBRARY_IDS = 100_000;
+/** Longest library entry id accepted, in characters (ids are UUIDs). */
+export const MAX_ID_LENGTH = 100;
 /** Longest file path or URL accepted, in characters. */
 export const MAX_PATH_LENGTH = 4_096;
 
@@ -60,6 +64,17 @@ export function expectStringArray(value: unknown, name: string): string[] {
     throw new IpcArgumentError(name, `an array of at most ${MAX_LIST_LENGTH} strings`);
   }
   return value.map((item, index) => expectString(item, `${name}[${index}]`));
+}
+
+/**
+ * A list of library entry ids, for the actions that apply to a selection of the library (which has no
+ * other bound than the library itself): up to {@link MAX_LIBRARY_IDS} ids of at most {@link MAX_ID_LENGTH} characters.
+ */
+export function expectIdArray(value: unknown, name: string): string[] {
+  if (!Array.isArray(value) || value.length > MAX_LIBRARY_IDS) {
+    throw new IpcArgumentError(name, `an array of at most ${MAX_LIBRARY_IDS} ids`);
+  }
+  return value.map((item, index) => expectString(item, `${name}[${index}]`, MAX_ID_LENGTH));
 }
 
 function expectRecord(value: unknown, name: string): Record<string, unknown> {

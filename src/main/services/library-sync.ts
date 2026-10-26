@@ -9,6 +9,7 @@ import path from 'node:path';
 import { MAX_REPORTED_FAILURES, type ScanFailure, type ScanProgress } from '../../shared/library';
 import type { ArchiveSummary } from '../decoder/protocol';
 import type { LibraryRepository } from '../db/library-repository';
+import { isInside } from '../path-containment';
 import { isOnlineOnly } from './cloud-files';
 import { collectComicFiles, scanIntoLibrary } from './library-scanner';
 import { writeNfoIfMissing } from './nfo';
@@ -33,14 +34,6 @@ export interface ResyncSummary {
   addedEntries: { id: string; path: string }[];
   /** Ids of the removed entries and the path of their file, for the caller's follow-up (thumbnails, notifications). */
   removedEntries: { id: string; path: string }[];
-}
-
-/** Whether `filePath` is inside `directory` (not the directory itself). */
-export function isInside(directory: string, filePath: string): boolean {
-  const relative = path.relative(directory, filePath);
-  // A name that merely starts with two dots (`...Et alors.cbz`) is inside; only the `..` segment leaves.
-  const leavesDirectory = relative === '..' || relative.startsWith(`..${path.sep}`);
-  return relative !== '' && !leavesDirectory && !path.isAbsolute(relative);
 }
 
 async function isReadableDirectory(directory: string): Promise<boolean> {
