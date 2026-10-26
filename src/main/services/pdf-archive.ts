@@ -3,12 +3,11 @@
  * @module
  */
 import { createCanvas, DOMMatrix, Image, ImageData, Path2D } from '@napi-rs/canvas';
-import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { ComicPage } from '../../shared/comic';
 import { t } from '../../shared/i18n';
-import type { ComicArchive } from './comic-archive';
+import { readWholeFile, type ComicArchive } from './comic-archive';
 import type { ImageSize } from './image-size';
 
 // pdf.js's rendering code (the `legacy` build, meant for non-browser environments) references
@@ -110,7 +109,7 @@ export class PdfArchive implements ComicArchive {
   /** Loads and parses the document; throws when it has no page. */
   static async open(filePath: string): Promise<PdfArchive> {
     const pdfjs = await getPdfjs();
-    const data = new Uint8Array(await readFile(filePath));
+    const data = new Uint8Array(await readWholeFile(filePath));
     const loadingTask = pdfjs.getDocument({
       data,
       standardFontDataUrl: pdfjsAssetDir('standard_fonts'),
