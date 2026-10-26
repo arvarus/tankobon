@@ -11,6 +11,7 @@ export default {
   readingPage: 'Reading the page…',
   searching: 'Searching…',
   otherResults: 'Other results',
+  skip: 'Skip',
   useCover: 'Use this cover for the book',
   apply: 'Apply',
   untitled: 'Untitled',

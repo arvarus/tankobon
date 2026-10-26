@@ -184,6 +184,16 @@ function LibraryPage() {
     overscan: 6,
   });
 
+  // Next book of the lookup series (after saving or skipping one), or the end of the series.
+  const nextLookup = () => {
+    if (!lookupSeries) return;
+    if (lookupSeries.index + 1 < lookupSeries.entries.length) setLookupSeries({ ...lookupSeries, index: lookupSeries.index + 1 });
+    else {
+      setLookupSeries(null);
+      clearSelection();
+    }
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 p-6">
       <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
@@ -419,13 +429,8 @@ function LibraryPage() {
             setLookupSeries(null);
             clearSelection();
           }}
-          onDone={() => {
-            if (lookupSeries.index + 1 < lookupSeries.entries.length) setLookupSeries({ ...lookupSeries, index: lookupSeries.index + 1 });
-            else {
-              setLookupSeries(null);
-              clearSelection();
-            }
-          }}
+          onDone={nextLookup}
+          onSkip={nextLookup}
         />
       )}
       {bulkEntries && (

@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronDown, ChevronRight, Globe, Loader2, Search, Square, X } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, Globe, Loader2, Search, SkipForward, Square, X } from 'lucide-react';
 import { useEffect, useReducer, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
@@ -49,7 +49,7 @@ const INPUT_CLASS =
  *
  * Within a series (several selected books), `position` shows which book this is and `onDone` is
  * called once its details are saved (or there is nothing to change), where the caller moves on to
- * the next book; `onClose` (the cross, "Cancel") stops the series.
+ * the next book, as does `onSkip` ("Skip", saving nothing); `onClose` (the cross, "Cancel") stops the series.
  */
 export function MetadataDialog({
   entry,
@@ -57,12 +57,14 @@ export function MetadataDialog({
   onApplied,
   position,
   onDone,
+  onSkip,
 }: {
   entry: LibraryEntry;
   onClose: () => void;
   onApplied: (entry: LibraryEntry) => void;
   position?: { index: number; total: number };
   onDone?: () => void;
+  onSkip?: () => void;
 }) {
   const { t } = useTranslation(['metadata', 'common']);
   const { settings, update } = useSettings();
@@ -190,6 +192,15 @@ export function MetadataDialog({
     if (updated) onApplied(updated);
     finish();
   };
+
+  // Only while another book follows: on the last one there is nothing to move on to.
+  const skip =
+    onSkip && position && position.index < position.total ? (
+      <Button variant="outline" size="sm" onClick={onSkip} disabled={applying || picking}>
+        <SkipForward />
+        {t('skip')}
+      </Button>
+    ) : null;
 
   return (
     <Dialog
@@ -411,6 +422,10 @@ export function MetadataDialog({
         </p>
       )}
 
+      {step.kind !== 'review' && skip && (
+        <div className="flex justify-end">{skip}</div>
+      )}
+
       {step.kind === 'review' && (
         <div className="flex justify-between gap-2">
           <Button variant="ghost" size="sm" onClick={() => dispatch({ type: 'backToResults' })}>
@@ -418,6 +433,7 @@ export function MetadataDialog({
             {t('otherResults')}
           </Button>
           <div className="flex gap-2">
+            {skip}
             <Button variant="outline" size="sm" onClick={onClose}>
               {t('common:cancel')}
             </Button>
