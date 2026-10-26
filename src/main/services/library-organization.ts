@@ -6,7 +6,6 @@
  * @module
  */
 import { randomUUID } from 'node:crypto';
-import { stat } from 'node:fs/promises';
 
 import type { DataChange } from '../../shared/data-changes';
 import { t } from '../../shared/i18n';
@@ -24,6 +23,7 @@ import type { ArchiveSummary } from '../decoder/protocol';
 import type { ImageStatsScanner } from './image-stats-scanner';
 import { organizeEntries, planOrganization, unorganizedIds, type OrganizationTarget } from './library-organizer';
 import { resyncLibrary } from './library-sync';
+import { isDirectory, organizedFolderProblem } from './organized-folder';
 
 /** The part of the decoder process these services call: opening a file to count its pages, and dropping a cover. */
 export interface LibraryDecoder {
@@ -107,14 +107,6 @@ const MAX_PENDING_OFFERS = 20;
 /** The outcome of an addition the organization had nothing to do with. */
 export const NOTHING_ORGANIZED: OrganizationOutcome = { moved: 0, failed: 0, pending: null };
 
-async function isDirectory(folder: string): Promise<boolean> {
-  try {
-    return (await stat(folder)).isDirectory();
-  } catch {
-    return false;
-  }
-}
-
 /** Builds the organizer, built once in `main.ts` and shared by the IPC handlers and the resynchronizer. */
 export function createLibraryOrganizer(
   repo: LibraryRepository,
@@ -142,11 +134,8 @@ export function createLibraryOrganizer(
   /** The organized folder when the organization is on and its folder is there, else the error to return. */
   const usableRoot = async (): Promise<{ target: OrganizationTarget } | { status: 'error'; message: string }> => {
     const { mode, root, structure, fileName, articles } = current();
-    if (mode === 'off' || root === '') return { status: 'error', message: t('errors:library.organizationOff') };
-    if (!(await isDirectory(root))) {
-      return { status: 'error', message: t('errors:library.organizationFolderUnreachable', { folder: root }) };
-    }
-    return { target: { root, structure, fileName, articles } };
+    const problem = await organizedFolderProblem(mode, root);
+    return problem === null ? { target: { root, structure, fileName, articles } } : { status: 'error', message: problem };
   };
 
   const move = async (

@@ -10,7 +10,6 @@ import { readdir, rm, rmdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import { comicFormat } from '../../shared/comic';
-import { t } from '../../shared/i18n';
 import {
   DELETED_BY_TANKOBON_FOLDER,
   type ConvertCbrResult,
@@ -26,6 +25,7 @@ import { coverSidecarPath } from './cover-sidecar';
 import { moveFile } from './library-organizer';
 import type { LibraryNotifier, LibraryRunLock } from './library-organization';
 import { nfoPathFor } from './nfo';
+import { firstFreeName, organizedFolderProblem } from './organized-folder';
 
 /** The part of the decoder process the conversion calls. */
 export interface ConversionDecoder {
@@ -43,18 +43,6 @@ export interface CbrConverter {
   convert(onProgress?: (progress: ScanProgress) => void): Promise<ConvertCbrResult>;
   /** Deletes everything in `.deletedByTankobon` for good. Holds the shared lock. */
   emptyDeleted(): Promise<EmptyDeletedResult>;
-}
-
-async function exists(file: string): Promise<boolean> {
-  return stat(file).then(() => true, () => false);
-}
-
-/** `name` made unique among `taken` and what `isFree` accepts: `name.ext`, `name (2).ext`… */
-async function firstFree(folder: string, stem: string, extension: string, isFree: (candidate: string) => boolean): Promise<string> {
-  for (let n = 1; ; n++) {
-    const candidate = path.join(folder, n === 1 ? `${stem}${extension}` : `${stem} (${n})${extension}`);
-    if (isFree(candidate) && !(await exists(candidate))) return candidate;
-  }
 }
 
 /** Files at the top of `folder` (what the conversion puts there) and their total size; both 0 when it doesn't exist. */
@@ -76,11 +64,8 @@ export function createCbrConverter(
   /** The organized folder when the organization is on and the folder is there, else the error to return. */
   const usableRoot = async (): Promise<{ root: string } | { status: 'error'; message: string }> => {
     const { libraryOrganization: mode, libraryOrganizationFolder: root } = settings.getAll();
-    if (mode === 'off' || root === '') return { status: 'error', message: t('errors:library.organizationOff') };
-    if (!(await stat(root).then((s) => s.isDirectory(), () => false))) {
-      return { status: 'error', message: t('errors:library.organizationFolderUnreachable', { folder: root }) };
-    }
-    return { root };
+    const problem = await organizedFolderProblem(mode, root);
+    return problem === null ? { root } : { status: 'error', message: problem };
   };
 
   const convertibleIds = (root: string) =>
@@ -122,10 +107,10 @@ export function createCbrConverter(
           // Once the entry names the CBZ, that file is the book: a later hiccup must not delete it.
           let committed = false;
           try {
-            to = await firstFree(path.dirname(from), stem, '.cbz', (candidate) => !repo.hasPath(candidate));
+            to = await firstFreeName(path.dirname(from), stem, '.cbz', (candidate) => !repo.hasPath(candidate));
             const { fileCount } = await decoder.convertCbr(from, to);
             // The CBR leaves the library folders for good only once the CBZ exists and was checked.
-            const parked = await firstFree(trash, path.basename(from, path.extname(from)), path.extname(from), () => true);
+            const parked = await firstFreeName(trash, path.basename(from, path.extname(from)), path.extname(from), () => true);
             await moveFile(from, parked);
             if (!repo.updatePath(id, to)) {
               // The database refused: the CBR goes back where the entry says it is.

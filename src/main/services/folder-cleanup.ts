@@ -6,11 +6,10 @@
  * touched. Kept out of the IPC layer, which only calls it, so it runs under Vitest.
  * @module
  */
-import { cp, mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
+import { cp, mkdir, readdir, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
 
 import { isSupportedComicFile } from '../../shared/comic';
-import { t } from '../../shared/i18n';
 import {
   DELETED_BY_TANKOBON_FOLDER,
   type CleanFoldersResult,
@@ -19,6 +18,7 @@ import {
 } from '../../shared/library';
 import type { SettingsRepository } from '../db/settings-repository';
 import type { LibraryRunLock } from './library-organization';
+import { firstFreeName, organizedFolderProblem } from './organized-folder';
 
 /** Extensions of the files an orphan folder may still hold: sidecars (`.nfo`) and cover images. */
 const SIDECAR_EXTENSIONS = new Set(['.nfo', '.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.avif']);
@@ -67,18 +67,6 @@ export async function findOrphanFolders(root: string): Promise<string[]> {
   return (await scan(root, true)).found;
 }
 
-async function exists(file: string): Promise<boolean> {
-  return stat(file).then(() => true, () => false);
-}
-
-/** `name`, or `name (2)`, `name (3)`… in `folder`, whichever doesn't exist yet. */
-async function freeName(folder: string, name: string): Promise<string> {
-  for (let n = 1; ; n++) {
-    const candidate = path.join(folder, n === 1 ? name : `${name} (${n})`);
-    if (!(await exists(candidate))) return candidate;
-  }
-}
-
 /** Moves a folder: a rename, else (another drive) a copy then a deletion, the copy removed again if the original can't be. */
 async function moveFolder(from: string, to: string): Promise<void> {
   try {
@@ -100,11 +88,8 @@ export function createFolderCleaner(settings: SettingsRepository, lock: LibraryR
   /** The organized folder when the organization is on and the folder is there, else the error to return. */
   const usableRoot = async (): Promise<{ root: string } | { status: 'error'; message: string }> => {
     const { libraryOrganization: mode, libraryOrganizationFolder: root } = settings.getAll();
-    if (mode === 'off' || root === '') return { status: 'error', message: t('errors:library.organizationOff') };
-    if (!(await stat(root).then((s) => s.isDirectory(), () => false))) {
-      return { status: 'error', message: t('errors:library.organizationFolderUnreachable', { folder: root }) };
-    }
-    return { root };
+    const problem = await organizedFolderProblem(mode, root);
+    return problem === null ? { root } : { status: 'error', message: problem };
   };
 
   return {
@@ -126,7 +111,7 @@ export function createFolderCleaner(settings: SettingsRepository, lock: LibraryR
           onProgress({ phase: 'importing', processed: index, total: orphans.length, currentFile: folder });
           try {
             await mkdir(trash, { recursive: true });
-            await moveFolder(folder, await freeName(trash, path.basename(folder)));
+            await moveFolder(folder, await firstFreeName(trash, path.basename(folder)));
             result.moved++;
           } catch {
             result.failed++;
