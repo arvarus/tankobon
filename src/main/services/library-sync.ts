@@ -9,6 +9,7 @@ import path from 'node:path';
 import { MAX_REPORTED_FAILURES, type ScanFailure, type ScanProgress } from '../../shared/library';
 import type { ArchiveSummary } from '../decoder/protocol';
 import type { LibraryRepository } from '../db/library-repository';
+import { ROOT_PREFIX } from '../db/path-roots';
 import { isInside } from '../path-containment';
 import { isOnlineOnly } from './cloud-files';
 import { collectComicFiles, scanIntoLibrary } from './library-scanner';
@@ -121,6 +122,9 @@ export async function resyncLibrary(
 
   for (const entry of repo.list()) {
     if (folders.some((folder) => isInside(folder, entry.path))) continue;
+    // Still in its stored form: its library folder has no path on this machine (not relinked yet), so its
+    // file can't be looked for here, and its absence says nothing.
+    if (entry.path.startsWith(ROOT_PREFIX)) continue;
     if ((await isMissing(entry.path)) && (await isReadableDirectory(path.dirname(entry.path)))) {
       repo.remove(entry.id);
       summary.removed += 1;
