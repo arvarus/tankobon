@@ -254,6 +254,38 @@ describe('applyImport', () => {
     expect(settingsRepo.getAll()).toEqual({ ...DEFAULT_SETTINGS, readerBackground: '#ffffff' });
   });
 
+  // The organized folder is where the app moves files, and `settings:set` refuses it: an edited export must not set it.
+  it('keeps the settings only the main process writes', () => {
+    settingsRepo.set('libraryOrganizationFolder', '/comics/organized');
+    settingsRepo.set('lastBackupAt', '2026-01-01T00:00:00.000Z');
+
+    applyImport(
+      db,
+      libraryRepo,
+      settingsRepo,
+      readingListRepo,
+      parseExport(
+        JSON.stringify({
+          version: 1,
+          library: [],
+          settings: {
+            libraryOrganization: 'always',
+            libraryOrganizationFolder: '/home/someone',
+            lastBackupAt: '2030-01-01T00:00:00.000Z',
+            readerBackground: '#ffffff',
+          },
+        }),
+      ),
+    );
+
+    expect(settingsRepo.getAll()).toMatchObject({
+      libraryOrganization: 'always',
+      readerBackground: '#ffffff',
+      libraryOrganizationFolder: '/comics/organized',
+      lastBackupAt: '2026-01-01T00:00:00.000Z',
+    });
+  });
+
   it('round-trips reading lists, matching their books by path', () => {
     const one = libraryRepo.touch('/comics/one.cbz', 'One', 20, 22, 1);
     const two = libraryRepo.touch('/comics/two.cbz', 'Two', 20, 22, 1);
