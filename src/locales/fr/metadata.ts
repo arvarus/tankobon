@@ -36,6 +36,8 @@ const metadata: Translation<typeof en> = {
   modeSite: 'Depuis un lien',
   sourcesLabel: 'Rechercher dans :',
   noApiEnabled: 'Aucune API activée : active-en une dans Paramètres › Métadonnées.',
+  searchFailed: 'La recherche a échoué. Réessaie.',
+  applyFailed: 'Les informations n’ont pas pu être enregistrées. Rien n’a été modifié.',
   pageUrlLabel: 'Lien de la fiche du livre',
   pageUrlPlaceholder: 'https://…',
   pageSitesHint: 'Sites pris en charge : Bédéthèque (fiche album), BDfugue (fiche produit) et Nautiljon (fiche du tome).',
