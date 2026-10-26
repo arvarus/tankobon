@@ -13,6 +13,7 @@ const metadata: Translation<typeof en> = {
   readingPage: 'Lecture de la fiche…',
   searching: 'Recherche en cours…',
   otherResults: 'Autres résultats',
+  skip: 'Passer',
   useCover: 'Utiliser cette couverture pour le livre',
   apply: 'Appliquer',
   untitled: 'Sans titre',
