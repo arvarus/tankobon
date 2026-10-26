@@ -377,7 +377,7 @@ export function MetadataDialog({
                 <p className="text-xs text-muted-foreground">{t('pageSitesHint')}</p>
               </div>
             )}
-            <div className="flex gap-2">
+            <div className="flex justify-end gap-2">
               {step.kind === 'searching' ? (
                 <Button type="button" size="sm" variant="outline" onClick={stop}>
                   <Square />
