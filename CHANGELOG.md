@@ -2,6 +2,30 @@
 
 All notable changes to this project are documented here. This file is maintained by [release-please](https://github.com/googleapis/release-please) from the [Conventional Commits](https://www.conventionalcommits.org/) merged into `master`: don't edit released entries by hand. New versions are inserted above the previous ones.
 
+## [0.19.1](https://github.com/arvarus/tankobon/compare/v0.19.0...v0.19.1) (2026-10-26)
+
+
+### Bug Fixes
+
+* **data-store:** recharger la bibliothèque si un événement arrive pendant un chargement ([#256](https://github.com/arvarus/tankobon/issues/256)) ([6725c0f](https://github.com/arvarus/tankobon/commit/6725c0ff36f92ec0fc7e5925bb379023a4c512b1))
+* **data:** vider la bibliothèque en une seule transaction ([#255](https://github.com/arvarus/tankobon/issues/255)) ([3cb88e7](https://github.com/arvarus/tankobon/commit/3cb88e736a89abd850257929b4de5831484921b8))
+* **decoder:** plafonner la taille des CBR et PDF lus en mémoire ([#259](https://github.com/arvarus/tankobon/issues/259)) ([9e47478](https://github.com/arvarus/tankobon/commit/9e47478cf1892e8b45a64c88bd07526ff2dd5874))
+* **import:** ne pas restaurer les réglages d'emplacement depuis un export ([#252](https://github.com/arvarus/tankobon/issues/252)) ([b9e6777](https://github.com/arvarus/tankobon/commit/b9e6777c079117733d4fc25c71f748df9ff9713f))
+* **library:** accepter plus de 1000 livres dans les actions groupées ([#250](https://github.com/arvarus/tankobon/issues/250)) ([a392413](https://github.com/arvarus/tankobon/commit/a392413bf63b3a8fa4cf6ed9cc8ef49031b409d4))
+* **library:** protéger explicitement les livres d'un dossier non relié ([#253](https://github.com/arvarus/tankobon/issues/253)) ([99de282](https://github.com/arvarus/tankobon/commit/99de282272c9d06466d8551ecd861690bb72486a))
+* **library:** utiliser le même test de confinement pour la conversion des CBR ([#251](https://github.com/arvarus/tankobon/issues/251)) ([8c68df3](https://github.com/arvarus/tankobon/commit/8c68df3f5a616311d846fa41690811ca6d65dc7f))
+
+
+### Performance Improvements
+
+* **db:** faire la sauvegarde hors du processus principal ([#260](https://github.com/arvarus/tankobon/issues/260)) ([e7c082e](https://github.com/arvarus/tankobon/commit/e7c082efa5e65a3dfef15a858ae4583206334783))
+
+
+### Documentation
+
+* **adr:** 0027 recharger la bibliothèque moins souvent et moins cher ([#261](https://github.com/arvarus/tankobon/issues/261)) ([0d608c7](https://github.com/arvarus/tankobon/commit/0d608c76964572aa2e1ffa8319a9e1d77cea7752))
+* **adr:** 0028 un second processus décodeur pour le travail d'arrière-plan ([#262](https://github.com/arvarus/tankobon/issues/262)) ([5b3e600](https://github.com/arvarus/tankobon/commit/5b3e600d6367468d2f68f9760e62a2260a85595d))
+
 ## [0.19.0](https://github.com/arvarus/tankobon/compare/v0.18.0...v0.19.0) (2026-10-25)
 
 
