@@ -13,6 +13,7 @@ const errors: Translation<typeof en> = {
     extractFailed: "Impossible d'extraire la page : {{entry}}",
     closed: 'Archive fermée : {{path}}',
     entryTooLarge: "Page trop volumineuse pour être lue : {{entry}}",
+    fileTooLarge: "Fichier trop volumineux pour être ouvert : {{path}} ({{size}} Mo, {{limit}} Mo au plus)",
     imageTooLarge: "Image trop grande pour être affichée : {{entry}} ({{width}} × {{height}} px)",
     fileNotFound: 'Fichier introuvable : il a été déplacé ou supprimé.',
     openFailed: "Impossible d'ouvrir ce fichier : {{message}}",

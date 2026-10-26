@@ -3,9 +3,11 @@
  * the rest of the app only deals with page indexes.
  * @module
  */
+import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { ComicPage } from '../../shared/comic';
+import { t } from '../../shared/i18n';
 import type { ImageSize } from './image-size';
 
 /** An opened comic file, whatever its format. */
@@ -25,6 +27,27 @@ export interface ComicArchive {
   pageSize?(index: number): Promise<ImageSize | null>;
   /** Releases the underlying resources; the archive must not be used afterwards. */
   close(): Promise<void>;
+}
+
+/**
+ * Largest file read whole into memory to be opened (1 GiB): a CBR and a PDF are held in memory while the book
+ * is open, up to `MAX_OPEN_ARCHIVES` at once, and `readFile` itself fails above 2 GiB with a message the
+ * user can't act on. A CBZ is read entry by entry, from the disk, and has no such limit.
+ */
+export const MAX_WHOLE_FILE_SIZE = 1024 * 1024 * 1024;
+
+/**
+ * The whole content of `filePath`, refused with a translated error (naming the size and the limit) when the
+ * file is above `maxBytes`, before anything is read.
+ */
+export async function readWholeFile(filePath: string, maxBytes = MAX_WHOLE_FILE_SIZE): Promise<Buffer> {
+  const { size } = await stat(filePath);
+  if (size > maxBytes) {
+    throw new Error(
+      t('errors:archive.fileTooLarge', { path: filePath, size: Math.ceil(size / 1_048_576), limit: Math.floor(maxBytes / 1_048_576) }),
+    );
+  }
+  return readFile(filePath);
 }
 
 /** Largest page entry read into memory (200 MB, uncompressed size declared by the archive). */

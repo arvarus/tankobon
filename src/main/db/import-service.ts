@@ -10,7 +10,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { isSupportedComicFile } from '../../shared/comic';
 import { t } from '../../shared/i18n';
 import { CREDIT_ROLES, type CreditInput, type CreditRole, type LibraryEntry } from '../../shared/library';
-import { DEFAULT_SETTINGS, isValidSetting, type AppSettings } from '../../shared/settings';
+import { DEFAULT_SETTINGS, MAIN_PROCESS_SETTINGS, isValidSetting, type AppSettings } from '../../shared/settings';
 import type { ExportedData, ExportedReadingList } from './export-service';
 import type { LibraryRepository } from './library-repository';
 import type { ReadingListRepository } from './reading-list-repository';
@@ -178,7 +178,8 @@ export function parseExport(raw: string): ExportedData {
 /**
  * Merges a parsed snapshot into the local database: library entries are matched by file path
  * (the snapshot wins for the ones it contains, so restoring a backup restores its progress,
- * ratings and tags), entries only present locally are left alone, and settings are replaced.
+ * ratings and tags), entries only present locally are left alone, and settings are replaced (except the ones only the
+ * main process writes, `MAIN_PROCESS_SETTINGS`, which keep their local value).
  * Reading lists are matched by id, the snapshot winning too (their order included: the snapshot's
  * lists come first, in its order); their books are found by path, and a path that matches no
  * library entry is dropped.
@@ -230,6 +231,9 @@ function mergeSnapshot(
     ...readingListRepo.list().flatMap((list) => (imported.has(list.id) ? [] : [list.id])),
   ]);
   for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof AppSettings)[]) {
+    // What only the main process writes keeps its local value: an export is a file anyone can edit, and the
+    // organized folder is where the app moves files (and a place that exists on one machine only).
+    if (MAIN_PROCESS_SETTINGS.includes(key)) continue;
     settingsRepo.set(key, data.settings[key]);
   }
   return { added, updated };

@@ -1,4 +1,4 @@
-import { BrowserWindow, shell } from 'electron';
+import { BrowserWindow, shell, type IpcMainInvokeEvent } from 'electron';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -12,6 +12,7 @@ import {
   type RelinkFolderResult,
   type RemoveEntryResult,
   type RemoveEntriesResult,
+  type ScanProgress,
   type ScanResult,
   type SetCoverResult,
 } from '../../shared/library';
@@ -93,21 +94,60 @@ export function broadcastImageScanProgress(progress: ImageScanProgress): void {
   }
 }
 
-export function registerLibraryIpc(
-  repo: LibraryRepository,
-  folders: LibraryFolderRepository,
-  resynchronizer: Resynchronizer,
-  settingsRepo: SettingsRepository,
-  decoder: DecoderClient,
-  notify: NotifyDataChange,
-  imageScanner: ImageStatsScanner,
-  organizer: LibraryOrganizer,
-  cleaner: LibraryCleaner,
-  converter: CbrConverter,
-  folderCleaner: FolderCleaner,
-  // The user a long run is for is the one who started it, even if the app is switched to another meanwhile.
-  activeUser: () => string,
-): void {
+/** What {@link registerLibraryIpc} works with, built once in `main.ts`. */
+export interface LibraryIpcDependencies {
+  /** The library, as the active user sees it. */
+  repo: LibraryRepository;
+  /** The folders the library is built from. */
+  folders: LibraryFolderRepository;
+  /** The resynchronization with those folders. */
+  resynchronizer: Resynchronizer;
+  /** The settings (the last folder added, the organized folder). */
+  settingsRepo: SettingsRepository;
+  /** The decoder process: covers and page counts. */
+  decoder: DecoderClient;
+  /** Announces a write to every window. */
+  notify: NotifyDataChange;
+  /** The background measure of the pages. */
+  imageScanner: ImageStatsScanner;
+  /** The library organization. */
+  organizer: LibraryOrganizer;
+  /** The cleaning of the non-image files of the archives. */
+  cleaner: LibraryCleaner;
+  /** The conversion of the CBR to CBZ. */
+  converter: CbrConverter;
+  /** The cleaning of the orphan folders. */
+  folderCleaner: FolderCleaner;
+  /** The user a long run is for is the one who started it, even if the app is switched to another meanwhile. */
+  activeUser: () => string;
+}
+
+/**
+ * The listener that forwards a long run's progress to the window that started it over `library:scan-progress`.
+ * The window may be gone (closed mid-run): dropping the update is enough.
+ */
+function scanProgressTo(event: IpcMainInvokeEvent): (progress: ScanProgress) => void {
+  return (progress) => {
+    if (!event.sender.isDestroyed()) {
+      event.sender.send(LIBRARY_CHANNELS.scanProgress, progress);
+    }
+  };
+}
+
+export function registerLibraryIpc({
+  repo,
+  folders,
+  resynchronizer,
+  settingsRepo,
+  decoder,
+  notify,
+  imageScanner,
+  organizer,
+  cleaner,
+  converter,
+  folderCleaner,
+  activeUser,
+}: LibraryIpcDependencies): void {
   /** Announces the new state of entries a handler just wrote (the ones that still exist). */
   const notifyUpserted = (...ids: string[]) => {
     const upserted = ids.flatMap((id) => repo.get(id) ?? []);
@@ -182,12 +222,7 @@ export function registerLibraryIpc(
       const summary = await scanIntoLibrary(
         repo,
         directory,
-        (progress) => {
-          // The renderer may be gone (window closed mid-scan); dropping the update is enough.
-          if (!event.sender.isDestroyed()) {
-            event.sender.send(LIBRARY_CHANNELS.scanProgress, progress);
-          }
-        },
+        scanProgressTo(event),
         (filePath) => decoder.inspect(filePath),
       );
       // The comics already in the library under that folder are stored relative to it from now on.
@@ -233,11 +268,7 @@ export function registerLibraryIpc(
 
   // Progress goes over the scan channel, which the settings page already follows for a resynchronization.
   handle(LIBRARY_CHANNELS.organizeAll, args(), (event) =>
-    organizer.organizeAll((progress) => {
-      if (!event.sender.isDestroyed()) {
-        event.sender.send(LIBRARY_CHANNELS.scanProgress, progress);
-      }
-    }),
+    organizer.organizeAll(scanProgressTo(event)),
   );
 
   // Both steps report over the scan channel, which the library page already follows.
@@ -245,11 +276,7 @@ export function registerLibraryIpc(
     LIBRARY_CHANNELS.analyzeCleanup,
     args((ids) => expectIdArray(ids, 'ids')),
     (event, ids) =>
-      cleaner.analyze(ids, (progress) => {
-        if (!event.sender.isDestroyed()) {
-          event.sender.send(LIBRARY_CHANNELS.scanProgress, progress);
-        }
-      }),
+      cleaner.analyze(ids, scanProgressTo(event)),
   );
 
   handle(
@@ -259,22 +286,14 @@ export function registerLibraryIpc(
       (kept) => expectStringArray(kept, 'keptExtensions'),
     ),
     (event, token, kept) =>
-      cleaner.apply(token, kept, (progress) => {
-        if (!event.sender.isDestroyed()) {
-          event.sender.send(LIBRARY_CHANNELS.scanProgress, progress);
-        }
-      }),
+      cleaner.apply(token, kept, scanProgressTo(event)),
   );
 
   handle(LIBRARY_CHANNELS.countConvertible, args(), () => converter.count());
 
   // Progress goes over the scan channel, like the organization of the whole library.
   handle(LIBRARY_CHANNELS.convertCbr, args(), (event) =>
-    converter.convert((progress) => {
-      if (!event.sender.isDestroyed()) {
-        event.sender.send(LIBRARY_CHANNELS.scanProgress, progress);
-      }
-    }),
+    converter.convert(scanProgressTo(event)),
   );
 
   handle(LIBRARY_CHANNELS.emptyDeleted, args(), () => converter.emptyDeleted());
@@ -282,11 +301,7 @@ export function registerLibraryIpc(
   handle(LIBRARY_CHANNELS.countOrphanFolders, args(), () => folderCleaner.count());
 
   handle(LIBRARY_CHANNELS.cleanFolders, args(), (event) =>
-    folderCleaner.clean((progress) => {
-      if (!event.sender.isDestroyed()) {
-        event.sender.send(LIBRARY_CHANNELS.scanProgress, progress);
-      }
-    }),
+    folderCleaner.clean(scanProgressTo(event)),
   );
 
   handle(LIBRARY_CHANNELS.listFolders, args(), () => folders.list());
@@ -327,11 +342,7 @@ export function registerLibraryIpc(
   );
 
   handle(LIBRARY_CHANNELS.resync, args(), (event) =>
-    resynchronizer.run((progress) => {
-      if (!event.sender.isDestroyed()) {
-        event.sender.send(LIBRARY_CHANNELS.scanProgress, progress);
-      }
-    }),
+    resynchronizer.run(scanProgressTo(event)),
   );
 
   handle(LIBRARY_CHANNELS.remove, args(idArg, booleanArg), async (_event, id, deleteFile): Promise<RemoveEntryResult> => {

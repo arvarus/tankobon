@@ -1,7 +1,9 @@
+import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
-import { PathRoots, memoryRootsStore } from './path-roots';
+import { PathRoots, fileRootsStore, memoryRootsStore } from './path-roots';
 
 const lib = path.resolve('/data/lib');
 
@@ -65,5 +67,42 @@ describe('PathRoots', () => {
     const store = memoryRootsStore();
     new PathRoots(store).set('r1', lib);
     expect(new PathRoots(store).get('r1')).toBe(lib);
+  });
+});
+
+describe('fileRootsStore', () => {
+  const directories: string[] = [];
+  afterEach(() => {
+    for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true });
+  });
+  const tempDirectory = () => {
+    const directory = mkdtempSync(path.join(tmpdir(), 'tankobon-roots-'));
+    directories.push(directory);
+    return directory;
+  };
+
+  it('keeps what it saved, and leaves no temporary file behind', () => {
+    const directory = tempDirectory();
+    const file = path.join(directory, 'library-roots.json');
+    const store = fileRootsStore(file);
+    store.save({ r1: '/data/lib' });
+    store.save({ r1: '/data/lib', r2: '/other' });
+    expect(fileRootsStore(file).load()).toEqual({ r1: '/data/lib', r2: '/other' });
+    expect(readdirSync(directory)).toEqual(['library-roots.json']);
+  });
+
+  it('reads a missing or damaged file as empty', () => {
+    const directory = tempDirectory();
+    const file = path.join(directory, 'library-roots.json');
+    expect(fileRootsStore(file).load()).toEqual({});
+    writeFileSync(file, '{"r1": "/da');
+    expect(fileRootsStore(file).load()).toEqual({});
+  });
+
+  it('throws when it cannot write, leaving nothing behind', () => {
+    const directory = tempDirectory();
+    const store = fileRootsStore(path.join(directory, 'missing', 'library-roots.json'));
+    expect(() => store.save({ r1: '/data/lib' })).toThrow();
+    expect(readdirSync(directory)).toEqual([]);
   });
 });

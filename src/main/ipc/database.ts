@@ -1,13 +1,10 @@
 import { app } from 'electron';
 
-import type { DatabaseSync } from 'node:sqlite';
-
-import type { BackupList, BackupResult, DatabaseLocation, DatabaseLocationResult, RestoreBackupResult } from '../../shared/data';
+import type { BackupInfo, BackupList, BackupResult, DatabaseLocation, DatabaseLocationResult, RestoreBackupResult } from '../../shared/data';
 import { t } from '../../shared/i18n';
 import {
   backupDirectory,
   cancelRestore,
-  createBackup,
   listBackups,
   pendingRestore,
   pruneBackups,
@@ -45,7 +42,7 @@ export const DATABASE_CHANNELS = {
  * pointing at a directory that already holds a `tankobon.db` (a synced folder, another machine)
  * has to keep that database rather than overwrite it.
  */
-export function registerDatabaseIpc(db: DatabaseSync, settings: SettingsRepository, notify: NotifyDataChange): void {
+export function registerDatabaseIpc(makeBackup: MakeBackup, settings: SettingsRepository, notify: NotifyDataChange): void {
   handle(DATABASE_CHANNELS.getLocation, args(), (): DatabaseLocation => databaseLocation());
 
   handle(DATABASE_CHANNELS.chooseLocation, args(), async (event): Promise<DatabaseLocationResult> => {
@@ -107,7 +104,7 @@ export function registerDatabaseIpc(db: DatabaseSync, settings: SettingsReposito
     };
   });
 
-  handle(DATABASE_CHANNELS.createBackup, args(), (): BackupResult => runBackup(db, settings, notify));
+  handle(DATABASE_CHANNELS.createBackup, args(), (): Promise<BackupResult> => runBackup(makeBackup, settings, notify));
 
   handle(DATABASE_CHANNELS.restoreBackup, args(idArg), (_event, name): RestoreBackupResult => {
     const message = scheduleRestore(app.getPath('userData'), databaseLocation().directory, name);
@@ -117,14 +114,22 @@ export function registerDatabaseIpc(db: DatabaseSync, settings: SettingsReposito
   handle(DATABASE_CHANNELS.cancelRestore, args(), () => cancelRestore(app.getPath('userData')));
 }
 
+/** Writes one copy of the database into the backup folder of `directory` and describes it; rejects when it can't. */
+export type MakeBackup = (directory: string) => Promise<BackupInfo>;
+
 /**
- * Makes a copy of the database now, records the date, then deletes the copies beyond `backupKeep`. A failure
- * (read-only folder, full disk) comes back as an error result, never thrown: the scheduler runs it unattended.
+ * Makes a copy of the database now (`makeBackup`, which runs it off the main process), records the date, then deletes
+ * the copies beyond `backupKeep`. A failure (read-only folder, full disk) comes back as an error result, never thrown:
+ * the scheduler runs it unattended.
  */
-export function runBackup(db: DatabaseSync, settings: SettingsRepository, notify: NotifyDataChange): BackupResult {
+export async function runBackup(
+  makeBackup: MakeBackup,
+  settings: SettingsRepository,
+  notify: NotifyDataChange,
+): Promise<BackupResult> {
   try {
     const { directory } = databaseLocation();
-    const backup = createBackup(db, directory);
+    const backup = await makeBackup(directory);
     const { backupKeep } = settings.getAll();
     pruneBackups(directory, backupKeep);
     settings.set('lastBackupAt', backup.createdAt);

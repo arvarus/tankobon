@@ -5,7 +5,7 @@
  * @module
  */
 import { createWriteStream } from 'node:fs';
-import { access, readFile, rename, rm } from 'node:fs/promises';
+import { access, rename, rm } from 'node:fs/promises';
 import { PassThrough } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { ZipFile } from 'yazl';
@@ -13,7 +13,7 @@ import { ZipFile } from 'yazl';
 import { t } from '../../shared/i18n';
 import { exactArrayBuffer, withExtractor } from './cbr-archive';
 import { CbzArchive } from './cbz-archive';
-import { isPageEntry, MAX_ENTRY_SIZE, sortPages } from './comic-archive';
+import { isPageEntry, MAX_ENTRY_SIZE, readWholeFile, sortPages } from './comic-archive';
 
 /** What the converted archive holds. */
 export interface ConvertedArchive {
@@ -32,7 +32,7 @@ export interface ConvertedArchive {
  */
 export async function convertCbrToCbz(cbrPath: string, cbzPath: string): Promise<ConvertedArchive> {
   const temporary = `${cbzPath}.converting.tmp`;
-  const data = exactArrayBuffer(await readFile(cbrPath));
+  const data = exactArrayBuffer(await readWholeFile(cbrPath));
   const files = await withExtractor(data, (extractor) =>
     [...extractor.getFileList().fileHeaders].filter((header) => !header.flags.directory),
   );
