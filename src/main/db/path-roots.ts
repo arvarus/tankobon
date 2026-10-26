@@ -5,6 +5,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { leavesFolder } from '../path-containment';
+
 /** Starts the stored form of a path kept relative to a library folder: `root:<folder id>/<relative path>`. */
 export const ROOT_PREFIX = 'root:';
 
@@ -78,14 +80,6 @@ export function fileRootsStore(filePath: string): RootsStore {
  * has no path on this machine decodes to itself, which no file matches (the book reads as missing
  * until the folder is relinked), and encodes back to itself.
  */
-/**
- * Whether `relative` (a result of `path.relative()`) is outside the folder it is relative to. Only a `..`
- * segment leaves it: a name that merely starts with two dots (`...Et alors.cbz`) is inside.
- */
-function leavesFolder(relative: string): boolean {
-  return relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative);
-}
-
 export class PathRoots implements PathCodec {
   private readonly paths: Map<string, string>;
 
