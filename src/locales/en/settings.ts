@@ -144,6 +144,7 @@ export default {
     convertCbr: 'Convert CBR to CBZ…',
     convertCbrHint: 'A CBR can’t be edited. Writes the CBR of the organized folder as CBZ, which unlocks the options that rewrite an archive (cleaning…). Progress, rating, tags and lists are kept; each CBR is moved to the .deletedByTankobon folder at the root of the organized folder.',
     convertCbrRunning: 'Converting…',
+    convertCbrCount: '{{count}} to convert',
     convertCbrNone: 'No CBR in the organized folder.',
     convertCbrConfirmTitle: 'Convert the CBR to CBZ?',
     convertCbrConfirm_one: 'Convert the CBR of {{folder}} to CBZ? The original is moved to the .deletedByTankobon folder, which you can empty afterwards.',

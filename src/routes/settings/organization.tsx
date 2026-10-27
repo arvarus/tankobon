@@ -65,9 +65,24 @@ function OrganizationSettingsPage() {
   const [organizeStatus, setOrganizeStatus] = useState<{ message: string; error?: boolean } | null>(null);
   // A resynchronization or an organization: either one blocks the other.
   const busy = progress !== null;
+  // CBR waiting to be converted, shown beside the action; null while not counted yet.
+  const [convertibleCount, setConvertibleCount] = useState<number | null>(null);
+  const organizationReady = settings.libraryOrganization !== 'off' && Boolean(settings.libraryOrganizationFolder);
 
   // Also shows a run started at launch, or from another window.
   useEffect(() => window.tankobon.library.onScanProgress((p) => setProgress(p.phase === 'done' ? null : p)), []);
+
+  // Counted again whenever the library changes (a conversion updates its entries) or the folder does.
+  useEffect(() => {
+    if (!organizationReady) return;
+    let cancelled = false;
+    void window.tankobon.library.countConvertible().then((result) => {
+      if (!cancelled) setConvertibleCount(result.status === 'error' ? null : result.count);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [organizationReady, settings.libraryOrganizationFolder, library]);
 
   const organizeAll = async () => {
     setOrganizeStatus(null);
@@ -291,7 +306,7 @@ function OrganizationSettingsPage() {
           </p>
         )}
         <p className="text-sm text-muted-foreground">{t('convertCbrHint')}</p>
-        <div>
+        <div className="flex items-center gap-3">
           <Button
             variant="outline"
             onClick={() => void convertCbr()}
@@ -300,6 +315,9 @@ function OrganizationSettingsPage() {
             <FileArchive />
             {running ? t('convertCbrRunning') : t('convertCbr')}
           </Button>
+          {organizationReady && convertibleCount !== null && convertibleCount > 0 && (
+            <span className="text-sm text-muted-foreground">{t('convertCbrCount', { count: convertibleCount })}</span>
+          )}
         </div>
         <p className="text-sm text-muted-foreground">{t('emptyDeletedHint')}</p>
         <div>
