@@ -243,7 +243,7 @@ function normalizeName(text: string): string {
     .trim();
 }
 
-/** The series in the search box's answer (an array of `{ id, label, category }`); anything else is ignored. */
+/** The series in the search box's answer (an array of `{ id, label, category }`, labels HTML-escaped); anything else is ignored. */
 export function parseSeriesSearch(body: unknown): BedethequeSeries[] {
   if (!Array.isArray(body)) {
     return [];
@@ -252,8 +252,10 @@ export function parseSeriesSearch(body: unknown): BedethequeSeries[] {
   for (const item of body) {
     const { id, label } = (typeof item === 'object' && item !== null ? item : {}) as Record<string, unknown>;
     const match = typeof id === 'string' ? /^S(\d+)$/.exec(id) : null;
-    if (match && typeof label === 'string' && label.trim()) {
-      series.push({ id: match[1], label: label.trim() });
+    // The search box HTML-escapes its labels (`X-Men (L&#039;intégrale)`).
+    const name = typeof label === 'string' ? decodeEntities(label).trim() : '';
+    if (match && name) {
+      series.push({ id: match[1], label: name });
     }
   }
   return series;

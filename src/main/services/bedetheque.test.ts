@@ -222,6 +222,14 @@ describe('parseSeriesSearch', () => {
   });
 });
 
+describe('parseSeriesSearch: escaped labels', () => {
+  it("decodes the HTML entities of a label, so L'intégrale is found by its apostrophe", () => {
+    const found = parseSeriesSearch([{ id: 'S3944', label: 'X-Men (L&#039;intégrale)', category: 'Série' }]);
+    expect(found).toEqual([{ id: '3944', label: "X-Men (L'intégrale)" }]);
+    expect(pickSeries(found, "X-Men (L'Intégrale)")?.id).toBe('3944');
+  });
+});
+
 describe('pickSeries', () => {
   const series = parseSeriesSearch(SEARCH_BLACKSAD);
 
