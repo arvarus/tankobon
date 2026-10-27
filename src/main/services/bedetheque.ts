@@ -261,6 +261,19 @@ export function parseSeriesSearch(body: unknown): BedethequeSeries[] {
   return series;
 }
 
+/** The leading articles the site moves to the end of a name in parentheses: `Cahiers d'Esther (Les)`. */
+const TRAILING_ARTICLE = /^(.*?)\s*\(\s*(le|la|les|l'|l’|un|une|des|the|el|los|las|il|lo|gli|der|die|das)\s*\)\s*$/i;
+
+/** A series name with such a trailing article put back in front: `Les Cahiers d'Esther`. */
+function withLeadingArticle(label: string): string {
+  const match = TRAILING_ARTICLE.exec(label);
+  if (!match) {
+    return label;
+  }
+  const article = match[2];
+  return /['’]$/.test(article) ? `${article}${match[1]}` : `${article} ${match[1]}`;
+}
+
 /**
  * The series that is the one asked for: the name equal to the text (accents and case ignored), else
  * the shortest name starting with it, else the shortest containing it. A translation of a series
@@ -273,8 +286,9 @@ export function pickSeries(candidates: BedethequeSeries[], text: string): Bedeth
   }
   const isTranslation = (series: BedethequeSeries) => /\(\s*en\s[^)]*\)\s*$/i.test(series.label);
   const rank = (series: BedethequeSeries): number => {
-    const name = normalizeName(series.label);
-    const bare = normalizeName(series.label.replace(/\([^)]*\)\s*$/, ''));
+    const label = withLeadingArticle(series.label);
+    const name = normalizeName(label);
+    const bare = normalizeName(label.replace(/\([^)]*\)\s*$/, ''));
     if (name === wanted) return 0;
     if (!isTranslation(series) && bare === wanted) return 1;
     if (!isTranslation(series) && name.startsWith(wanted)) return 2;

@@ -230,6 +230,19 @@ describe('parseSeriesSearch: escaped labels', () => {
   });
 });
 
+describe('pickSeries: trailing articles', () => {
+  it('finds a series whose article the site moved to the end', () => {
+    const found = [{ id: '50922', label: "Cahiers d'Esther (Les)" }];
+    expect(pickSeries(found, "Les cahiers d'Esther")?.id).toBe('50922');
+    expect(pickSeries(found, "Cahiers d'Esther")?.id).toBe('50922');
+  });
+
+  it("puts an elided article back against the name: L'Intégrale", () => {
+    const found = [{ id: '1', label: 'Intégrale (L\')' }];
+    expect(pickSeries(found, "L'Intégrale")?.id).toBe('1');
+  });
+});
+
 describe('pickSeries', () => {
   const series = parseSeriesSearch(SEARCH_BLACKSAD);
 
