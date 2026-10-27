@@ -142,6 +142,32 @@ function LibraryPage() {
     if (result.status === 'error') setScanStatus(result.message);
   };
 
+  // One confirmation for the whole selection; the list drops the entries on `data:changed`.
+  const removeSelection = async () => {
+    const entries = selection;
+    const { confirmed, checked } = await confirmWithChoice({
+      title: t('confirmRemoveManyTitle', { count: entries.length }),
+      message: t('confirmRemoveMany', { count: entries.length }),
+      action: t('confirmRemoveAction'),
+      checkbox: t('deleteFiles', { count: entries.length }),
+    });
+    if (!confirmed) return;
+    try {
+      const result = await window.tankobon.library.removeMany(
+        entries.map((entry) => entry.id),
+        checked,
+      );
+      clearSelection();
+      setScanStatus(
+        result.filesFailed > 0
+          ? t('removeManyFilesFailed', { count: result.filesFailed })
+          : t('removedMany', { count: result.removed }),
+      );
+    } catch {
+      setScanStatus(t('removeManyFailed'));
+    }
+  };
+
   // Only the grip of a row (or a whole card) drags the book onto a reading list of the sidebar; a
   // selected book carries the whole selection with it. `image` is the drag image of a single book (the
   // card itself when omitted), or a "N books" label for several, so the user sees what is carried.
@@ -241,6 +267,7 @@ function LibraryPage() {
           }}
           onEdit={() => setBulkEntries(selection)}
           onLookup={() => setLookupSeries({ entries: selection, index: 0 })}
+          onRemove={removeSelection}
         />
       )}
 
