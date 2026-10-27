@@ -71,24 +71,28 @@ function OrganizationSettingsPage() {
   const [organizeStatus, setOrganizeStatus] = useState<{ message: string; error?: boolean } | null>(null);
   // A resynchronization or an organization: either one blocks the other.
   const busy = progress !== null;
-  // CBR waiting to be converted, shown beside the action; null while not counted yet.
+  // CBR waiting to be converted and what `.deletedByTankobon` holds, shown beside the actions; null while not counted yet.
   const [convertibleCount, setConvertibleCount] = useState<number | null>(null);
+  const [deletedBytes, setDeletedBytes] = useState<number | null>(null);
   const organizationReady = settings.libraryOrganization !== 'off' && Boolean(settings.libraryOrganizationFolder);
 
   // Also shows a run started at launch, or from another window.
   useEffect(() => window.tankobon.library.onScanProgress((p) => setProgress(p.phase === 'done' ? null : p)), []);
 
-  // Counted again whenever the library changes (a conversion updates its entries) or the folder does.
+  // Counted again whenever the library changes (a conversion updates its entries), the folder does or a run ends
+  // (an orphan cleaning fills `.deletedByTankobon` without touching the library).
   useEffect(() => {
-    if (!organizationReady) return;
+    if (!organizationReady || busy) return;
     let cancelled = false;
     void window.tankobon.library.countConvertible().then((result) => {
-      if (!cancelled) setConvertibleCount(result.status === 'error' ? null : result.count);
+      if (cancelled) return;
+      setConvertibleCount(result.status === 'error' ? null : result.count);
+      setDeletedBytes(result.status === 'error' ? null : result.deletedBytes);
     });
     return () => {
       cancelled = true;
     };
-  }, [organizationReady, settings.libraryOrganizationFolder, library]);
+  }, [organizationReady, busy, settings.libraryOrganizationFolder, library, convertStatus]);
 
   const organizeAll = async () => {
     setOrganizeStatus(null);
@@ -335,6 +339,9 @@ function OrganizationSettingsPage() {
             <Trash2 />
             {t('emptyDeleted')}
           </Button>
+          {deletedBytes !== null && (
+            <span className="ml-3 text-sm text-muted-foreground">{t('emptyDeletedSize', { size: formatFileSize(deletedBytes) })}</span>
+          )}
         </div>
         <p className="text-sm text-muted-foreground">{t('cleanFoldersHint')}</p>
         <div>
