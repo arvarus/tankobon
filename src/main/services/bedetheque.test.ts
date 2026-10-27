@@ -540,6 +540,35 @@ describe('searchBedetheque', () => {
     expect(found).toHaveLength(2);
   });
 
+  it('asks again with the simplified text when the typed one finds nothing', async () => {
+    const terms: string[] = [];
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      if (url.hostname === 'www.bdgest.com') {
+        terms.push(url.searchParams.get('term') ?? '');
+        // The box only knows the plain spelling.
+        return Response.json(
+          url.searchParams.get('term') === 'a bord de l etoile matutine'
+            ? [{ id: 'S20559', label: "A bord de l'Etoile Matutine", category: 'Série' }]
+            : [],
+        );
+      }
+      if (url.pathname.startsWith('/serie/index/s/')) return new Response(SERIES_PAGE, { status: 200 });
+      return new Response(albumPage(), { status: 200 });
+    });
+    const http: HttpOptions = { fetch: fetch as typeof globalThis.fetch, userAgent: 'Tankobon/test', timeoutMs: 1000 };
+    const found = await searchBedetheque({ text: 'À Bord De L’Étoile Matutine', volume: null }, http);
+    expect(terms).toEqual(['À Bord De L’Étoile Matutine', 'a bord de l etoile matutine']);
+    expect(found.length).toBeGreaterThan(0);
+  });
+
+  it('asks again when the box answers something that is not JSON, and reports the failure if it persists', async () => {
+    const fetch = vi.fn(async () => new Response('<html>oops</html>', { status: 200 }));
+    const http: HttpOptions = { fetch: fetch as typeof globalThis.fetch, userAgent: 'Tankobon/test', timeoutMs: 1000 };
+    await expect(searchBedetheque({ text: 'À Gauche Toute !', volume: null }, http)).rejects.toThrow();
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
   it('reads a series page once for several volumes', async () => {
     const { calls, http } = site();
     await searchBedetheque({ text: 'Blacksad', volume: '1' }, http);

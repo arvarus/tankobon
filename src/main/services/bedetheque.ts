@@ -503,6 +503,42 @@ export function resetBedethequeState(minIntervalMs = MIN_REQUEST_INTERVAL_MS): v
 }
 
 /**
+ * Asks the search box for the series named like `text`. The text as typed goes first; when that fails
+ * (the box answered something unreadable) or finds no series that matches, it is asked once more with
+ * the text simplified (no accents, curly apostrophes or punctuation: `À Bord De L’Étoile` becomes
+ * `a bord de l etoile`), which the box may match where the typed form doesn't. The error of the first
+ * attempt is only thrown when the second doesn't produce an answer either.
+ */
+async function searchBox(text: string, http: HttpOptions): Promise<BedethequeSeries[]> {
+  const simplified = normalizeName(text);
+  // The case alone isn't worth another request: the box ignores it.
+  const terms = simplified && simplified !== text.toLowerCase() ? [text, simplified] : [text];
+  let found: BedethequeSeries[] = [];
+  let failure: unknown = null;
+  for (const term of terms) {
+    try {
+      found = parseSeriesSearch(await getJson(`${SERIES_SEARCH_URL}?term=${encodeURIComponent(term)}`, paced(http), SOURCE));
+      failure = null;
+    } catch (error) {
+      if (http.signal?.aborted) {
+        throw error;
+      }
+      failure = error;
+      lookupLog('bedetheque', `search box failed for "${term}": ${String(error)}${error instanceof Error && error.cause ? ` (${String(error.cause)})` : ''}`);
+      continue;
+    }
+    if (pickSeriesAll(found, text).length > 0) {
+      break;
+    }
+    lookupLog('bedetheque', `search box: no matching series for "${term}" (${found.length} series returned)`);
+  }
+  if (failure && found.length === 0) {
+    throw failure;
+  }
+  return found;
+}
+
+/**
  * Finds a book by series name and volume, in three sequential requests at most: the search box's
  * JSON for the series, the series page for its album list, then the album's page for its credits.
  * The requests are spaced out and what the site answered is remembered for a while (see
@@ -518,9 +554,7 @@ export async function searchBedetheque(query: MetadataQuery, http: HttpOptions):
     lookupLog('bedetheque', `text shorter than ${MIN_SEARCH_LENGTH} characters, nothing searched`);
     return [];
   }
-  const found = await seriesSearches.get(normalizeName(text), async () =>
-    parseSeriesSearch(await getJson(`${SERIES_SEARCH_URL}?term=${encodeURIComponent(text)}`, paced(http), SOURCE)),
-  );
+  const found = await seriesSearches.get(normalizeName(text), () => searchBox(text, http));
   const matched = pickSeriesAll(found, text);
   lookupLog(
     'bedetheque',
