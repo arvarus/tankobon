@@ -231,6 +231,22 @@ describe('parseSeriesSearch: escaped labels', () => {
   });
 });
 
+describe('pickSeries: initials', () => {
+  it('treats spaced-out and joined initials as the same name', () => {
+    const found = [{ id: '569', label: 'AD Grand-Rivière' }];
+    expect(pickSeries(found, 'A.D Grand-Rivière')?.id).toBe('569');
+    expect(pickSeries([{ id: '1', label: 'A.D Grand-Rivière' }], 'AD Grand-Rivière')?.id).toBe('1');
+  });
+
+  it('does not pick other rivers', () => {
+    const found = [
+      { id: '63189', label: "Rivière à l'envers (La)" },
+      { id: '68530', label: "Rivière d'encre" },
+    ];
+    expect(pickSeries(found, 'A.D Grand-Rivière')).toBeNull();
+  });
+});
+
 describe('pickSeriesAll', () => {
   const tutti = [
     { id: '9070', label: 'Tutti Frutti (Stakhano)' },
@@ -596,6 +612,29 @@ describe('searchBedetheque', () => {
     await expect(searchBedetheque({ text: 'À Gauche Toute !', volume: null }, http)).rejects.toThrow();
   });
 
+  it('finds a hyphenated name through its longest token when the whole text finds nothing', async () => {
+    const terms: string[] = [];
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      if (url.hostname === 'www.bdgest.com') {
+        const term = url.searchParams.get('term') ?? '';
+        terms.push(term);
+        return term === 'Grand-Riviere'
+          ? Response.json([
+              { id: 'S63189', label: "Rivière à l'envers (La)", category: 'Série' },
+              { id: 'S569', label: 'AD Grand-Rivière', category: 'Série' },
+            ])
+          : new Response('', { status: 200 });
+      }
+      if (url.pathname.startsWith('/serie/index/s/569')) return new Response(SERIES_PAGE, { status: 200 });
+      return new Response(albumPage(), { status: 200 });
+    });
+    const http: HttpOptions = { fetch: fetch as typeof globalThis.fetch, userAgent: 'Tankobon/test', timeoutMs: 1000 };
+    const found = await searchBedetheque({ text: 'A.D Grand-Rivière', volume: null }, http);
+    expect(terms).toEqual(['A.D Grand-Rivière', 'A.D Grand-Riviere', 'AD Grand-Riviere', 'Grand-Riviere']);
+    expect(found.length).toBeGreaterThan(0);
+  });
+
   it('reads a series page once for several volumes', async () => {
     const { calls, http } = site();
     await searchBedetheque({ text: 'Blacksad', volume: '1' }, http);
@@ -631,7 +670,7 @@ describe('searchBedetheque', () => {
     // The typed text, then its longest word; a text shorter than the box's minimum isn't sent at all.
     expect(calls).toEqual([
       'https://www.bdgest.com/ajax/tout?term=Corto%20Maltese',
-      'https://www.bdgest.com/ajax/tout?term=maltese',
+      'https://www.bdgest.com/ajax/tout?term=Maltese',
     ]);
   });
 

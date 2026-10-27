@@ -274,19 +274,26 @@ function withLeadingArticle(label: string): string {
   return /['’]$/.test(article) ? `${article}${match[1]}` : `${article} ${match[1]}`;
 }
 
+/** A normalized name without its spaces, to compare names whose initials are spaced differently. */
+function compact(name: string): string {
+  return name.replace(/ /g, '');
+}
+
 /** The series whose name contains the text, best match first, with the rank (0 is the best) of each match. */
 function rankSeries(candidates: BedethequeSeries[], text: string): { series: BedethequeSeries; rank: number }[] {
   const wanted = normalizeName(text);
   if (!wanted) {
     return [];
   }
+  const compactWanted = compact(wanted);
   const isTranslation = (series: BedethequeSeries) => /\(\s*en\s[^)]*\)\s*$/i.test(series.label);
   const rank = (series: BedethequeSeries): number => {
     const label = withLeadingArticle(series.label);
     const name = normalizeName(label);
     const bare = normalizeName(label.replace(/\([^)]*\)\s*$/, ''));
-    if (name === wanted) return 0;
-    if (!isTranslation(series) && bare === wanted) return 1;
+    // Initials may or may not be spaced out: `A.D Grand-Rivière` and `AD Grand-Rivière` are one name.
+    if (name === wanted || compact(name) === compactWanted) return 0;
+    if (!isTranslation(series) && (bare === wanted || compact(bare) === compactWanted)) return 1;
     if (!isTranslation(series) && name.startsWith(wanted)) return 2;
     if (!isTranslation(series) && name.includes(wanted)) return 3;
     if (bare === wanted) return 4;
@@ -510,13 +517,20 @@ function foldText(text: string): string {
     .replace(/[’‘`´]/g, "'");
 }
 
-/** The terms to ask the search box, best first: the typed text, its folded form, then its longest word. */
+/**
+ * The terms to ask the search box, best first: the typed text, its folded form, that without dots
+ * (`A.D Grand-Rivière` is `AD Grand-Rivière` on the site), its longest whitespace-separated token
+ * (`Grand-Riviere`, hyphens kept: the box matches them literally) and finally its longest plain word.
+ */
 function searchTerms(text: string): string[] {
-  const longest = normalizeName(text)
-    .split(' ')
-    .reduce((best, word) => (word.length > best.length ? word : best), '');
-  const terms = [text, foldText(text), longest.length >= MIN_SEARCH_LENGTH ? longest : ''];
-  return terms.filter((term, index) => term && terms.indexOf(term) === index && !(index > 0 && term.toLowerCase() === text.toLowerCase()));
+  const folded = foldText(text);
+  const undotted = folded.replace(/\./g, '').replace(/\s+/g, ' ').trim();
+  const longestOf = (words: string[]) => words.reduce((best, word) => (word.length > best.length ? word : best), '');
+  const token = longestOf(undotted.split(' '));
+  const word = longestOf(normalizeName(text).split(' '));
+  const terms = [text, folded, undotted, token, word].filter((term) => term.length >= MIN_SEARCH_LENGTH);
+  // Another spelling of the same text isn't worth a request, nor is a case-only difference.
+  return terms.filter((term, index) => terms.findIndex((other) => other.toLowerCase() === term.toLowerCase()) === index);
 }
 
 /**
