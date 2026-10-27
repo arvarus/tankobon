@@ -502,37 +502,60 @@ export function resetBedethequeState(minIntervalMs = MIN_REQUEST_INTERVAL_MS): v
   pacer = createRequestPacer(minIntervalMs);
 }
 
+/** The text without accents and with straight apostrophes (`À Bord De L’Étoile` → `A Bord De L'Etoile`), as the site stores names. */
+function foldText(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[’‘`´]/g, "'");
+}
+
+/** The terms to ask the search box, best first: the typed text, its folded form, then its longest word. */
+function searchTerms(text: string): string[] {
+  const longest = normalizeName(text)
+    .split(' ')
+    .reduce((best, word) => (word.length > best.length ? word : best), '');
+  const terms = [text, foldText(text), longest.length >= MIN_SEARCH_LENGTH ? longest : ''];
+  return terms.filter((term, index) => term && terms.indexOf(term) === index && !(index > 0 && term.toLowerCase() === text.toLowerCase()));
+}
+
 /**
- * Asks the search box for the series named like `text`. The text as typed goes first; when that fails
- * (the box answered something unreadable) or finds no series that matches, it is asked once more with
- * the text simplified (no accents, curly apostrophes or punctuation: `À Bord De L’Étoile` becomes
- * `a bord de l etoile`), which the box may match where the typed form doesn't. The error of the first
- * attempt is only thrown when the second doesn't produce an answer either.
+ * Asks the search box for the series named like `text`. The box answers nothing at all (an empty
+ * body) when the term matches no name, and it matches the names as the site stores them, with plain
+ * letters and straight apostrophes: `À Bord De L’Étoile Matutine` finds nothing there while
+ * `A Bord De L'Etoile Matutine` finds `A bord de l'Etoile Matutine`. So the typed text goes first,
+ * then, while no series matches it, its folded form, then its longest word (the series are matched
+ * against the whole text afterwards). An empty or unreadable answer counts as no series; only a
+ * failure to reach the site is thrown, when no term got an answer.
  */
 async function searchBox(text: string, http: HttpOptions): Promise<BedethequeSeries[]> {
-  const simplified = normalizeName(text);
-  // The case alone isn't worth another request: the box ignores it.
-  const terms = simplified && simplified !== text.toLowerCase() ? [text, simplified] : [text];
   let found: BedethequeSeries[] = [];
   let failure: unknown = null;
-  for (const term of terms) {
+  let answered = false;
+  for (const term of searchTerms(text)) {
     try {
       found = parseSeriesSearch(await getJson(`${SERIES_SEARCH_URL}?term=${encodeURIComponent(term)}`, paced(http), SOURCE));
-      failure = null;
+      answered = true;
     } catch (error) {
       if (http.signal?.aborted) {
         throw error;
       }
-      failure = error;
-      lookupLog('bedetheque', `search box failed for "${term}": ${String(error)}${error instanceof Error && error.cause ? ` (${String(error.cause)})` : ''}`);
+      lookupLog('bedetheque', `search box failed for "${term}": ${String(error)}`);
+      // An empty body is how the box says "nothing found"; anything else is a failure to reach it.
+      if (error instanceof Error && error.cause instanceof SyntaxError) {
+        answered = true;
+      } else {
+        failure = error;
+      }
+      found = [];
       continue;
     }
     if (pickSeriesAll(found, text).length > 0) {
-      break;
+      return found;
     }
     lookupLog('bedetheque', `search box: no matching series for "${term}" (${found.length} series returned)`);
   }
-  if (failure && found.length === 0) {
+  if (failure && !answered) {
     throw failure;
   }
   return found;

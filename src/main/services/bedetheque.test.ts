@@ -540,33 +540,60 @@ describe('searchBedetheque', () => {
     expect(found).toHaveLength(2);
   });
 
-  it('asks again with the simplified text when the typed one finds nothing', async () => {
+  it("asks again with the folded text, accents and curly apostrophe removed, when the typed one finds nothing", async () => {
     const terms: string[] = [];
     const fetch = vi.fn(async (input: string | URL | Request) => {
       const url = new URL(String(input));
       if (url.hostname === 'www.bdgest.com') {
-        terms.push(url.searchParams.get('term') ?? '');
-        // The box only knows the plain spelling.
-        return Response.json(
-          url.searchParams.get('term') === 'a bord de l etoile matutine'
-            ? [{ id: 'S20559', label: "A bord de l'Etoile Matutine", category: 'Série' }]
-            : [],
-        );
+        const term = url.searchParams.get('term') ?? '';
+        terms.push(term);
+        // The box only knows the plain spelling, and answers an empty body for anything else.
+        return term === "A Bord De L'Etoile Matutine"
+          ? Response.json([{ id: 'S20559', label: "A bord de l'Etoile Matutine", category: 'Série' }])
+          : new Response('', { status: 200 });
       }
       if (url.pathname.startsWith('/serie/index/s/')) return new Response(SERIES_PAGE, { status: 200 });
       return new Response(albumPage(), { status: 200 });
     });
     const http: HttpOptions = { fetch: fetch as typeof globalThis.fetch, userAgent: 'Tankobon/test', timeoutMs: 1000 };
     const found = await searchBedetheque({ text: 'À Bord De L’Étoile Matutine', volume: null }, http);
-    expect(terms).toEqual(['À Bord De L’Étoile Matutine', 'a bord de l etoile matutine']);
+    expect(terms).toEqual(['À Bord De L’Étoile Matutine', "A Bord De L'Etoile Matutine"]);
     expect(found.length).toBeGreaterThan(0);
   });
 
-  it('asks again when the box answers something that is not JSON, and reports the failure if it persists', async () => {
-    const fetch = vi.fn(async () => new Response('<html>oops</html>', { status: 200 }));
+  it('falls back to the longest word, matching the series against the whole text', async () => {
+    const terms: string[] = [];
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      if (url.hostname === 'www.bdgest.com') {
+        const term = url.searchParams.get('term') ?? '';
+        terms.push(term);
+        return term === 'matutine'
+          ? Response.json([{ id: 'S20559', label: "A bord de l'Etoile Matutine", category: 'Série' }])
+          : new Response('', { status: 200 });
+      }
+      if (url.pathname.startsWith('/serie/index/s/')) return new Response(SERIES_PAGE, { status: 200 });
+      return new Response(albumPage(), { status: 200 });
+    });
+    const http: HttpOptions = { fetch: fetch as typeof globalThis.fetch, userAgent: 'Tankobon/test', timeoutMs: 1000 };
+    const found = await searchBedetheque({ text: "À bord de l'Étoile Matutine", volume: null }, http);
+    expect(terms.at(-1)).toBe('matutine');
+    expect(found.length).toBeGreaterThan(0);
+  });
+
+  it('counts an empty answer as no series, not as an error', async () => {
+    const fetch = vi.fn(async () => new Response('', { status: 200 }));
+    const http: HttpOptions = { fetch: fetch as typeof globalThis.fetch, userAgent: 'Tankobon/test', timeoutMs: 1000 };
+    expect(await searchBedetheque({ text: 'À Gauche Toute !', volume: null }, http)).toEqual([]);
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it('reports the failure when the site cannot be reached', async () => {
+    const fetch = vi.fn(async () => {
+      throw new TypeError('network down');
+    });
     const http: HttpOptions = { fetch: fetch as typeof globalThis.fetch, userAgent: 'Tankobon/test', timeoutMs: 1000 };
     await expect(searchBedetheque({ text: 'À Gauche Toute !', volume: null }, http)).rejects.toThrow();
-    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
   it('reads a series page once for several volumes', async () => {
@@ -597,11 +624,15 @@ describe('searchBedetheque', () => {
     expect(await searchBedetheque({ text: 'Blacksad', volume: null }, http)).toHaveLength(6);
   });
 
-  it('finds nothing, with no further request, when no series matches or the text is too short', async () => {
+  it('finds nothing, and asks only the search box, when no series matches or the text is too short', async () => {
     const { calls, http } = site();
     expect(await searchBedetheque({ text: 'Corto Maltese', volume: null }, http)).toEqual([]);
     expect(await searchBedetheque({ text: 'Di', volume: null }, http)).toEqual([]);
-    expect(calls).toEqual(['https://www.bdgest.com/ajax/tout?term=Corto%20Maltese']);
+    // The typed text, then its longest word; a text shorter than the box's minimum isn't sent at all.
+    expect(calls).toEqual([
+      'https://www.bdgest.com/ajax/tout?term=Corto%20Maltese',
+      'https://www.bdgest.com/ajax/tout?term=maltese',
+    ]);
   });
 
   it('does not keep a series page that failed to load', async () => {
