@@ -414,6 +414,17 @@ function listCandidate(album: SeriesAlbum, series: string): MetadataCandidate {
   };
 }
 
+/** The markers of a series page that the parsers look for, to say what a page without albums looks like. */
+const PAGE_MARKERS = ['bdt-box-albums-liste', 'bdt-sh-tomes', 'bdt-edition--detail', 'bdt-ah', 'bdt-ah--serie', 'class="bdt-', 'captcha', 'cloudflare'];
+
+/** A one-line description of a page for the log: its size, title, and which known markers it holds. */
+function describePage(html: string): string {
+  const title = textOf(/<title>([\s\S]*?)<\/title>/i.exec(html)?.[1] ?? '').slice(0, 120);
+  const found = PAGE_MARKERS.filter((marker) => html.toLowerCase().includes(marker));
+  const albumLinks = (html.match(/href="[^"]*BD-[^"]*-\d+\.html"/gi) ?? []).length;
+  return `${html.length} characters, title "${title}", markers [${found.join(', ')}], ${albumLinks} album-like links`;
+}
+
 /** Spaces every request this module sends to the site. */
 let pacer: RequestPacer = createRequestPacer(MIN_REQUEST_INTERVAL_MS);
 
@@ -478,9 +489,14 @@ export async function searchBedetheque(query: MetadataQuery, http: HttpOptions):
   if (!series) {
     return [];
   }
-  const albums = await seriesAlbums.get(series.id, async () =>
-    parseSeriesAlbums(await getHtml(`${SERIES_PAGE_URL}${series.id}`, paced(http), SOURCE)),
-  );
+  const albums = await seriesAlbums.get(series.id, async () => {
+    const html = await getHtml(`${SERIES_PAGE_URL}${series.id}`, paced(http), SOURCE);
+    const albums = parseSeriesAlbums(html);
+    if (albums.length === 0) {
+      lookupLog('bedetheque', `series page read but no album found: ${describePage(html)}`);
+    }
+    return albums;
+  });
   const album = pickAlbum(albums, query.volume);
   lookupLog(
     'bedetheque',
