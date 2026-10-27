@@ -10,6 +10,7 @@ import {
   parseSeriesSearch,
   pickAlbum,
   pickSeries,
+  pickSeriesAll,
   searchBedetheque,
 } from './bedetheque';
 import type { HttpOptions } from './http-json';
@@ -227,6 +228,34 @@ describe('parseSeriesSearch: escaped labels', () => {
     const found = parseSeriesSearch([{ id: 'S3944', label: 'X-Men (L&#039;intégrale)', category: 'Série' }]);
     expect(found).toEqual([{ id: '3944', label: "X-Men (L'intégrale)" }]);
     expect(pickSeries(found, "X-Men (L'Intégrale)")?.id).toBe('3944');
+  });
+});
+
+describe('pickSeriesAll', () => {
+  const tutti = [
+    { id: '9070', label: 'Tutti Frutti (Stakhano)' },
+    { id: '2542', label: 'Tutti Frutti (Trantkat)' },
+  ];
+
+  it('returns every homonymous series, told apart by a qualifier in parentheses', () => {
+    expect(pickSeriesAll(tutti, 'Tutti Frutti').map((series) => series.id)).toEqual(['9070', '2542']);
+  });
+
+  it('returns a single series for a looser match, not a crowd', () => {
+    const found = [
+      { id: '1', label: 'X-Men Legacy' },
+      { id: '2', label: 'X-Men Forever' },
+    ];
+    expect(pickSeriesAll(found, 'X-Men')).toHaveLength(1);
+  });
+
+  it('prefers the exact name to its homonyms', () => {
+    const found = [...tutti, { id: '7', label: 'Tutti Frutti' }];
+    expect(pickSeriesAll(found, 'Tutti Frutti').map((series) => series.id)).toEqual(['7']);
+  });
+
+  it('is empty when nothing matches', () => {
+    expect(pickSeriesAll(tutti, 'Blacksad')).toEqual([]);
   });
 });
 
@@ -477,7 +506,7 @@ describe('searchBedetheque', () => {
     expect(log).toContain('[lookup:bedetheque] search "blacksad" (volume: 2)');
     expect(log).toContain('GET https://www.bdgest.com/ajax/tout?term=blacksad: 200');
     expect(log).toContain('picked S500');
-    expect(log).toMatch(/series page: \d+ albums; picked "2"/);
+    expect(log).toMatch(/series S500: \d+ albums; picked "2"/);
   });
 
   it('logs when no series matches', async () => {
@@ -486,6 +515,29 @@ describe('searchBedetheque', () => {
     const { http } = site([]);
     expect(await searchBedetheque({ text: "X-Men (L'Intégrale)", volume: null }, http)).toEqual([]);
     expect(lines.join('\n')).toContain('search box: 0 series [];');
+  });
+
+  it('offers the album of each homonymous series', async () => {
+    const calls: string[] = [];
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      calls.push(url);
+      if (url.startsWith('https://www.bdgest.com/ajax/tout')) {
+        return Response.json([
+          { id: 'S9070', label: 'Tutti Frutti (Stakhano)', category: 'Série' },
+          { id: 'S2542', label: 'Tutti Frutti (Trantkat)', category: 'Série' },
+        ]);
+      }
+      if (url.startsWith('https://www.bedetheque.com/serie/index/s/')) return new Response(SERIES_PAGE, { status: 200 });
+      return new Response(albumPage(), { status: 200 });
+    });
+    const http: HttpOptions = { fetch: fetch as typeof globalThis.fetch, userAgent: 'Tankobon/test', timeoutMs: 1000 };
+    const found = await searchBedetheque({ text: 'Tutti Frutti', volume: '1' }, http);
+    expect(calls.filter((url) => url.includes('/serie/index/s/'))).toEqual([
+      'https://www.bedetheque.com/serie/index/s/9070',
+      'https://www.bedetheque.com/serie/index/s/2542',
+    ]);
+    expect(found).toHaveLength(2);
   });
 
   it('reads a series page once for several volumes', async () => {

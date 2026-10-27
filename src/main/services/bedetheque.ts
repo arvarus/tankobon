@@ -274,15 +274,11 @@ function withLeadingArticle(label: string): string {
   return /['’]$/.test(article) ? `${article}${match[1]}` : `${article} ${match[1]}`;
 }
 
-/**
- * The series that is the one asked for: the name equal to the text (accents and case ignored), else
- * the shortest name starting with it, else the shortest containing it. A translation of a series
- * (`Blacksad (en allemand)`) only wins when nothing else matches; null when no name contains the text.
- */
-export function pickSeries(candidates: BedethequeSeries[], text: string): BedethequeSeries | null {
+/** The series whose name contains the text, best match first, with the rank (0 is the best) of each match. */
+function rankSeries(candidates: BedethequeSeries[], text: string): { series: BedethequeSeries; rank: number }[] {
   const wanted = normalizeName(text);
   if (!wanted) {
-    return null;
+    return [];
   }
   const isTranslation = (series: BedethequeSeries) => /\(\s*en\s[^)]*\)\s*$/i.test(series.label);
   const rank = (series: BedethequeSeries): number => {
@@ -296,11 +292,42 @@ export function pickSeries(candidates: BedethequeSeries[], text: string): Bedeth
     if (bare === wanted) return 4;
     return name.includes(wanted) ? 5 : Infinity;
   };
-  const ranked = candidates
+  return candidates
     .map((series, index) => ({ series, index, rank: rank(series) }))
     .filter((entry) => entry.rank !== Infinity)
-    .sort((a, b) => a.rank - b.rank || a.series.label.length - b.series.label.length || a.index - b.index);
-  return ranked[0]?.series ?? null;
+    .sort((a, b) => a.rank - b.rank || a.series.label.length - b.series.label.length || a.index - b.index)
+    .map(({ series, rank: value }) => ({ series, rank: value }));
+}
+
+/**
+ * The series that is the one asked for: the name equal to the text (accents and case ignored), else
+ * the shortest name starting with it, else the shortest containing it. A translation of a series
+ * (`Blacksad (en allemand)`) only wins when nothing else matches; null when no name contains the text.
+ */
+export function pickSeries(candidates: BedethequeSeries[], text: string): BedethequeSeries | null {
+  return rankSeries(candidates, text)[0]?.series ?? null;
+}
+
+/** At most this many homonymous series are searched. */
+const MAX_HOMONYMS = 3;
+
+/**
+ * The series to look in: {@link pickSeries}'s choice, plus the other series that are just as good a match.
+ * Homonyms differ only by the qualifier the site adds in parentheses (`Tutti Frutti (Stakhano)`,
+ * `Tutti Frutti (Trantkat)`), so when the best match is the exact name (with or without such a qualifier)
+ * every series of that rank is returned, up to `MAX_HOMONYMS` (3); a looser match (a name that merely
+ * starts with or contains the text) gives its single best series, not a crowd.
+ */
+export function pickSeriesAll(candidates: BedethequeSeries[], text: string): BedethequeSeries[] {
+  const ranked = rankSeries(candidates, text);
+  if (ranked.length === 0) {
+    return [];
+  }
+  const best = ranked[0].rank;
+  if (best > 1) {
+    return [ranked[0].series];
+  }
+  return ranked.filter((entry) => entry.rank === best).slice(0, MAX_HOMONYMS).map((entry) => entry.series);
 }
 
 /** `MM/YYYY` (or `YYYY`) as the list shows the legal deposit, to `YYYY-MM` (or `YYYY`). */
@@ -494,30 +521,39 @@ export async function searchBedetheque(query: MetadataQuery, http: HttpOptions):
   const found = await seriesSearches.get(normalizeName(text), async () =>
     parseSeriesSearch(await getJson(`${SERIES_SEARCH_URL}?term=${encodeURIComponent(text)}`, paced(http), SOURCE)),
   );
-  const series = pickSeries(found, text);
+  const matched = pickSeriesAll(found, text);
   lookupLog(
     'bedetheque',
     `search box: ${found.length} series [${found.slice(0, 10).map((entry) => `S${entry.id} "${entry.label}"`).join(', ')}]; ` +
-      (series ? `picked S${series.id} "${series.label}"` : 'none picked'),
+      (matched.length > 0 ? `picked ${matched.map((entry) => `S${entry.id} "${entry.label}"`).join(', ')}` : 'none picked'),
   );
-  if (!series) {
-    return [];
+  const lists: { series: BedethequeSeries; albums: SeriesAlbum[]; album: SeriesAlbum | null }[] = [];
+  for (const series of matched) {
+    const albums = await seriesAlbums.get(series.id, async () => {
+      const html = await getHtml(`${SERIES_PAGE_URL}${series.id}`, paced(http), SOURCE);
+      const albums = parseSeriesAlbums(html);
+      if (albums.length === 0) {
+        lookupLog('bedetheque', `series page read but no album found: ${describePage(html)}`);
+      }
+      return albums;
+    });
+    const album = pickAlbum(albums, query.volume);
+    lookupLog(
+      'bedetheque',
+      `series S${series.id}: ${albums.length} albums; ` + (album ? `picked "${album.number}" ${album.url}` : 'none picked'),
+    );
+    lists.push({ series, albums, album });
   }
-  const albums = await seriesAlbums.get(series.id, async () => {
-    const html = await getHtml(`${SERIES_PAGE_URL}${series.id}`, paced(http), SOURCE);
-    const albums = parseSeriesAlbums(html);
-    if (albums.length === 0) {
-      lookupLog('bedetheque', `series page read but no album found: ${describePage(html)}`);
+  // The albums of the right volume, one per homonymous series, else every series' albums to choose from.
+  const picked = lists.filter((entry) => entry.album);
+  if (picked.length > 0) {
+    const candidates: MetadataCandidate[] = [];
+    for (const entry of picked) {
+      candidates.push(await fetchBedethequeAlbum(entry.album!.url, http));
     }
-    return albums;
-  });
-  const album = pickAlbum(albums, query.volume);
-  lookupLog(
-    'bedetheque',
-    `series page: ${albums.length} albums; ` + (album ? `picked "${album.number}" ${album.url}` : 'none picked, listing the albums'),
-  );
-  if (album) {
-    return [await fetchBedethequeAlbum(album.url, http)];
+    return candidates;
   }
-  return albums.slice(0, MAX_SERIES_CANDIDATES).map((entry) => listCandidate(entry, series.label));
+  return lists
+    .flatMap((entry) => entry.albums.map((album) => listCandidate(album, entry.series.label)))
+    .slice(0, MAX_SERIES_CANDIDATES);
 }
