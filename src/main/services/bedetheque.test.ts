@@ -13,11 +13,14 @@ import {
   searchBedetheque,
 } from './bedetheque';
 import type { HttpOptions } from './http-json';
+import { setLookupLogSink } from './lookup-log';
 
 // The user-facing messages are checked in French; English is the interface's default.
 beforeAll(() => applyLanguage('fr'));
 // Nothing is remembered from one test to the next, and the requests are not spaced out.
 beforeEach(() => resetBedethequeState(0));
+// The lookup log stays out of the test output.
+beforeEach(() => setLookupLogSink(null));
 
 const URL_1 = 'https://www.bedetheque.com/BD-Winged-Mermaids-Tome-1-311296.html';
 
@@ -421,6 +424,26 @@ describe('searchBedetheque', () => {
     ]);
     expect(found).toHaveLength(1);
     expect(found[0].credits.length).toBeGreaterThan(0);
+  });
+
+  it('logs the requests and the choices made', async () => {
+    const lines: string[] = [];
+    setLookupLogSink((line) => lines.push(line));
+    const { http } = site();
+    await searchBedetheque({ text: 'blacksad', volume: '2' }, http);
+    const log = lines.join('\n');
+    expect(log).toContain('[lookup:bedetheque] search "blacksad" (volume: 2)');
+    expect(log).toContain('GET https://www.bdgest.com/ajax/tout?term=blacksad: 200');
+    expect(log).toContain('picked S500');
+    expect(log).toMatch(/series page: \d+ albums; picked "2"/);
+  });
+
+  it('logs when no series matches', async () => {
+    const lines: string[] = [];
+    setLookupLogSink((line) => lines.push(line));
+    const { http } = site([]);
+    expect(await searchBedetheque({ text: "X-Men (L'Intégrale)", volume: null }, http)).toEqual([]);
+    expect(lines.join('\n')).toContain('search box: 0 series [];');
   });
 
   it('reads a series page once for several volumes', async () => {

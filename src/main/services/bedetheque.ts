@@ -9,6 +9,7 @@ import type { CreditInput, CreditRole } from '../../shared/library';
 import { isBedethequeAlbumUrl, type MetadataCandidate, type MetadataQuery } from '../../shared/metadata';
 import { splitPersonName } from '../../shared/title-parsing';
 import { getHtml, getJson, type HttpOptions } from './http-json';
+import { lookupLog } from './lookup-log';
 import { createPromiseCache } from './promise-cache';
 import { createRequestPacer, type RequestPacer } from './request-pacer';
 
@@ -406,7 +407,16 @@ function paced(http: HttpOptions): HttpOptions {
     ...http,
     fetch: async (input, init) => {
       await pacer.wait(init?.signal ?? http.signal);
-      return http.fetch(input, init);
+      const started = Date.now();
+      try {
+        const response = await http.fetch(input, init);
+        const landed = response.url && response.url !== String(input) ? ` -> ${response.url}` : '';
+        lookupLog('bedetheque', `GET ${String(input)}${landed}: ${response.status} (${Date.now() - started} ms)`);
+        return response;
+      } catch (error) {
+        lookupLog('bedetheque', `GET ${String(input)} failed after ${Date.now() - started} ms: ${String(error)}`);
+        throw error;
+      }
     },
   };
 }
@@ -435,13 +445,20 @@ export function resetBedethequeState(minIntervalMs = MIN_REQUEST_INTERVAL_MS): v
  */
 export async function searchBedetheque(query: MetadataQuery, http: HttpOptions): Promise<MetadataCandidate[]> {
   const text = query.text.trim();
+  lookupLog('bedetheque', `search "${text}" (volume: ${query.volume ?? 'none'})`);
   if (text.length < MIN_SEARCH_LENGTH) {
+    lookupLog('bedetheque', `text shorter than ${MIN_SEARCH_LENGTH} characters, nothing searched`);
     return [];
   }
   const found = await seriesSearches.get(normalizeName(text), async () =>
     parseSeriesSearch(await getJson(`${SERIES_SEARCH_URL}?term=${encodeURIComponent(text)}`, paced(http), SOURCE)),
   );
   const series = pickSeries(found, text);
+  lookupLog(
+    'bedetheque',
+    `search box: ${found.length} series [${found.slice(0, 10).map((entry) => `S${entry.id} "${entry.label}"`).join(', ')}]; ` +
+      (series ? `picked S${series.id} "${series.label}"` : 'none picked'),
+  );
   if (!series) {
     return [];
   }
@@ -449,6 +466,10 @@ export async function searchBedetheque(query: MetadataQuery, http: HttpOptions):
     parseSeriesAlbums(await getHtml(`${SERIES_PAGE_URL}${series.id}`, paced(http), SOURCE)),
   );
   const album = pickAlbum(albums, query.volume);
+  lookupLog(
+    'bedetheque',
+    `series page: ${albums.length} albums; ` + (album ? `picked "${album.number}" ${album.url}` : 'none picked, listing the albums'),
+  );
   if (album) {
     return [await fetchBedethequeAlbum(album.url, http)];
   }
