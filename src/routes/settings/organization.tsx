@@ -65,6 +65,20 @@ function OrganizationSettingsPage() {
   const [organizeStatus, setOrganizeStatus] = useState<{ message: string; error?: boolean } | null>(null);
   // A resynchronization or an organization: either one blocks the other.
   const busy = progress !== null;
+  // What `.deletedByTankobon` holds, shown beside the button that empties it (null: unknown or no organized folder).
+  const [deletedBytes, setDeletedBytes] = useState<number | null>(null);
+  const organizedFolder = settings.libraryOrganizationFolder;
+  // Re-read when a run ends (a conversion or an orphan cleaning fills the folder) and when the folder changes.
+  useEffect(() => {
+    if (busy) return;
+    let current = true;
+    void window.tankobon.library.countConvertible().then((count) => {
+      if (current) setDeletedBytes(count.status === 'ok' ? count.deletedBytes : null);
+    });
+    return () => {
+      current = false;
+    };
+  }, [busy, organizedFolder, convertStatus]);
 
   // Also shows a run started at launch, or from another window.
   useEffect(() => window.tankobon.library.onScanProgress((p) => setProgress(p.phase === 'done' ? null : p)), []);
@@ -311,6 +325,9 @@ function OrganizationSettingsPage() {
             <Trash2 />
             {t('emptyDeleted')}
           </Button>
+          {deletedBytes !== null && (
+            <span className="ml-3 text-sm text-muted-foreground">{t('emptyDeletedSize', { size: formatFileSize(deletedBytes) })}</span>
+          )}
         </div>
         <p className="text-sm text-muted-foreground">{t('cleanFoldersHint')}</p>
         <div>

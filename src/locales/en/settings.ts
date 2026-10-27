@@ -155,6 +155,7 @@ export default {
     convertCbrFailed_other: '{{count}} could not be converted; they were left as they were',
     emptyDeleted: 'Empty the .deletedByTankobon folder…',
     emptyDeletedHint: 'Deletes for good the CBR kept in the .deletedByTankobon folder after their conversion.',
+    emptyDeletedSize: 'Currently {{size}}',
     emptyDeletedNone: 'The .deletedByTankobon folder is empty.',
     emptyDeletedConfirmTitle: 'Empty the .deletedByTankobon folder?',
     emptyDeletedConfirm_one: 'Delete the {{count}} file ({{size}}) of the .deletedByTankobon folder for good? It can’t be undone.',

@@ -6,7 +6,7 @@
  * empties it when they want. Kept out of the IPC layer, which only calls it, so it runs under Vitest.
  * @module
  */
-import { readdir, rm, rmdir, stat } from 'node:fs/promises';
+import { lstat, readdir, rm, rmdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import { comicFormat } from '../../shared/comic';
@@ -45,11 +45,21 @@ export interface CbrConverter {
   emptyDeleted(): Promise<EmptyDeletedResult>;
 }
 
-/** Files at the top of `folder` (what the conversion puts there) and their total size; both 0 when it doesn't exist. */
+/** Total size of a file, or of everything under a folder (the orphan folders are parked whole); 0 when unreadable. Links are not followed. */
+async function sizeOf(target: string): Promise<number> {
+  const info = await lstat(target).catch(() => null);
+  if (!info) return 0;
+  if (!info.isDirectory()) return info.size;
+  let bytes = 0;
+  for (const name of await readdir(target).catch(() => [] as string[])) bytes += await sizeOf(path.join(target, name));
+  return bytes;
+}
+
+/** What is at the top of `folder` (files from the conversion, folders from the orphan cleaning) and the total size; both 0 when it doesn't exist. */
 async function folderContents(folder: string): Promise<{ names: string[]; bytes: number }> {
   const names = await readdir(folder).catch(() => [] as string[]);
   let bytes = 0;
-  for (const name of names) bytes += (await stat(path.join(folder, name)).catch(() => null))?.size ?? 0;
+  for (const name of names) bytes += await sizeOf(path.join(folder, name));
   return { names, bytes };
 }
 
@@ -148,7 +158,7 @@ export function createCbrConverter(
         const result = { deleted: 0, bytesFreed: 0, failed: 0 };
         for (const name of names) {
           const file = path.join(folder, name);
-          const size = (await stat(file).catch(() => null))?.size ?? 0;
+          const size = await sizeOf(file);
           try {
             await rm(file, { recursive: true });
             result.deleted++;

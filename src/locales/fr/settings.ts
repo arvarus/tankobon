@@ -157,6 +157,7 @@ const settings: Translation<typeof en> = {
     convertCbrFailed_other: "{{count}} n'ont pas pu être convertis ; ils sont restés tels quels",
     emptyDeleted: 'Vider le dossier .deletedByTankobon…',
     emptyDeletedHint: 'Supprime définitivement les CBR conservés dans le dossier .deletedByTankobon après leur conversion.',
+    emptyDeletedSize: 'Actuellement {{size}}',
     emptyDeletedNone: 'Le dossier .deletedByTankobon est vide.',
     emptyDeletedConfirmTitle: 'Vider le dossier .deletedByTankobon ?',
     emptyDeletedConfirm_one: 'Supprimer définitivement {{count}} fichier ({{size}}) du dossier .deletedByTankobon ? Cette action est irréversible.',
