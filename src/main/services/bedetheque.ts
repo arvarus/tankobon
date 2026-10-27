@@ -349,6 +349,20 @@ export function parseSeriesAlbums(html: string): SeriesAlbum[] {
 function parseCoverAlbums(html: string): SeriesAlbum[] {
   const block = /<div class="bdt-sh-tomes\b[^"]*">([\s\S]*?)<\/div>/i.exec(html)?.[1] ?? '';
   const albums: SeriesAlbum[] = [];
+  // Some one-shots' pages have no such block, only the "Détail des albums" article, whose heading links the album.
+  for (const article of html.matchAll(/<article\b[^>]*\bbdt-edition--detail\b[^>]*>([\s\S]*?)<h3>([\s\S]*?)<\/h3>/gi)) {
+    const link = /<a\b[^>]*\bitemprop="url"[^>]*>/i.exec(article[2])?.[0];
+    const url = link ? /href="([^"]+)"/i.exec(link)?.[1] : undefined;
+    if (url && isBedethequeAlbumUrl(url) && !albums.some((album) => album.url === url)) {
+      albums.push({
+        url,
+        number: '',
+        title: textOf(/<span itemprop="name">([\s\S]*?)<\/span>\s*<\/a>/i.exec(article[2])?.[1] ?? ''),
+        releaseDate: null,
+        kind: 'album',
+      });
+    }
+  }
   for (const link of block.matchAll(/<a\b([^>]*)>/gi)) {
     const url = /href="([^"]+)"/i.exec(link[1])?.[1];
     if (url && isBedethequeAlbumUrl(url) && !albums.some((album) => album.url === url)) {

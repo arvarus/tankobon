@@ -375,6 +375,27 @@ const ONE_SHOT_ALBUM_PAGE = `${ONE_SHOT_PAGE}
     </dl>
   </article>`;
 
+describe('a one-shot series page with only the album detail', () => {
+  const html = `<article class="bdt bdt-dense bdt-page-serie"><section class="bdt-section-head"><h2>Détail des albums de la série</h2></section>
+<article class="bdt-edition bdt-edition--detail" id="ed-71270" itemscope itemtype="https://schema.org/Book">
+<a name="71270"></a>
+<div class="bdt-edition-head"><h3>
+<a itemprop="url" href="https://www.bedetheque.com/BD-Tanka-71270.html" title="Voir la fiche album de Tanka"><span itemprop="name"><span class="bdt-numa"></span>Tanka</span></a>
+</h3></div></article></article>`;
+
+  it('reads the album from the detail heading', () => {
+    expect(parseSeriesAlbums(html)).toEqual([
+      { url: 'https://www.bedetheque.com/BD-Tanka-71270.html', number: '', title: 'Tanka', releaseDate: null, kind: 'album' },
+    ]);
+  });
+
+  it('is picked as the one-shot, with or without volume 1', () => {
+    const albums = parseSeriesAlbums(html);
+    expect(pickAlbum(albums, null)).toBe(albums[0]);
+    expect(pickAlbum(albums, '1')).toBe(albums[0]);
+  });
+});
+
 describe('a one-shot album page served as its series page', () => {
   it('is read from the album detail', () => {
     const album = parseBedethequeAlbum(ONE_SHOT_ALBUM_PAGE, 'https://www.bedetheque.com/BD-Vitesse-moderne-19759.html');
