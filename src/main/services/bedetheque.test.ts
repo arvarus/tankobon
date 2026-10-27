@@ -275,6 +275,19 @@ describe('pickSeriesAll', () => {
   });
 });
 
+describe('pickSeries: a text with a trailing article', () => {
+  it("finds a series when the text, like the site's name, has its article last", () => {
+    const found = [{ id: '2649', label: "Âge d'ombre (L')" }];
+    expect(pickSeries(found, "Âge D'Ombre (L')")?.id).toBe('2649');
+    expect(pickSeries(found, "L'Âge D'Ombre")?.id).toBe('2649');
+    expect(pickSeries(found, "Âge D'Ombre")?.id).toBe('2649');
+  });
+
+  it('puts the article of the text back in front for a name the site writes in full', () => {
+    expect(pickSeries([{ id: '1', label: 'Les Cahiers d\'Esther' }], "Cahiers d'Esther (Les)")?.id).toBe('1');
+  });
+});
+
 describe('pickSeries: trailing articles', () => {
   it('finds a series whose article the site moved to the end', () => {
     const found = [{ id: '50922', label: "Cahiers d'Esther (Les)" }];

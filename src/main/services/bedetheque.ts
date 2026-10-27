@@ -281,7 +281,8 @@ function compact(name: string): string {
 
 /** The series whose name contains the text, best match first, with the rank (0 is the best) of each match. */
 function rankSeries(candidates: BedethequeSeries[], text: string): { series: BedethequeSeries; rank: number }[] {
-  const wanted = normalizeName(text);
+  // The text may be written like the site does, with the article last (`Âge d'ombre (L')`, as a library title often is).
+  const wanted = normalizeName(withLeadingArticle(text.trim()));
   if (!wanted) {
     return [];
   }
