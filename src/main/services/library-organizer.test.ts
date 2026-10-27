@@ -339,6 +339,12 @@ describe('organizedPaths', () => {
 });
 
 describe('templatedStem', () => {
+  it('puts the volume prefix in front of the volume, of numeric ones only on request', () => {
+    expect(templatedStem('{series} {volume}', entry(), '.cbz', [], 'T')).toBe('Tintin T20');
+    expect(templatedStem('{series} {volume}', entry({ volume: 'HS' }), '.cbz', [], 'T')).toBe('Tintin THS');
+    expect(templatedStem('{series} {volume}', entry({ volume: 'HS' }), '.cbz', [], 'T', true)).toBe('Tintin HS');
+  });
+
   it('fills the template from the entry', () => {
     expect(templatedStem('{series} - T{volume} - {title} ({year}, {author})', entry(), '.cbz')).toBe(
       'Tintin - T20 - Tintin au Tibet (1960, Hergé)',

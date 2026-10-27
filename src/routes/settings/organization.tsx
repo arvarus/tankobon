@@ -18,7 +18,13 @@ import { formatArticleList, isArticleList, parseArticleList } from '@/shared/art
 import { duplicateGroups } from '@/lib/library-editions';
 import { fileNameExample, levelChoices, setLevel, structureExample } from '@/lib/library-structure';
 import { cn, formatFileSize } from '@/lib/utils';
-import { FILE_NAME_FIELDS, MAX_FILE_NAME_TEMPLATE_LENGTH, fileNameTemplateError } from '@/shared/file-name-template';
+import {
+  FILE_NAME_FIELDS,
+  MAX_FILE_NAME_TEMPLATE_LENGTH,
+  MAX_VOLUME_PREFIX_LENGTH,
+  fileNameTemplateError,
+  isVolumePrefix,
+} from '@/shared/file-name-template';
 import type { LibraryEntry, ScanFailure, ScanProgress } from '@/shared/library';
 import {
   MAX_LIBRARY_LEVELS,
@@ -412,7 +418,12 @@ function StructureEditor({ disabled }: { disabled: boolean }) {
     if (isLibraryStructure(next)) update('libraryStructure', next);
   };
 
-  const example = structureExample(draft, settings.libraryFileName);
+  const example = structureExample(
+    draft,
+    settings.libraryFileName,
+    settings.libraryVolumePrefix,
+    settings.libraryVolumePrefixNumericOnly,
+  );
 
   return (
     <div className="flex flex-col gap-2">
@@ -495,9 +506,37 @@ function FileNameEditor({ disabled }: { disabled: boolean }) {
       {error ? (
         <p className="text-sm text-destructive">{t(`fileNameErrors.${error}`, { fields })}</p>
       ) : (
-        <p className="text-sm text-muted-foreground">{t('structureExample', { path: fileNameExample(draft) })}</p>
+        <p className="text-sm text-muted-foreground">{t('structureExample', { path: fileNameExample(draft, settings.libraryVolumePrefix, settings.libraryVolumePrefixNumericOnly) })}</p>
       )}
       <p className="text-sm text-muted-foreground">{t('fileNameHint', { fields })}</p>
+      <label htmlFor="library-volume-prefix" className="text-sm">
+        {t('volumePrefix')}
+      </label>
+      <input
+        id="library-volume-prefix"
+        type="text"
+        spellCheck={false}
+        autoComplete="off"
+        maxLength={MAX_VOLUME_PREFIX_LENGTH}
+        placeholder={t('volumePrefixPlaceholder')}
+        className="w-full max-w-xs rounded-md border bg-background px-3 py-1.5 font-mono text-sm"
+        value={settings.libraryVolumePrefix}
+        disabled={disabled}
+        onChange={(event) => {
+          if (isVolumePrefix(event.target.value)) update('libraryVolumePrefix', event.target.value);
+        }}
+      />
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={settings.libraryVolumePrefixNumericOnly}
+          disabled={disabled}
+          onChange={(event) => update('libraryVolumePrefixNumericOnly', event.target.checked)}
+        />
+        {t('volumePrefixNumericOnly')}
+      </label>
+      <p className="text-sm text-muted-foreground">{t('volumePrefixNumericOnlyHint')}</p>
+      <p className="text-sm text-muted-foreground">{t('volumePrefixHint')}</p>
     </div>
   );
 }

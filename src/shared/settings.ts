@@ -3,7 +3,7 @@
  * @module
  */
 import { DEFAULT_ARTICLES, isArticleList } from './articles';
-import { isFileNameTemplate } from './file-name-template';
+import { isFileNameTemplate, isVolumePrefix } from './file-name-template';
 import { isSupportedLanguage, type LanguageSetting } from './i18n';
 
 /** Modes of the library organization (see {@link AppSettings.libraryOrganization}). */
@@ -264,6 +264,14 @@ export interface AppSettings {
    */
   libraryFileName: string;
   /**
+   * Text put in front of the volume in the file name (`T`, `Vol. `, `#`…), so `{volume}` gives `T7`
+   * (see {@link isVolumePrefix}). Empty (the default), the volume is written as it is. Like the template,
+   * changing it renames nothing by itself.
+   */
+  libraryVolumePrefix: string;
+  /** Whether `libraryVolumePrefix` only goes in front of a whole-number volume (`7`, not `HS` nor `12.1`). */
+  libraryVolumePrefixNumericOnly: boolean;
+  /**
    * Whether the organization files a name under its first real word: a leading article of
    * `libraryArticles` goes to the end (`Le vent du nord` → `Vent du nord (Le)`) in the series and album
    * folders, the `letter` level and the `{series}` and `{title}` fields of the file name. Like the tree, it
@@ -341,6 +349,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   libraryOrganizationFolder: '',
   libraryStructure: [],
   libraryFileName: '',
+  libraryVolumePrefix: '',
+  libraryVolumePrefixNumericOnly: false,
   libraryIgnoreArticles: false,
   libraryArticles: [...DEFAULT_ARTICLES],
   librarySidecarCovers: true,
@@ -369,6 +379,8 @@ export const SHARED_SETTINGS: readonly (keyof AppSettings)[] = [
   'libraryOrganization',
   'libraryStructure',
   'libraryFileName',
+  'libraryVolumePrefix',
+  'libraryVolumePrefixNumericOnly',
   'libraryIgnoreArticles',
   'libraryArticles',
   'librarySidecarCovers',
@@ -460,6 +472,8 @@ export const SETTING_VALIDATORS: SettingValidators = {
   libraryOrganizationFolder: isShortString,
   libraryStructure: isLibraryStructure,
   libraryFileName: isFileNameTemplate,
+  libraryVolumePrefix: isVolumePrefix,
+  libraryVolumePrefixNumericOnly: isBoolean,
   libraryIgnoreArticles: isBoolean,
   libraryArticles: isArticleList,
   librarySidecarCovers: isBoolean,

@@ -48,6 +48,24 @@ export function padVolume(volume: string, width: number): string {
   return /^\d+$/.test(volume) ? volume.padStart(width, '0') : volume;
 }
 
+/** Longest volume prefix accepted (`AppSettings.libraryVolumePrefix`), in characters. */
+export const MAX_VOLUME_PREFIX_LENGTH = 20;
+
+/** Whether `value` can be a volume prefix: short, with no path separator nor control character. */
+export function isVolumePrefix(value: unknown): value is string {
+  // eslint-disable-next-line no-control-regex
+  return typeof value === 'string' && value.length <= MAX_VOLUME_PREFIX_LENGTH && !/[/\\\u0000-\u001f]/.test(value);
+}
+
+/**
+ * `volume` with `prefix` in front (`T` and `7` give `T7`). An empty volume stays empty, so it is still left
+ * out of the name; with `numericOnly`, only a plain whole number gets the prefix (`HS` and `12.1` stay as they are).
+ */
+export function prefixVolume(volume: string, prefix: string, numericOnly: boolean): string {
+  if (volume === '' || prefix === '') return volume;
+  return numericOnly && !/^\d+$/.test(volume) ? volume : prefix + volume;
+}
+
 // A `{volume}` field with the text glued before it (`T` of `T{volume}`) and the separator that precedes it.
 const VOLUME_WITH_PREFIX = /(?:\s+[-–—_,.:;]+\s*|\s+)?[^\s{}]*\{volume(?::[1-4])?\}/g;
 
@@ -55,13 +73,22 @@ const VOLUME_WITH_PREFIX = /(?:\s+[-–—_,.:;]+\s*|\s+)?[^\s{}]*\{volume(?::[1
  * `template` with each field replaced by its value: `{series} - T{volume} - {title}` gives
  * `Tintin - T20 - Tintin au Tibet`, and `T{volume:2}` gives `T07` for the volume 7. An empty volume is
  * left out with the text glued before the field and the separator before that: the same template gives
- * `Tintin - Tintin au Tibet`. The result isn't made safe for the file system: the caller does it.
+ * `Tintin - Tintin au Tibet`. With `volumePrefix`, each `{volume}` is written with it in front, after the
+ * padding (`T` and `{volume:2}` give `T07`); `prefixNumericOnly` keeps it off a volume that isn't a whole
+ * number. The result isn't made safe for the file system: the caller does it.
  */
-export function fillFileNameTemplate(template: string, values: Record<FileNameField, string>): string {
+export function fillFileNameTemplate(
+  template: string,
+  values: Record<FileNameField, string>,
+  volumePrefix = '',
+  prefixNumericOnly = false,
+): string {
   const source = values.volume === '' ? template.replace(VOLUME_WITH_PREFIX, '').replace(/^[\s\-–—_,.:;]+/, '') : template;
-  return source.replace(FIELD, (match, field: FileNameField, width: string | undefined) =>
-    field === 'volume' && width !== undefined ? padVolume(values.volume, Number(width)) : width === undefined ? values[field] : match,
-  );
+  return source.replace(FIELD, (match, field: FileNameField, width: string | undefined) => {
+    if (field !== 'volume') return width === undefined ? values[field] : match;
+    const volume = width === undefined ? values.volume : padVolume(values.volume, Number(width));
+    return prefixVolume(volume, volumePrefix, prefixNumericOnly);
+  });
 }
 
 /** What {@link parseFileName} reads out of a file name: the fields the template names and the name holds. */

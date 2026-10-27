@@ -127,15 +127,19 @@ export function createLibraryOrganizer(
       libraryFileName: fileName,
       libraryIgnoreArticles: ignoreArticles,
       libraryArticles,
+      libraryVolumePrefix: volumePrefix,
+      libraryVolumePrefixNumericOnly: prefixNumericOnly,
     } = settings.getAll();
-    return { mode, root, structure, fileName, articles: ignoreArticles ? libraryArticles : [] };
+    return { mode, root, structure, fileName, articles: ignoreArticles ? libraryArticles : [], volumePrefix, prefixNumericOnly };
   };
 
   /** The organized folder when the organization is on and its folder is there, else the error to return. */
   const usableRoot = async (): Promise<{ target: OrganizationTarget } | { status: 'error'; message: string }> => {
-    const { mode, root, structure, fileName, articles } = current();
+    const { mode, root, structure, fileName, articles, volumePrefix, prefixNumericOnly } = current();
     const problem = await organizedFolderProblem(mode, root);
-    return problem === null ? { target: { root, structure, fileName, articles } } : { status: 'error', message: problem };
+    return problem === null
+      ? { target: { root, structure, fileName, articles, volumePrefix, prefixNumericOnly } }
+      : { status: 'error', message: problem };
   };
 
   const move = async (

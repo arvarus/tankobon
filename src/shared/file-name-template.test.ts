@@ -4,6 +4,8 @@ import {
   fileNameTemplateError,
   fillFileNameTemplate,
   isFileNameTemplate,
+  isVolumePrefix,
+  MAX_VOLUME_PREFIX_LENGTH,
   padVolume,
   parseFileName,
 } from './file-name-template';
@@ -108,5 +110,30 @@ describe('volume padding', () => {
     expect(parseFileName('Tintin - T012', '{series} - T{volume:3}')).toEqual({ series: 'Tintin', volume: '12' });
     expect(parseFileName('Tintin - T00', '{series} - T{volume:2}')).toEqual({ series: 'Tintin', volume: '0' });
     expect(parseFileName('Tintin - THS', '{series} - T{volume:2}')).toEqual({ series: 'Tintin', volume: 'HS' });
+  });
+
+  it('puts a prefix in front of the volume, after the padding', () => {
+    expect(fillFileNameTemplate('{series} {volume}', values, 'T')).toBe('Tintin T7');
+    expect(fillFileNameTemplate('{series} {volume:2}', values, 'Vol. ')).toBe('Tintin Vol. 07');
+    expect(fillFileNameTemplate('{series} {volume}', { ...values, volume: 'HS' }, 'T')).toBe('Tintin THS');
+  });
+
+  it('keeps the prefix off a non-numeric volume when asked', () => {
+    expect(fillFileNameTemplate('{series} {volume}', { ...values, volume: 'HS' }, 'T', true)).toBe('Tintin HS');
+    expect(fillFileNameTemplate('{series} {volume}', { ...values, volume: '12.1' }, 'T', true)).toBe('Tintin 12.1');
+    expect(fillFileNameTemplate('{series} {volume:2}', values, 'T', true)).toBe('Tintin T07');
+  });
+
+  it('leaves out an empty volume even with a prefix', () => {
+    expect(fillFileNameTemplate('{series} - {volume} - {title}', { ...values, volume: '' }, 'T')).toBe('Tintin - Le Lotus bleu');
+  });
+
+  it('validates a volume prefix', () => {
+    expect(isVolumePrefix('')).toBe(true);
+    expect(isVolumePrefix('Vol. ')).toBe(true);
+    expect(isVolumePrefix('a/b')).toBe(false);
+    expect(isVolumePrefix('a\\b')).toBe(false);
+    expect(isVolumePrefix('x'.repeat(MAX_VOLUME_PREFIX_LENGTH + 1))).toBe(false);
+    expect(isVolumePrefix(3)).toBe(false);
   });
 });

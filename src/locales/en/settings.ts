@@ -117,6 +117,11 @@ export default {
     writeNfo: 'Write an information file (.nfo) beside each comic',
     writeNfoHint: 'Checked, a resynchronization and the saving of a lookup write the comic’s .nfo. Unchecked, none is created or replaced (existing ones are still read).',
     fileNameHint: 'Fields: {{fields}}. {volume:2} pads a whole-number volume with zeros (from {volume:1} to {volume:4}): 7 gives 07, while other volumes (HS, 12.1…) stay as they are. Left empty, files keep their original name; the extension is always kept. A missing series, volume, year or author gives “Unknown”, and the characters a file name can’t hold become “_”. Changing it renames nothing by itself: “Organize the whole library…” renames the comics.',
+    volumePrefix: 'Volume prefix',
+    volumePrefixPlaceholder: 'None, for example T, Vol. or #',
+    volumePrefixHint: 'Put in front of {volume} in the file name: with “T”, volume 7 gives T7 (after the zero padding: {volume:2} gives T07). Leave {volume} bare in the template above. Changing it renames nothing by itself: “Organize the whole library…” renames the comics.',
+    volumePrefixNumericOnly: 'Only for numeric volumes',
+    volumePrefixNumericOnlyHint: 'Checked, the prefix is left off volumes that aren’t a whole number (HS, 12.1…).',
     fileNameErrors: {
       separator: 'A file name can’t contain “/” or “\\”: the folders come from the tree above.',
       braces: 'Unknown field: use {{fields}}.',
