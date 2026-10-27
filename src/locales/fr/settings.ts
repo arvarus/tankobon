@@ -119,6 +119,11 @@ const settings: Translation<typeof en> = {
     writeNfo: 'Écrire un fichier d’informations (.nfo) à côté de chaque BD',
     writeNfoHint: 'Coché, une resynchronisation et l’enregistrement d’une recherche écrivent le .nfo de la BD. Décoché, aucun n’est créé ni remplacé (ceux qui existent sont toujours lus).',
     fileNameHint: 'Champs : {{fields}}. {volume:2} complète un tome entier par des zéros à gauche (de {volume:1} à {volume:4}) : 7 donne 07, les autres tomes (HS, 12.1…) restent tels quels. Vide, les fichiers gardent leur nom d’origine ; l’extension est toujours conservée. Une série, un tome, une année ou un auteur manquant donne « Inconnu », et les caractères qu’un nom de fichier ne peut pas contenir deviennent « _ ». Le modifier ne renomme rien à lui seul : « Organiser toute la bibliothèque… » renomme les BD.',
+    volumePrefix: 'Préfixe du volume',
+    volumePrefixPlaceholder: 'Aucun, par exemple T, Vol. ou #',
+    volumePrefixHint: 'Placé devant {volume} dans le nom du fichier : avec « T », le volume 7 donne T7 (après le remplissage par des zéros : {volume:2} donne T07). Laisse {volume} seul dans le modèle ci-dessus. Le modifier ne renomme rien : « Organiser toute la bibliothèque… » renomme les bandes dessinées.',
+    volumePrefixNumericOnly: 'Seulement pour les volumes numériques',
+    volumePrefixNumericOnlyHint: 'Coché, le préfixe n’est pas ajouté aux volumes qui ne sont pas un nombre entier (HS, 12.1…).',
     fileNameErrors: {
       separator: 'Un nom de fichier ne peut pas contenir « / » ni « \\ » : les dossiers viennent de l’arborescence ci-dessus.',
       braces: 'Champ inconnu : utilisez {{fields}}.',

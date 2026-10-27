@@ -156,22 +156,30 @@ export function structureFolders(
  * `entry`'s file: each field filled from the entry (a missing series, year or author giving the
  * translated "Unknown", a missing volume being left out with the text glued before it; the author as in the `author` level), then made safe like a folder name and cut
  * so that `extension` still fits in {@link MAX_NAME_BYTES}. With `articles`, a leading article of the series and
- * of the title goes to the end (`Vent du nord (Le)`).
+ * of the title goes to the end (`Vent du nord (Le)`), and `volumePrefix` (`AppSettings.libraryVolumePrefix`) is put
+ * in front of the volume, only when it is a whole number with `prefixNumericOnly`.
  */
 export function templatedStem(
   fileName: string,
   entry: OrganizedEntry,
   extension: string,
   articles: readonly string[] = [],
+  volumePrefix = '',
+  prefixNumericOnly = false,
 ): string {
   const unknown = t('library:organizationUnknown');
-  const name = fillFileNameTemplate(fileName, {
-    series: moveArticleToEnd(entry.series?.trim() ?? '', articles) || unknown,
-    volume: entry.volume?.trim() ?? '',
-    title: moveArticleToEnd(entry.title, articles),
-    year: levelValue('year', entry) ?? unknown,
-    author: authorName(entry) ?? unknown,
-  });
+  const name = fillFileNameTemplate(
+    fileName,
+    {
+      series: moveArticleToEnd(entry.series?.trim() ?? '', articles) || unknown,
+      volume: entry.volume?.trim() ?? '',
+      title: moveArticleToEnd(entry.title, articles),
+      year: levelValue('year', entry) ?? unknown,
+      author: authorName(entry) ?? unknown,
+    },
+    volumePrefix,
+    prefixNumericOnly,
+  );
   const room = MAX_NAME_BYTES - Buffer.byteLength(extension);
   return safeFolderName(truncateToBytes(safeFolderName(name), room));
 }
@@ -186,6 +194,10 @@ export interface OrganizationTarget {
   fileName: string;
   /** Articles moved to the end of the series and album names (`AppSettings.libraryArticles`); empty or missing when the option is off. */
   articles?: readonly string[];
+  /** Text put in front of the volume (`AppSettings.libraryVolumePrefix`); empty or missing for none. */
+  volumePrefix?: string;
+  /** Whether the prefix only goes in front of a whole-number volume (`AppSettings.libraryVolumePrefixNumericOnly`). */
+  prefixNumericOnly?: boolean;
 }
 
 /**
@@ -203,7 +215,7 @@ export function organizedPaths(target: OrganizationTarget, entry: OrganizedEntry
   const stem =
     target.fileName === '' || !hasFiche(entry)
       ? originalStem(entry.path, entry.id)
-      : templatedStem(target.fileName, entry, extension, target.articles);
+      : templatedStem(target.fileName, entry, extension, target.articles, target.volumePrefix, target.prefixNumericOnly);
   if (target.structure.length === 0) {
     return [path.join(target.root, folderNameOf(stem, entry.id), `${stem}${extension}`)];
   }

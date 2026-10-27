@@ -56,8 +56,9 @@ const SAMPLE_FOLDERS: Record<Exclude<LibraryLevel, 'letter'>, string> = {
  * `Tintin - T20 - Tintin au Tibet.cbz` for `{series} - T{volume} - {title}`, `Tintin au Tibet.cbz`
  * (its original name) for the empty template.
  */
-export function fileNameExample(fileName: string): string {
-  return `${fileName === '' ? SAMPLE.title : fillFileNameTemplate(fileName, SAMPLE).trim()}.cbz`;
+export function fileNameExample(fileName: string, volumePrefix = '', prefixNumericOnly = false): string {
+  const name = fileName === '' ? SAMPLE.title : fillFileNameTemplate(fileName, SAMPLE, volumePrefix, prefixNumericOnly).trim();
+  return `${name}.cbz`;
 }
 
 /**
@@ -65,12 +66,17 @@ export function fileNameExample(fileName: string): string {
  * `T/Tintin/Tintin au Tibet.cbz` for `['letter', 'series']` and no template. Empty for the default
  * layout, which the page describes in words.
  */
-export function structureExample(structure: readonly LibraryLevel[], fileName = ''): string {
+export function structureExample(
+  structure: readonly LibraryLevel[],
+  fileName = '',
+  volumePrefix = '',
+  prefixNumericOnly = false,
+): string {
   if (structure.length === 0) return '';
   const folders: string[] = [];
   for (let index = structure.length - 1; index >= 0; index -= 1) {
     const level = structure[index];
     folders.unshift(level === 'letter' ? (folders[0]?.[0]?.toUpperCase() ?? '#') : SAMPLE_FOLDERS[level]);
   }
-  return [...folders, fileNameExample(fileName)].join('/');
+  return [...folders, fileNameExample(fileName, volumePrefix, prefixNumericOnly)].join('/');
 }
