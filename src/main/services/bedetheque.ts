@@ -9,6 +9,7 @@ import type { CreditInput, CreditRole } from '../../shared/library';
 import { isBedethequeAlbumUrl, type MetadataCandidate, type MetadataQuery } from '../../shared/metadata';
 import { splitPersonName } from '../../shared/title-parsing';
 import { getHtml, getJson, type HttpOptions } from './http-json';
+import { lookupLog } from './lookup-log';
 import { createPromiseCache } from './promise-cache';
 import { createRequestPacer, type RequestPacer } from './request-pacer';
 
@@ -242,7 +243,7 @@ function normalizeName(text: string): string {
     .trim();
 }
 
-/** The series in the search box's answer (an array of `{ id, label, category }`); anything else is ignored. */
+/** The series in the search box's answer (an array of `{ id, label, category }`, labels HTML-escaped); anything else is ignored. */
 export function parseSeriesSearch(body: unknown): BedethequeSeries[] {
   if (!Array.isArray(body)) {
     return [];
@@ -251,11 +252,59 @@ export function parseSeriesSearch(body: unknown): BedethequeSeries[] {
   for (const item of body) {
     const { id, label } = (typeof item === 'object' && item !== null ? item : {}) as Record<string, unknown>;
     const match = typeof id === 'string' ? /^S(\d+)$/.exec(id) : null;
-    if (match && typeof label === 'string' && label.trim()) {
-      series.push({ id: match[1], label: label.trim() });
+    // The search box HTML-escapes its labels (`X-Men (L&#039;intégrale)`).
+    const name = typeof label === 'string' ? decodeEntities(label).trim() : '';
+    if (match && name) {
+      series.push({ id: match[1], label: name });
     }
   }
   return series;
+}
+
+/** The leading articles the site moves to the end of a name in parentheses: `Cahiers d'Esther (Les)`. */
+const TRAILING_ARTICLE = /^(.*?)\s*\(\s*(le|la|les|l'|l’|un|une|des|the|el|los|las|il|lo|gli|der|die|das)\s*\)\s*$/i;
+
+/** A series name with such a trailing article put back in front: `Les Cahiers d'Esther`. */
+function withLeadingArticle(label: string): string {
+  const match = TRAILING_ARTICLE.exec(label);
+  if (!match) {
+    return label;
+  }
+  const article = match[2];
+  return /['’]$/.test(article) ? `${article}${match[1]}` : `${article} ${match[1]}`;
+}
+
+/** A normalized name without its spaces, to compare names whose initials are spaced differently. */
+function compact(name: string): string {
+  return name.replace(/ /g, '');
+}
+
+/** The series whose name contains the text, best match first, with the rank (0 is the best) of each match. */
+function rankSeries(candidates: BedethequeSeries[], text: string): { series: BedethequeSeries; rank: number }[] {
+  // The text may be written like the site does, with the article last (`Âge d'ombre (L')`, as a library title often is).
+  const wanted = normalizeName(withLeadingArticle(text.trim()));
+  if (!wanted) {
+    return [];
+  }
+  const compactWanted = compact(wanted);
+  const isTranslation = (series: BedethequeSeries) => /\(\s*en\s[^)]*\)\s*$/i.test(series.label);
+  const rank = (series: BedethequeSeries): number => {
+    const label = withLeadingArticle(series.label);
+    const name = normalizeName(label);
+    const bare = normalizeName(label.replace(/\([^)]*\)\s*$/, ''));
+    // Initials may or may not be spaced out: `A.D Grand-Rivière` and `AD Grand-Rivière` are one name.
+    if (name === wanted || compact(name) === compactWanted) return 0;
+    if (!isTranslation(series) && (bare === wanted || compact(bare) === compactWanted)) return 1;
+    if (!isTranslation(series) && name.startsWith(wanted)) return 2;
+    if (!isTranslation(series) && name.includes(wanted)) return 3;
+    if (bare === wanted) return 4;
+    return name.includes(wanted) ? 5 : Infinity;
+  };
+  return candidates
+    .map((series, index) => ({ series, index, rank: rank(series) }))
+    .filter((entry) => entry.rank !== Infinity)
+    .sort((a, b) => a.rank - b.rank || a.series.label.length - b.series.label.length || a.index - b.index)
+    .map(({ series, rank: value }) => ({ series, rank: value }));
 }
 
 /**
@@ -264,26 +313,29 @@ export function parseSeriesSearch(body: unknown): BedethequeSeries[] {
  * (`Blacksad (en allemand)`) only wins when nothing else matches; null when no name contains the text.
  */
 export function pickSeries(candidates: BedethequeSeries[], text: string): BedethequeSeries | null {
-  const wanted = normalizeName(text);
-  if (!wanted) {
-    return null;
+  return rankSeries(candidates, text)[0]?.series ?? null;
+}
+
+/** At most this many homonymous series are searched. */
+const MAX_HOMONYMS = 3;
+
+/**
+ * The series to look in: {@link pickSeries}'s choice, plus the other series that are just as good a match.
+ * Homonyms differ only by the qualifier the site adds in parentheses (`Tutti Frutti (Stakhano)`,
+ * `Tutti Frutti (Trantkat)`), so when the best match is the exact name (with or without such a qualifier)
+ * every series of that rank is returned, up to `MAX_HOMONYMS` (3); a looser match (a name that merely
+ * starts with or contains the text) gives its single best series, not a crowd.
+ */
+export function pickSeriesAll(candidates: BedethequeSeries[], text: string): BedethequeSeries[] {
+  const ranked = rankSeries(candidates, text);
+  if (ranked.length === 0) {
+    return [];
   }
-  const isTranslation = (series: BedethequeSeries) => /\(\s*en\s[^)]*\)\s*$/i.test(series.label);
-  const rank = (series: BedethequeSeries): number => {
-    const name = normalizeName(series.label);
-    const bare = normalizeName(series.label.replace(/\([^)]*\)\s*$/, ''));
-    if (name === wanted) return 0;
-    if (!isTranslation(series) && bare === wanted) return 1;
-    if (!isTranslation(series) && name.startsWith(wanted)) return 2;
-    if (!isTranslation(series) && name.includes(wanted)) return 3;
-    if (bare === wanted) return 4;
-    return name.includes(wanted) ? 5 : Infinity;
-  };
-  const ranked = candidates
-    .map((series, index) => ({ series, index, rank: rank(series) }))
-    .filter((entry) => entry.rank !== Infinity)
-    .sort((a, b) => a.rank - b.rank || a.series.label.length - b.series.label.length || a.index - b.index);
-  return ranked[0]?.series ?? null;
+  const best = ranked[0].rank;
+  if (best > 1) {
+    return [ranked[0].series];
+  }
+  return ranked.filter((entry) => entry.rank === best).slice(0, MAX_HOMONYMS).map((entry) => entry.series);
 }
 
 /** `MM/YYYY` (or `YYYY`) as the list shows the legal deposit, to `YYYY-MM` (or `YYYY`). */
@@ -332,6 +384,20 @@ export function parseSeriesAlbums(html: string): SeriesAlbum[] {
 function parseCoverAlbums(html: string): SeriesAlbum[] {
   const block = /<div class="bdt-sh-tomes\b[^"]*">([\s\S]*?)<\/div>/i.exec(html)?.[1] ?? '';
   const albums: SeriesAlbum[] = [];
+  // Some one-shots' pages have no such block, only the "Détail des albums" article, whose heading links the album.
+  for (const article of html.matchAll(/<article\b[^>]*\bbdt-edition--detail\b[^>]*>([\s\S]*?)<h3>([\s\S]*?)<\/h3>/gi)) {
+    const link = /<a\b[^>]*\bitemprop="url"[^>]*>/i.exec(article[2])?.[0];
+    const url = link ? /href="([^"]+)"/i.exec(link)?.[1] : undefined;
+    if (url && isBedethequeAlbumUrl(url) && !albums.some((album) => album.url === url)) {
+      albums.push({
+        url,
+        number: '',
+        title: textOf(/<span itemprop="name">([\s\S]*?)<\/span>\s*<\/a>/i.exec(article[2])?.[1] ?? ''),
+        releaseDate: null,
+        kind: 'album',
+      });
+    }
+  }
   for (const link of block.matchAll(/<a\b([^>]*)>/gi)) {
     const url = /href="([^"]+)"/i.exec(link[1])?.[1];
     if (url && isBedethequeAlbumUrl(url) && !albums.some((album) => album.url === url)) {
@@ -397,6 +463,17 @@ function listCandidate(album: SeriesAlbum, series: string): MetadataCandidate {
   };
 }
 
+/** The markers of a series page that the parsers look for, to say what a page without albums looks like. */
+const PAGE_MARKERS = ['bdt-box-albums-liste', 'bdt-sh-tomes', 'bdt-edition--detail', 'bdt-ah', 'bdt-ah--serie', 'class="bdt-', 'captcha', 'cloudflare'];
+
+/** A one-line description of a page for the log: its size, title, and which known markers it holds. */
+function describePage(html: string): string {
+  const title = textOf(/<title>([\s\S]*?)<\/title>/i.exec(html)?.[1] ?? '').slice(0, 120);
+  const found = PAGE_MARKERS.filter((marker) => html.toLowerCase().includes(marker));
+  const albumLinks = (html.match(/href="[^"]*BD-[^"]*-\d+\.html"/gi) ?? []).length;
+  return `${html.length} characters, title "${title}", markers [${found.join(', ')}], ${albumLinks} album-like links`;
+}
+
 /** Spaces every request this module sends to the site. */
 let pacer: RequestPacer = createRequestPacer(MIN_REQUEST_INTERVAL_MS);
 
@@ -406,7 +483,16 @@ function paced(http: HttpOptions): HttpOptions {
     ...http,
     fetch: async (input, init) => {
       await pacer.wait(init?.signal ?? http.signal);
-      return http.fetch(input, init);
+      const started = Date.now();
+      try {
+        const response = await http.fetch(input, init);
+        const landed = response.url && response.url !== String(input) ? ` -> ${response.url}` : '';
+        lookupLog('bedetheque', `GET ${String(input)}${landed}: ${response.status} (${Date.now() - started} ms)`);
+        return response;
+      } catch (error) {
+        lookupLog('bedetheque', `GET ${String(input)} failed after ${Date.now() - started} ms: ${String(error)}`);
+        throw error;
+      }
     },
   };
 }
@@ -424,6 +510,72 @@ export function resetBedethequeState(minIntervalMs = MIN_REQUEST_INTERVAL_MS): v
   pacer = createRequestPacer(minIntervalMs);
 }
 
+/** The text without accents and with straight apostrophes (`À Bord De L’Étoile` → `A Bord De L'Etoile`), as the site stores names. */
+function foldText(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[’‘`´]/g, "'");
+}
+
+/**
+ * The terms to ask the search box, best first: the typed text, its folded form, that without dots
+ * (`A.D Grand-Rivière` is `AD Grand-Rivière` on the site), its longest whitespace-separated token
+ * (`Grand-Riviere`, hyphens kept: the box matches them literally) and finally its longest plain word.
+ */
+function searchTerms(text: string): string[] {
+  const folded = foldText(text);
+  const undotted = folded.replace(/\./g, '').replace(/\s+/g, ' ').trim();
+  const longestOf = (words: string[]) => words.reduce((best, word) => (word.length > best.length ? word : best), '');
+  const token = longestOf(undotted.split(' '));
+  const word = longestOf(normalizeName(text).split(' '));
+  const terms = [text, folded, undotted, token, word].filter((term) => term.length >= MIN_SEARCH_LENGTH);
+  // Another spelling of the same text isn't worth a request, nor is a case-only difference.
+  return terms.filter((term, index) => terms.findIndex((other) => other.toLowerCase() === term.toLowerCase()) === index);
+}
+
+/**
+ * Asks the search box for the series named like `text`. The box answers nothing at all (an empty
+ * body) when the term matches no name, and it matches the names as the site stores them, with plain
+ * letters and straight apostrophes: `À Bord De L’Étoile Matutine` finds nothing there while
+ * `A Bord De L'Etoile Matutine` finds `A bord de l'Etoile Matutine`. So the typed text goes first,
+ * then, while no series matches it, its folded form, then its longest word (the series are matched
+ * against the whole text afterwards). An empty or unreadable answer counts as no series; only a
+ * failure to reach the site is thrown, when no term got an answer.
+ */
+async function searchBox(text: string, http: HttpOptions): Promise<BedethequeSeries[]> {
+  let found: BedethequeSeries[] = [];
+  let failure: unknown = null;
+  let answered = false;
+  for (const term of searchTerms(text)) {
+    try {
+      found = parseSeriesSearch(await getJson(`${SERIES_SEARCH_URL}?term=${encodeURIComponent(term)}`, paced(http), SOURCE));
+      answered = true;
+    } catch (error) {
+      if (http.signal?.aborted) {
+        throw error;
+      }
+      lookupLog('bedetheque', `search box failed for "${term}": ${String(error)}`);
+      // An empty body is how the box says "nothing found"; anything else is a failure to reach it.
+      if (error instanceof Error && error.cause instanceof SyntaxError) {
+        answered = true;
+      } else {
+        failure = error;
+      }
+      found = [];
+      continue;
+    }
+    if (pickSeriesAll(found, text).length > 0) {
+      return found;
+    }
+    lookupLog('bedetheque', `search box: no matching series for "${term}" (${found.length} series returned)`);
+  }
+  if (failure && !answered) {
+    throw failure;
+  }
+  return found;
+}
+
 /**
  * Finds a book by series name and volume, in three sequential requests at most: the search box's
  * JSON for the series, the series page for its album list, then the album's page for its credits.
@@ -435,22 +587,45 @@ export function resetBedethequeState(minIntervalMs = MIN_REQUEST_INTERVAL_MS): v
  */
 export async function searchBedetheque(query: MetadataQuery, http: HttpOptions): Promise<MetadataCandidate[]> {
   const text = query.text.trim();
+  lookupLog('bedetheque', `search "${text}" (volume: ${query.volume ?? 'none'})`);
   if (text.length < MIN_SEARCH_LENGTH) {
+    lookupLog('bedetheque', `text shorter than ${MIN_SEARCH_LENGTH} characters, nothing searched`);
     return [];
   }
-  const found = await seriesSearches.get(normalizeName(text), async () =>
-    parseSeriesSearch(await getJson(`${SERIES_SEARCH_URL}?term=${encodeURIComponent(text)}`, paced(http), SOURCE)),
+  const found = await seriesSearches.get(normalizeName(text), () => searchBox(text, http));
+  const matched = pickSeriesAll(found, text);
+  lookupLog(
+    'bedetheque',
+    `search box: ${found.length} series [${found.slice(0, 10).map((entry) => `S${entry.id} "${entry.label}"`).join(', ')}]; ` +
+      (matched.length > 0 ? `picked ${matched.map((entry) => `S${entry.id} "${entry.label}"`).join(', ')}` : 'none picked'),
   );
-  const series = pickSeries(found, text);
-  if (!series) {
-    return [];
+  const lists: { series: BedethequeSeries; albums: SeriesAlbum[]; album: SeriesAlbum | null }[] = [];
+  for (const series of matched) {
+    const albums = await seriesAlbums.get(series.id, async () => {
+      const html = await getHtml(`${SERIES_PAGE_URL}${series.id}`, paced(http), SOURCE);
+      const albums = parseSeriesAlbums(html);
+      if (albums.length === 0) {
+        lookupLog('bedetheque', `series page read but no album found: ${describePage(html)}`);
+      }
+      return albums;
+    });
+    const album = pickAlbum(albums, query.volume);
+    lookupLog(
+      'bedetheque',
+      `series S${series.id}: ${albums.length} albums; ` + (album ? `picked "${album.number}" ${album.url}` : 'none picked'),
+    );
+    lists.push({ series, albums, album });
   }
-  const albums = await seriesAlbums.get(series.id, async () =>
-    parseSeriesAlbums(await getHtml(`${SERIES_PAGE_URL}${series.id}`, paced(http), SOURCE)),
-  );
-  const album = pickAlbum(albums, query.volume);
-  if (album) {
-    return [await fetchBedethequeAlbum(album.url, http)];
+  // The albums of the right volume, one per homonymous series, else every series' albums to choose from.
+  const picked = lists.filter((entry) => entry.album);
+  if (picked.length > 0) {
+    const candidates: MetadataCandidate[] = [];
+    for (const entry of picked) {
+      candidates.push(await fetchBedethequeAlbum(entry.album!.url, http));
+    }
+    return candidates;
   }
-  return albums.slice(0, MAX_SERIES_CANDIDATES).map((entry) => listCandidate(entry, series.label));
+  return lists
+    .flatMap((entry) => entry.albums.map((album) => listCandidate(album, entry.series.label)))
+    .slice(0, MAX_SERIES_CANDIDATES);
 }

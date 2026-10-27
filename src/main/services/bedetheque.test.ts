@@ -10,14 +10,18 @@ import {
   parseSeriesSearch,
   pickAlbum,
   pickSeries,
+  pickSeriesAll,
   searchBedetheque,
 } from './bedetheque';
 import type { HttpOptions } from './http-json';
+import { setLookupLogSink } from './lookup-log';
 
 // The user-facing messages are checked in French; English is the interface's default.
 beforeAll(() => applyLanguage('fr'));
 // Nothing is remembered from one test to the next, and the requests are not spaced out.
 beforeEach(() => resetBedethequeState(0));
+// The lookup log stays out of the test output.
+beforeEach(() => setLookupLogSink(null));
 
 const URL_1 = 'https://www.bedetheque.com/BD-Winged-Mermaids-Tome-1-311296.html';
 
@@ -219,6 +223,84 @@ describe('parseSeriesSearch', () => {
   });
 });
 
+describe('parseSeriesSearch: escaped labels', () => {
+  it("decodes the HTML entities of a label, so L'intégrale is found by its apostrophe", () => {
+    const found = parseSeriesSearch([{ id: 'S3944', label: 'X-Men (L&#039;intégrale)', category: 'Série' }]);
+    expect(found).toEqual([{ id: '3944', label: "X-Men (L'intégrale)" }]);
+    expect(pickSeries(found, "X-Men (L'Intégrale)")?.id).toBe('3944');
+  });
+});
+
+describe('pickSeries: initials', () => {
+  it('treats spaced-out and joined initials as the same name', () => {
+    const found = [{ id: '569', label: 'AD Grand-Rivière' }];
+    expect(pickSeries(found, 'A.D Grand-Rivière')?.id).toBe('569');
+    expect(pickSeries([{ id: '1', label: 'A.D Grand-Rivière' }], 'AD Grand-Rivière')?.id).toBe('1');
+  });
+
+  it('does not pick other rivers', () => {
+    const found = [
+      { id: '63189', label: "Rivière à l'envers (La)" },
+      { id: '68530', label: "Rivière d'encre" },
+    ];
+    expect(pickSeries(found, 'A.D Grand-Rivière')).toBeNull();
+  });
+});
+
+describe('pickSeriesAll', () => {
+  const tutti = [
+    { id: '9070', label: 'Tutti Frutti (Stakhano)' },
+    { id: '2542', label: 'Tutti Frutti (Trantkat)' },
+  ];
+
+  it('returns every homonymous series, told apart by a qualifier in parentheses', () => {
+    expect(pickSeriesAll(tutti, 'Tutti Frutti').map((series) => series.id)).toEqual(['9070', '2542']);
+  });
+
+  it('returns a single series for a looser match, not a crowd', () => {
+    const found = [
+      { id: '1', label: 'X-Men Legacy' },
+      { id: '2', label: 'X-Men Forever' },
+    ];
+    expect(pickSeriesAll(found, 'X-Men')).toHaveLength(1);
+  });
+
+  it('prefers the exact name to its homonyms', () => {
+    const found = [...tutti, { id: '7', label: 'Tutti Frutti' }];
+    expect(pickSeriesAll(found, 'Tutti Frutti').map((series) => series.id)).toEqual(['7']);
+  });
+
+  it('is empty when nothing matches', () => {
+    expect(pickSeriesAll(tutti, 'Blacksad')).toEqual([]);
+  });
+});
+
+describe('pickSeries: a text with a trailing article', () => {
+  it("finds a series when the text, like the site's name, has its article last", () => {
+    const found = [{ id: '2649', label: "Âge d'ombre (L')" }];
+    expect(pickSeries(found, "Âge D'Ombre (L')")?.id).toBe('2649');
+    expect(pickSeries(found, "L'Âge D'Ombre")?.id).toBe('2649');
+    expect(pickSeries(found, "Âge D'Ombre")?.id).toBe('2649');
+  });
+
+  it('puts the article of the text back in front for a name the site writes in full', () => {
+    expect(pickSeries([{ id: '1', label: 'Les Cahiers d\'Esther' }], "Cahiers d'Esther (Les)")?.id).toBe('1');
+  });
+});
+
+describe('pickSeries: trailing articles', () => {
+  it('finds a series whose article the site moved to the end', () => {
+    const found = [{ id: '50922', label: "Cahiers d'Esther (Les)" }];
+    expect(pickSeries(found, "Les cahiers d'Esther")?.id).toBe('50922');
+    expect(pickSeries(found, "Cahiers d'Esther")?.id).toBe('50922');
+  });
+
+  it("puts an elided article back against the name: L'Intégrale", () => {
+    const found = [{ id: '1', label: 'Intégrale (L\')' }];
+    expect(pickSeries(found, "L'Intégrale")?.id).toBe('1');
+  });
+});
+
 describe('pickSeries', () => {
   const series = parseSeriesSearch(SEARCH_BLACKSAD);
 
@@ -351,6 +433,27 @@ const ONE_SHOT_ALBUM_PAGE = `${ONE_SHOT_PAGE}
     </dl>
   </article>`;
 
+describe('a one-shot series page with only the album detail', () => {
+  const html = `<article class="bdt bdt-dense bdt-page-serie"><section class="bdt-section-head"><h2>Détail des albums de la série</h2></section>
+<article class="bdt-edition bdt-edition--detail" id="ed-71270" itemscope itemtype="https://schema.org/Book">
+<a name="71270"></a>
+<div class="bdt-edition-head"><h3>
+<a itemprop="url" href="https://www.bedetheque.com/BD-Tanka-71270.html" title="Voir la fiche album de Tanka"><span itemprop="name"><span class="bdt-numa"></span>Tanka</span></a>
+</h3></div></article></article>`;
+
+  it('reads the album from the detail heading', () => {
+    expect(parseSeriesAlbums(html)).toEqual([
+      { url: 'https://www.bedetheque.com/BD-Tanka-71270.html', number: '', title: 'Tanka', releaseDate: null, kind: 'album' },
+    ]);
+  });
+
+  it('is picked as the one-shot, with or without volume 1', () => {
+    const albums = parseSeriesAlbums(html);
+    expect(pickAlbum(albums, null)).toBe(albums[0]);
+    expect(pickAlbum(albums, '1')).toBe(albums[0]);
+  });
+});
+
 describe('a one-shot album page served as its series page', () => {
   it('is read from the album detail', () => {
     const album = parseBedethequeAlbum(ONE_SHOT_ALBUM_PAGE, 'https://www.bedetheque.com/BD-Vitesse-moderne-19759.html');
@@ -423,6 +526,128 @@ describe('searchBedetheque', () => {
     expect(found[0].credits.length).toBeGreaterThan(0);
   });
 
+  it('logs the requests and the choices made', async () => {
+    const lines: string[] = [];
+    setLookupLogSink((line) => lines.push(line));
+    const { http } = site();
+    await searchBedetheque({ text: 'blacksad', volume: '2' }, http);
+    const log = lines.join('\n');
+    expect(log).toContain('[lookup:bedetheque] search "blacksad" (volume: 2)');
+    expect(log).toContain('GET https://www.bdgest.com/ajax/tout?term=blacksad: 200');
+    expect(log).toContain('picked S500');
+    expect(log).toMatch(/series S500: \d+ albums; picked "2"/);
+  });
+
+  it('logs when no series matches', async () => {
+    const lines: string[] = [];
+    setLookupLogSink((line) => lines.push(line));
+    const { http } = site([]);
+    expect(await searchBedetheque({ text: "X-Men (L'Intégrale)", volume: null }, http)).toEqual([]);
+    expect(lines.join('\n')).toContain('search box: 0 series [];');
+  });
+
+  it('offers the album of each homonymous series', async () => {
+    const calls: string[] = [];
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      calls.push(url);
+      if (url.startsWith('https://www.bdgest.com/ajax/tout')) {
+        return Response.json([
+          { id: 'S9070', label: 'Tutti Frutti (Stakhano)', category: 'Série' },
+          { id: 'S2542', label: 'Tutti Frutti (Trantkat)', category: 'Série' },
+        ]);
+      }
+      if (url.startsWith('https://www.bedetheque.com/serie/index/s/')) return new Response(SERIES_PAGE, { status: 200 });
+      return new Response(albumPage(), { status: 200 });
+    });
+    const http: HttpOptions = { fetch: fetch as typeof globalThis.fetch, userAgent: 'Tankobon/test', timeoutMs: 1000 };
+    const found = await searchBedetheque({ text: 'Tutti Frutti', volume: '1' }, http);
+    expect(calls.filter((url) => url.includes('/serie/index/s/'))).toEqual([
+      'https://www.bedetheque.com/serie/index/s/9070',
+      'https://www.bedetheque.com/serie/index/s/2542',
+    ]);
+    expect(found).toHaveLength(2);
+  });
+
+  it("asks again with the folded text, accents and curly apostrophe removed, when the typed one finds nothing", async () => {
+    const terms: string[] = [];
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      if (url.hostname === 'www.bdgest.com') {
+        const term = url.searchParams.get('term') ?? '';
+        terms.push(term);
+        // The box only knows the plain spelling, and answers an empty body for anything else.
+        return term === "A Bord De L'Etoile Matutine"
+          ? Response.json([{ id: 'S20559', label: "A bord de l'Etoile Matutine", category: 'Série' }])
+          : new Response('', { status: 200 });
+      }
+      if (url.pathname.startsWith('/serie/index/s/')) return new Response(SERIES_PAGE, { status: 200 });
+      return new Response(albumPage(), { status: 200 });
+    });
+    const http: HttpOptions = { fetch: fetch as typeof globalThis.fetch, userAgent: 'Tankobon/test', timeoutMs: 1000 };
+    const found = await searchBedetheque({ text: 'À Bord De L’Étoile Matutine', volume: null }, http);
+    expect(terms).toEqual(['À Bord De L’Étoile Matutine', "A Bord De L'Etoile Matutine"]);
+    expect(found.length).toBeGreaterThan(0);
+  });
+
+  it('falls back to the longest word, matching the series against the whole text', async () => {
+    const terms: string[] = [];
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      if (url.hostname === 'www.bdgest.com') {
+        const term = url.searchParams.get('term') ?? '';
+        terms.push(term);
+        return term === 'matutine'
+          ? Response.json([{ id: 'S20559', label: "A bord de l'Etoile Matutine", category: 'Série' }])
+          : new Response('', { status: 200 });
+      }
+      if (url.pathname.startsWith('/serie/index/s/')) return new Response(SERIES_PAGE, { status: 200 });
+      return new Response(albumPage(), { status: 200 });
+    });
+    const http: HttpOptions = { fetch: fetch as typeof globalThis.fetch, userAgent: 'Tankobon/test', timeoutMs: 1000 };
+    const found = await searchBedetheque({ text: "À bord de l'Étoile Matutine", volume: null }, http);
+    expect(terms.at(-1)).toBe('matutine');
+    expect(found.length).toBeGreaterThan(0);
+  });
+
+  it('counts an empty answer as no series, not as an error', async () => {
+    const fetch = vi.fn(async () => new Response('', { status: 200 }));
+    const http: HttpOptions = { fetch: fetch as typeof globalThis.fetch, userAgent: 'Tankobon/test', timeoutMs: 1000 };
+    expect(await searchBedetheque({ text: 'À Gauche Toute !', volume: null }, http)).toEqual([]);
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it('reports the failure when the site cannot be reached', async () => {
+    const fetch = vi.fn(async () => {
+      throw new TypeError('network down');
+    });
+    const http: HttpOptions = { fetch: fetch as typeof globalThis.fetch, userAgent: 'Tankobon/test', timeoutMs: 1000 };
+    await expect(searchBedetheque({ text: 'À Gauche Toute !', volume: null }, http)).rejects.toThrow();
+  });
+
+  it('finds a hyphenated name through its longest token when the whole text finds nothing', async () => {
+    const terms: string[] = [];
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      if (url.hostname === 'www.bdgest.com') {
+        const term = url.searchParams.get('term') ?? '';
+        terms.push(term);
+        return term === 'Grand-Riviere'
+          ? Response.json([
+              { id: 'S63189', label: "Rivière à l'envers (La)", category: 'Série' },
+              { id: 'S569', label: 'AD Grand-Rivière', category: 'Série' },
+            ])
+          : new Response('', { status: 200 });
+      }
+      if (url.pathname.startsWith('/serie/index/s/569')) return new Response(SERIES_PAGE, { status: 200 });
+      return new Response(albumPage(), { status: 200 });
+    });
+    const http: HttpOptions = { fetch: fetch as typeof globalThis.fetch, userAgent: 'Tankobon/test', timeoutMs: 1000 };
+    const found = await searchBedetheque({ text: 'A.D Grand-Rivière', volume: null }, http);
+    expect(terms).toEqual(['A.D Grand-Rivière', 'A.D Grand-Riviere', 'AD Grand-Riviere', 'Grand-Riviere']);
+    expect(found.length).toBeGreaterThan(0);
+  });
+
   it('reads a series page once for several volumes', async () => {
     const { calls, http } = site();
     await searchBedetheque({ text: 'Blacksad', volume: '1' }, http);
@@ -451,11 +676,15 @@ describe('searchBedetheque', () => {
     expect(await searchBedetheque({ text: 'Blacksad', volume: null }, http)).toHaveLength(6);
   });
 
-  it('finds nothing, with no further request, when no series matches or the text is too short', async () => {
+  it('finds nothing, and asks only the search box, when no series matches or the text is too short', async () => {
     const { calls, http } = site();
     expect(await searchBedetheque({ text: 'Corto Maltese', volume: null }, http)).toEqual([]);
     expect(await searchBedetheque({ text: 'Di', volume: null }, http)).toEqual([]);
-    expect(calls).toEqual(['https://www.bdgest.com/ajax/tout?term=Corto%20Maltese']);
+    // The typed text, then its longest word; a text shorter than the box's minimum isn't sent at all.
+    expect(calls).toEqual([
+      'https://www.bdgest.com/ajax/tout?term=Corto%20Maltese',
+      'https://www.bdgest.com/ajax/tout?term=Maltese',
+    ]);
   });
 
   it('does not keep a series page that failed to load', async () => {
