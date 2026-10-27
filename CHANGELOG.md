@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented here. This file is maintained by [release-please](https://github.com/googleapis/release-please) from the [Conventional Commits](https://www.conventionalcommits.org/) merged into `master`: don't edit released entries by hand. New versions are inserted above the previous ones.
 
+## [0.20.0](https://github.com/arvarus/tankobon/compare/v0.19.1...v0.20.0) (2026-10-27)
+
+
+### Features
+
+* **library:** leave out a missing volume from renamed file names ([#265](https://github.com/arvarus/tankobon/issues/265)) ([0d23127](https://github.com/arvarus/tankobon/commit/0d231275349bf7a01e92baf9d92e3f9bed95679d))
+* **library:** remove the selected books in one go ([#271](https://github.com/arvarus/tankobon/issues/271)) ([5f939bc](https://github.com/arvarus/tankobon/commit/5f939bcdb0507cad25525af50268843aec404915))
+* **lookup:** move the search button to the right ([#267](https://github.com/arvarus/tankobon/issues/267)) ([e2079d1](https://github.com/arvarus/tankobon/commit/e2079d1b410d9851d265a45a66b58d55ba198759))
+* **metadata:** add a skip button to move on in a lookup series ([#264](https://github.com/arvarus/tankobon/issues/264)) ([4b5f509](https://github.com/arvarus/tankobon/commit/4b5f509fac35b1b46947884606068fa96fd94d18))
+* **organization:** add a volume prefix option to the file name ([#272](https://github.com/arvarus/tankobon/issues/272)) ([21cc5cb](https://github.com/arvarus/tankobon/commit/21cc5cbae86781f43e7aeb491ea65cb8af45f926))
+* **settings:** show the .deletedByTankobon size beside the empty action ([#270](https://github.com/arvarus/tankobon/issues/270)) ([55939bf](https://github.com/arvarus/tankobon/commit/55939bfbae917bd285267b330717e3b0546bb064))
+* **settings:** show the number of CBR to convert beside the conversion action ([#269](https://github.com/arvarus/tankobon/issues/269)) ([65dec1f](https://github.com/arvarus/tankobon/commit/65dec1fb085434b9e5c046cb9e0c1607ca1e5667))
+
+
+### Bug Fixes
+
+* **metadata:** make the Bédéthèque lookup find more series ([#268](https://github.com/arvarus/tankobon/issues/268)) ([ad70299](https://github.com/arvarus/tankobon/commit/ad70299e604d9dce0109eca692877be0fddfeb1c))
+
 ## [0.19.1](https://github.com/arvarus/tankobon/compare/v0.19.0...v0.19.1) (2026-10-26)
 
 
