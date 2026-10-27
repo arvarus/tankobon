@@ -146,6 +146,7 @@ const settings: Translation<typeof en> = {
     convertCbr: 'Convertir les CBR en CBZ…',
     convertCbrHint: "Un CBR ne peut pas être modifié. Écrit les CBR du dossier organisé en CBZ, ce qui donne accès aux options qui réécrivent une archive (nettoyage…). La progression, la note, les étiquettes et les listes sont conservées ; chaque CBR est déplacé dans le dossier .deletedByTankobon, à la racine du dossier organisé.",
     convertCbrRunning: 'Conversion…',
+    convertCbrCount: '{{count}} à convertir',
     convertCbrNone: 'Aucun CBR dans le dossier organisé.',
     convertCbrConfirmTitle: 'Convertir les CBR en CBZ ?',
     convertCbrConfirm_one: "Convertir en CBZ le CBR de {{folder}} ? L'original est déplacé dans le dossier .deletedByTankobon, que vous pourrez vider ensuite.",
