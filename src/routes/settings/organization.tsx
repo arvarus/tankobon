@@ -65,23 +65,28 @@ function OrganizationSettingsPage() {
   const [organizeStatus, setOrganizeStatus] = useState<{ message: string; error?: boolean } | null>(null);
   // A resynchronization or an organization: either one blocks the other.
   const busy = progress !== null;
-  // What `.deletedByTankobon` holds, shown beside the button that empties it (null: unknown or no organized folder).
+  // CBR waiting to be converted and what `.deletedByTankobon` holds, shown beside the actions; null while not counted yet.
+  const [convertibleCount, setConvertibleCount] = useState<number | null>(null);
   const [deletedBytes, setDeletedBytes] = useState<number | null>(null);
-  const organizedFolder = settings.libraryOrganizationFolder;
-  // Re-read when a run ends (a conversion or an orphan cleaning fills the folder) and when the folder changes.
-  useEffect(() => {
-    if (busy) return;
-    let current = true;
-    void window.tankobon.library.countConvertible().then((count) => {
-      if (current) setDeletedBytes(count.status === 'ok' ? count.deletedBytes : null);
-    });
-    return () => {
-      current = false;
-    };
-  }, [busy, organizedFolder, convertStatus]);
+  const organizationReady = settings.libraryOrganization !== 'off' && Boolean(settings.libraryOrganizationFolder);
 
   // Also shows a run started at launch, or from another window.
   useEffect(() => window.tankobon.library.onScanProgress((p) => setProgress(p.phase === 'done' ? null : p)), []);
+
+  // Counted again whenever the library changes (a conversion updates its entries), the folder does or a run ends
+  // (an orphan cleaning fills `.deletedByTankobon` without touching the library).
+  useEffect(() => {
+    if (!organizationReady || busy) return;
+    let cancelled = false;
+    void window.tankobon.library.countConvertible().then((result) => {
+      if (cancelled) return;
+      setConvertibleCount(result.status === 'error' ? null : result.count);
+      setDeletedBytes(result.status === 'error' ? null : result.deletedBytes);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [organizationReady, busy, settings.libraryOrganizationFolder, library, convertStatus]);
 
   const organizeAll = async () => {
     setOrganizeStatus(null);
@@ -305,7 +310,7 @@ function OrganizationSettingsPage() {
           </p>
         )}
         <p className="text-sm text-muted-foreground">{t('convertCbrHint')}</p>
-        <div>
+        <div className="flex items-center gap-3">
           <Button
             variant="outline"
             onClick={() => void convertCbr()}
@@ -314,6 +319,9 @@ function OrganizationSettingsPage() {
             <FileArchive />
             {running ? t('convertCbrRunning') : t('convertCbr')}
           </Button>
+          {organizationReady && convertibleCount !== null && convertibleCount > 0 && (
+            <span className="text-sm text-muted-foreground">{t('convertCbrCount', { count: convertibleCount })}</span>
+          )}
         </div>
         <p className="text-sm text-muted-foreground">{t('emptyDeletedHint')}</p>
         <div>
