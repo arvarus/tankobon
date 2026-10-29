@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented here. This file is maintained by [release-please](https://github.com/googleapis/release-please) from the [Conventional Commits](https://www.conventionalcommits.org/) merged into `master`: don't edit released entries by hand. New versions are inserted above the previous ones.
 
+## [0.21.0](https://github.com/arvarus/tankobon/compare/v0.20.0...v0.21.0) (2026-10-29)
+
+
+### Features
+
+* **library:** add a language filter to the toolbar ([#273](https://github.com/arvarus/tankobon/issues/273)) ([e23b5a9](https://github.com/arvarus/tankobon/commit/e23b5a98f044a69e6d4a643ce1b6865943e3ee42))
+* **metadata:** keyboard navigation in the lookup dialog ([#277](https://github.com/arvarus/tankobon/issues/277)) ([9aefe18](https://github.com/arvarus/tankobon/commit/9aefe1859916dd6e6661b5ac5131b223bf4b2e66))
+* **organization:** empty .deletedByTankobon automatically after a chosen number of days ([#274](https://github.com/arvarus/tankobon/issues/274)) ([a574549](https://github.com/arvarus/tankobon/commit/a5745493788737f563362d9d7cb64e6408f44041))
+
+
+### Bug Fixes
+
+* **metadata:** keep the lookup dialog open on a click outside ([#275](https://github.com/arvarus/tankobon/issues/275)) ([8953184](https://github.com/arvarus/tankobon/commit/89531845a21dc18036fd5f03129db01be70040ff))
+* **metadata:** stop the lookup dialog's scrollbar flickering while searching ([#278](https://github.com/arvarus/tankobon/issues/278)) ([313413a](https://github.com/arvarus/tankobon/commit/313413a77e513c54eca484798cd8b7b031277821))
+
 ## [0.20.0](https://github.com/arvarus/tankobon/compare/v0.19.1...v0.20.0) (2026-10-27)
 
 
