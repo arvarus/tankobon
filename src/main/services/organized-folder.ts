@@ -3,7 +3,7 @@
  * the folder can be used, and the names free in a folder. Free of Electron, like those services.
  * @module
  */
-import { stat } from 'node:fs/promises';
+import { stat, utimes } from 'node:fs/promises';
 import path from 'node:path';
 
 import { t } from '../../shared/i18n';
@@ -43,4 +43,10 @@ export async function firstFreeName(
     const candidate = path.join(folder, n === 1 ? `${stem}${extension}` : `${stem} (${n})${extension}`);
     if (isFree(candidate) && !(await pathExists(candidate))) return candidate;
   }
+}
+
+/** Stamps a file or folder just moved to the trash with the current time, whatever its own dates were, so the automatic emptying counts its days from now. */
+export async function markParked(target: string): Promise<void> {
+  const now = new Date();
+  await utimes(target, now, now).catch(() => undefined);
 }

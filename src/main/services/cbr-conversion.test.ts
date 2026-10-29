@@ -133,4 +133,23 @@ describe('createCbrConverter', () => {
     expect(await converter.emptyDeleted()).toEqual({ status: 'ok', deleted: 2, bytesFreed: 8, failed: 0 });
     expect(await readdir(root)).toEqual([]);
   });
+
+  it('automatically empties only what has been parked for long enough', async () => {
+    await mkdir(join(root, DELETED_BY_TANKOBON_FOLDER));
+    await writeFile(join(root, DELETED_BY_TANKOBON_FOLDER, 'a.cbr'), '12345');
+    const { converter } = setup();
+    const inTenDays = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
+
+    expect(await converter.emptyDeletedOlderThan(20, inTenDays)).toEqual({ status: 'ok', deleted: 0, bytesFreed: 0, failed: 0 });
+    expect(await readdir(join(root, DELETED_BY_TANKOBON_FOLDER))).toEqual(['a.cbr']);
+
+    expect(await converter.emptyDeletedOlderThan(5, inTenDays)).toEqual({ status: 'ok', deleted: 1, bytesFreed: 5, failed: 0 });
+    expect(await readdir(root)).toEqual([]);
+  });
+
+  it('does not empty automatically when the organization is off', async () => {
+    settings.set('libraryOrganization', 'off');
+    const { converter } = setup();
+    expect(await converter.emptyDeletedOlderThan(1)).toBeNull();
+  });
 });

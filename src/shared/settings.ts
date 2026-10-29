@@ -233,6 +233,10 @@ export interface AppSettings {
   backupIntervalDays: number;
   /** How many copies of the database are kept (1 to {@link MAX_BACKUP_KEEP}); the oldest ones are deleted. */
   backupKeep: number;
+  /** Whether what `.deletedByTankobon` holds is deleted for good once it is {@link AppSettings.trashRetentionDays} days old (off by default). */
+  trashAutoEmpty: boolean;
+  /** Days an item stays in `.deletedByTankobon` before the automatic emptying deletes it (1 to {@link MAX_TRASH_RETENTION_DAYS}); only used when `trashAutoEmpty` is on. */
+  trashRetentionDays: number;
   /** When the last copy of the database was made (ISO 8601); empty when there has been none. */
   lastBackupAt: string;
   /** When the last resynchronization finished (ISO 8601); empty when there has been none. */
@@ -342,6 +346,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   achievementsEnabled: true,
   backupIntervalDays: 0,
   backupKeep: 5,
+  trashAutoEmpty: false,
+  trashRetentionDays: 30,
   lastBackupAt: '',
   lastResyncAt: '',
   lastScanFolder: '',
@@ -364,6 +370,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
 export const MAX_BACKUP_INTERVAL_DAYS = 31;
 /** Most copies of the database that can be kept. */
 export const MAX_BACKUP_KEEP = 50;
+
+/** Longest retention of `.deletedByTankobon` the automatic emptying accepts, in days. */
+export const MAX_TRASH_RETENTION_DAYS = 45;
 
 /**
  * The settings every user shares: they describe the library (where it lives, how it is laid out,
@@ -465,6 +474,9 @@ export const SETTING_VALIDATORS: SettingValidators = {
     typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= MAX_BACKUP_INTERVAL_DAYS,
   backupKeep: (value): value is number =>
     typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= MAX_BACKUP_KEEP,
+  trashAutoEmpty: isBoolean,
+  trashRetentionDays: (value): value is number =>
+    typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= MAX_TRASH_RETENTION_DAYS,
   lastBackupAt: (value): value is string => isString(value) && (value === '' || !Number.isNaN(Date.parse(value))),
   lastResyncAt: (value): value is string => isString(value) && (value === '' || !Number.isNaN(Date.parse(value))),
   lastScanFolder: isShortString,

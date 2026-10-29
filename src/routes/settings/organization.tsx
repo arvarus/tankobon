@@ -28,6 +28,7 @@ import {
 import type { LibraryEntry, ScanFailure, ScanProgress } from '@/shared/library';
 import {
   MAX_LIBRARY_LEVELS,
+  MAX_TRASH_RETENTION_DAYS,
   isLibraryStructure,
   type LibraryLevel,
   type LibraryOrganization,
@@ -343,6 +344,36 @@ function OrganizationSettingsPage() {
             <span className="ml-3 text-sm text-muted-foreground">{t('emptyDeletedSize', { size: formatFileSize(deletedBytes) })}</span>
           )}
         </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={settings.trashAutoEmpty}
+              disabled={settings.libraryOrganization === 'off'}
+              onChange={(event) => update('trashAutoEmpty', event.target.checked)}
+            />
+            {t('trashAutoEmpty')}
+          </label>
+          {settings.trashAutoEmpty && (
+            <label className="flex items-center gap-2 text-sm">
+              {t('trashRetentionDays')}
+              <input
+                type="number"
+                className="h-8 w-16 rounded-md border bg-background px-2"
+                min={1}
+                max={MAX_TRASH_RETENTION_DAYS}
+                step={1}
+                value={settings.trashRetentionDays}
+                onChange={(event) => {
+                  const days = event.target.valueAsNumber;
+                  if (Number.isNaN(days)) return;
+                  update('trashRetentionDays', Math.min(MAX_TRASH_RETENTION_DAYS, Math.max(1, Math.round(days))));
+                }}
+              />
+            </label>
+          )}
+        </div>
+        <p className="text-sm text-muted-foreground">{t('trashAutoEmptyHint')}</p>
         <p className="text-sm text-muted-foreground">{t('cleanFoldersHint')}</p>
         <div>
           <Button
