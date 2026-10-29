@@ -93,6 +93,8 @@ const library: Translation<typeof en> = {
   ratingFilter: 'Note',
   atLeast_one: 'Au moins {{count}} étoile',
   atLeast_other: 'Au moins {{count}} étoiles',
+  languageFilter: 'Langue',
+  allLanguages: 'Toutes les langues',
   withoutFiche: 'Uniquement les livres sans fiche (ni série, tome, date, langue ni crédits)',
   viewMode: "Mode d'affichage",
   viewFull: 'Complet : toutes les informations',

@@ -7,7 +7,7 @@ import { SortPicker } from '@/components/library/sort-picker';
 import { Button } from '@/components/ui/button';
 import { EMPTY_FILTERS, hasActiveFilters, type LibraryFilters } from '@/lib/library-filter';
 import { tagLabel } from '@/lib/reading-list';
-import { cn } from '@/lib/utils';
+import { cn, formatLanguage } from '@/lib/utils';
 import type { LibrarySort, LibraryView } from '@/shared/settings';
 
 /** Search field, filters, order and display options above the library list. */
@@ -15,6 +15,7 @@ export function LibraryToolbar({
   filters,
   onChange,
   tags,
+  languages,
   shown,
   total,
   view,
@@ -27,6 +28,7 @@ export function LibraryToolbar({
   filters: LibraryFilters;
   onChange: (filters: LibraryFilters) => void;
   tags: string[];
+  languages: string[];
   shown: number;
   total: number;
   view: LibraryView;
@@ -64,6 +66,23 @@ export function LibraryToolbar({
           rating={filters.rating}
           onChange={(rating) => onChange({ ...filters, rating })}
         />
+
+        {languages.length > 0 && (
+          <select
+            value={filters.language}
+            onChange={(event) => onChange({ ...filters, language: event.target.value })}
+            aria-label={t('languageFilter')}
+            title={t('languageFilter')}
+            className="h-9 rounded-md border bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          >
+            <option value="all">{t('allLanguages')}</option>
+            {languages.map((code) => (
+              <option key={code} value={code}>
+                {formatLanguage(code)}
+              </option>
+            ))}
+          </select>
+        )}
 
         <Button
           variant={filters.withoutFiche ? 'secondary' : 'outline'}

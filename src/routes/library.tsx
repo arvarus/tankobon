@@ -83,7 +83,7 @@ function LibraryPage() {
   const [listFromSelection, setListFromSelection] = useState(false);
   // The input follows the keystrokes; filtering and re-laying out the list can lag behind them.
   const deferredFilters = useDeferredValue(filters);
-  const { editions, visible, tags, rows, shown, toggleSeries } = useLibraryRows(entries, deferredFilters, grouped, sort);
+  const { editions, visible, tags, languages, rows, shown, toggleSeries } = useLibraryRows(entries, deferredFilters, grouped, sort);
   const { selected, selection, shownSelected, tick, tickGroup, tickAllShown, clear: clearSelection } = useLibrarySelection(shown, entries);
 
   // Subscribed for the whole page's life rather than around each scan: the main process starts
@@ -243,6 +243,7 @@ function LibraryPage() {
           filters={filters}
           onChange={changeFilters}
           tags={tags}
+          languages={languages}
           shown={visible.length}
           total={entries.length}
           view={view}

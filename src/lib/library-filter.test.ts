@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { availableTags, EMPTY_FILTERS, filterEntries, hasActiveFilters, hasFiche } from './library-filter';
+import { availableLanguages, availableTags, EMPTY_FILTERS, filterEntries, hasActiveFilters, hasFiche } from './library-filter';
 import type { LibraryEntry } from '@/shared/library';
 
 function entry(overrides: Partial<LibraryEntry> = {}): LibraryEntry {
@@ -96,8 +96,8 @@ describe('filterEntries', () => {
   });
 
   it('combines the filters', () => {
-    expect(ids({ search: 'i', tags: ['À lire'], rating: 'all', withoutFiche: false })).toEqual(['c']);
-    expect(ids({ search: 'i', tags: ['À lire'], rating: 1, withoutFiche: false })).toEqual([]);
+    expect(ids({ search: 'i', tags: ['À lire'], rating: 'all', withoutFiche: false, language: 'all' })).toEqual(['c']);
+    expect(ids({ search: 'i', tags: ['À lire'], rating: 1, withoutFiche: false, language: 'all' })).toEqual([]);
   });
 });
 
@@ -129,5 +129,27 @@ describe('without-fiche filter', () => {
     const filters = { ...EMPTY_FILTERS, withoutFiche: true };
     expect(filterEntries(entries, filters).map((e) => e.id)).toEqual(['a']);
     expect(hasActiveFilters(filters)).toBe(true);
+  });
+});
+
+describe('language filter', () => {
+  const entries = [
+    entry({ id: 'a', language: 'fr' }),
+    entry({ id: 'b', language: 'EN' }),
+    entry({ id: 'c', language: null }),
+    entry({ id: 'd', language: 'fr' }),
+  ];
+
+  it('keeps only the entries in that language, ignoring the case of the stored code', () => {
+    expect(filterEntries(entries, { ...EMPTY_FILTERS, language: 'fr' }).map((e) => e.id)).toEqual(['a', 'd']);
+    expect(filterEntries(entries, { ...EMPTY_FILTERS, language: 'en' }).map((e) => e.id)).toEqual(['b']);
+  });
+
+  it('counts as an active filter', () => {
+    expect(hasActiveFilters({ ...EMPTY_FILTERS, language: 'fr' })).toBe(true);
+  });
+
+  it('lists each language in use once, lowercased, without the entries that have none', () => {
+    expect(availableLanguages(entries).sort()).toEqual(['en', 'fr']);
   });
 });

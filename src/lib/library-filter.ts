@@ -2,6 +2,7 @@
  * Client-side search and filters of the library page (pure, no DOM).
  * @module
  */
+import { formatLanguage } from '@/lib/utils';
 import { currentLanguage } from '@/shared/i18n';
 import type { LibraryEntry } from '@/shared/library';
 import { formatPersonName } from '@/shared/title-parsing';
@@ -21,10 +22,12 @@ export interface LibraryFilters {
   rating: RatingFilter;
   /** Keeps only the entries without a fiche (see `hasFiche()`). */
   withoutFiche: boolean;
+  /** `'all'` doesn't filter; otherwise the ISO 639-1 code the entry's language must have. */
+  language: string | 'all';
 }
 
 /** Filters that keep every entry. */
-export const EMPTY_FILTERS: LibraryFilters = { search: '', tags: [], rating: 'all', withoutFiche: false };
+export const EMPTY_FILTERS: LibraryFilters = { search: '', tags: [], rating: 'all', withoutFiche: false, language: 'all' };
 
 /**
  * Every tag in use across the library, for the filter bar to offer. `first` (the library page's
@@ -39,6 +42,18 @@ export function availableTags(entries: LibraryEntry[], first: readonly string[] 
     }
   }
   return [...first, ...[...rest].sort((a, b) => a.localeCompare(b, currentLanguage()))];
+}
+
+/**
+ * Every language in use across the library (ISO 639-1 codes, lowercased), sorted by name in the
+ * current language, for the language filter to offer.
+ */
+export function availableLanguages(entries: LibraryEntry[]): string[] {
+  const codes = new Set<string>();
+  for (const entry of entries) {
+    if (entry.language) codes.add(entry.language.toLowerCase());
+  }
+  return [...codes].sort((a, b) => (formatLanguage(a) ?? a).localeCompare(formatLanguage(b) ?? b, currentLanguage()));
 }
 
 /**
@@ -83,10 +98,11 @@ function matches(entry: LibraryEntry, search: string, filters: LibraryFilters): 
   if (!filters.tags.every((tag) => entry.tags.includes(tag))) return false;
   if (filters.rating !== 'all' && entry.rating < filters.rating) return false;
   if (filters.withoutFiche && hasFiche(entry)) return false;
+  if (filters.language !== 'all' && entry.language?.toLowerCase() !== filters.language) return false;
   return true;
 }
 
-/** The entries that pass the search text, *every* selected tag, the minimum rating and the without-fiche filter, in their original order. */
+/** The entries that pass the search text, *every* selected tag, the minimum rating, the without-fiche filter and the language, in their original order. */
 export function filterEntries(entries: LibraryEntry[], filters: LibraryFilters): LibraryEntry[] {
   const search = normalize(filters.search.trim());
   return entries.filter((entry) => matches(entry, search, filters));
@@ -94,5 +110,10 @@ export function filterEntries(entries: LibraryEntry[], filters: LibraryFilters):
 
 /** Whether any filter would narrow the list (whitespace-only search does not count). */
 export function hasActiveFilters(filters: LibraryFilters): boolean {
-  return filters.search.trim() !== '' || filters.tags.length > 0 || filters.rating !== 'all' || filters.withoutFiche;
+  return (
+    filters.search.trim() !== '' ||
+    filters.tags.length > 0 || filters.rating !== 'all' ||
+    filters.withoutFiche ||
+    filters.language !== 'all'
+  );
 }
