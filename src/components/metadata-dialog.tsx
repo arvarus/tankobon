@@ -110,6 +110,8 @@ export function MetadataDialog({
   const [applying, setApplying] = useState(false);
   const [applyFailed, setApplyFailed] = useState(false);
   const searchCount = useRef(0);
+  const queryInput = useRef<HTMLInputElement>(null);
+  const pageUrlInput = useRef<HTMLInputElement>(null);
   // Closing the dialog gives up what it is waiting for: the requests to the sites are aborted, not just ignored.
   useEffect(() => () => void window.tankobon.metadata.cancel(), []);
   const stop = () => {
@@ -193,6 +195,25 @@ export function MetadataDialog({
     finish();
   };
 
+  // On the review, Enter saves, wherever the focus is (a field, or nowhere after a click on a result);
+  // a focused button, link or list keeps its own Enter, and a dialog opened over this one is left alone.
+  const reviewToApply = step.kind === 'review' && !applying ? step.review : null;
+  useEffect(() => {
+    if (!reviewToApply) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Enter' || event.defaultPrevented || event.isComposing) return;
+      if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest('button, a, select, textarea, [role="tab"]')) return;
+      if (target && !target.closest('[role="dialog"]') && target !== document.body) return;
+      event.preventDefault();
+      void apply(reviewToApply);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `apply` is recreated each render and reads only `entry` and the callbacks
+  }, [reviewToApply]);
+
   // Only while another book follows: on the last one there is nothing to move on to.
   const skip =
     onSkip && position && position.index < position.total ? (
@@ -211,6 +232,11 @@ export function MetadataDialog({
       className="max-w-3xl"
       // A series of lookups would be lost by an awkward click outside.
       closeOnOutsideClick={false}
+      // Enter must start the search, not hit the close button that would take the focus first.
+      onOpenAutoFocus={(event) => {
+        event.preventDefault();
+        (mode === 'site' ? pageUrlInput : queryInput).current?.focus();
+      }}
     >
       {/* Everything but the footer scrolls together: the options can fill a short window, and the results below must stay reachable. */}
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
@@ -256,6 +282,7 @@ export function MetadataDialog({
               <>
                 <div className="flex flex-wrap items-center gap-2">
                   <input
+                    ref={queryInput}
                     aria-label={t('queryLabel')}
                     placeholder={t('queryPlaceholder')}
                     className={cn(INPUT_CLASS, 'min-w-48 flex-1')}
@@ -370,6 +397,7 @@ export function MetadataDialog({
             ) : (
               <div className="flex flex-col gap-1">
                 <input
+                  ref={pageUrlInput}
                   aria-label={t('pageUrlLabel')}
                   placeholder={t('pageUrlPlaceholder')}
                   className={cn(INPUT_CLASS, 'w-full')}
