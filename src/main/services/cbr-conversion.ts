@@ -25,7 +25,7 @@ import { coverSidecarPath } from './cover-sidecar';
 import { moveFile } from './library-organizer';
 import type { LibraryNotifier, LibraryRunLock } from './library-organization';
 import { nfoPathFor } from './nfo';
-import { firstFreeName, organizedFolderProblem } from './organized-folder';
+import { firstFreeName, markParked, organizedFolderProblem } from './organized-folder';
 
 /** The part of the decoder process the conversion calls. */
 export interface ConversionDecoder {
@@ -43,6 +43,11 @@ export interface CbrConverter {
   convert(onProgress?: (progress: ScanProgress) => void): Promise<ConvertCbrResult>;
   /** Deletes everything in `.deletedByTankobon` for good. Holds the shared lock. */
   emptyDeleted(): Promise<EmptyDeletedResult>;
+  /**
+   * Deletes for good what has been in `.deletedByTankobon` for `days` days or more (the automatic emptying).
+   * Does nothing, returning `null`, when the organization is off, the folder unreachable or another run holds the lock.
+   */
+  emptyDeletedOlderThan(days: number, now?: Date): Promise<EmptyDeletedResult | null>;
 }
 
 /** Total size of a file, or of everything under a folder (the orphan folders are parked whole); 0 when unreadable. Links are not followed. */
@@ -63,6 +68,12 @@ async function folderContents(folder: string): Promise<{ names: string[]; bytes:
   return { names, bytes };
 }
 
+/** When an item of the trash was parked: the latest of its modification and change times (parking touches it, see `markParked()`). */
+async function parkedAt(target: string): Promise<number> {
+  const info = await lstat(target).catch(() => null);
+  return info ? Math.max(info.mtimeMs, info.ctimeMs) : 0;
+}
+
 /** Builds the converter around the library and the decoder; `lock` is the one shared with the other runs over the files. */
 export function createCbrConverter(
   repo: LibraryRepository,
@@ -76,6 +87,27 @@ export function createCbrConverter(
     const { libraryOrganization: mode, libraryOrganizationFolder: root } = settings.getAll();
     const problem = await organizedFolderProblem(mode, root);
     return problem === null ? { root } : { status: 'error', message: problem };
+  };
+
+  /** Deletes the items of the trash whose parking time `shouldDelete` accepts, and the folder itself once it is empty. */
+  const deleteFromTrash = async (root: string, shouldDelete: (parkedAt: number) => boolean): Promise<EmptyDeletedResult> => {
+    const folder = path.join(root, DELETED_BY_TANKOBON_FOLDER);
+    const { names } = await folderContents(folder);
+    const result = { deleted: 0, bytesFreed: 0, failed: 0 };
+    for (const name of names) {
+      const file = path.join(folder, name);
+      if (!shouldDelete(await parkedAt(file))) continue;
+      const size = await sizeOf(file);
+      try {
+        await rm(file, { recursive: true });
+        result.deleted++;
+        result.bytesFreed += size;
+      } catch {
+        result.failed++;
+      }
+    }
+    await rmdir(folder).catch(() => undefined);
+    return { status: 'ok', ...result };
   };
 
   const convertibleIds = (root: string) =>
@@ -122,6 +154,7 @@ export function createCbrConverter(
             // The CBR leaves the library folders for good only once the CBZ exists and was checked.
             const parked = await firstFreeName(trash, path.basename(from, path.extname(from)), path.extname(from), () => true);
             await moveFile(from, parked);
+            await markParked(parked);
             if (!repo.updatePath(id, to)) {
               // The database refused: the CBR goes back where the entry says it is.
               await moveFile(parked, from).catch(() => undefined);
@@ -153,22 +186,19 @@ export function createCbrConverter(
       if (!('root' in usable)) return usable;
       if (!lock.tryStart('convert')) return { status: 'error', message: lock.busyMessage() };
       try {
-        const folder = path.join(usable.root, DELETED_BY_TANKOBON_FOLDER);
-        const { names } = await folderContents(folder);
-        const result = { deleted: 0, bytesFreed: 0, failed: 0 };
-        for (const name of names) {
-          const file = path.join(folder, name);
-          const size = await sizeOf(file);
-          try {
-            await rm(file, { recursive: true });
-            result.deleted++;
-            result.bytesFreed += size;
-          } catch {
-            result.failed++;
-          }
-        }
-        await rmdir(folder).catch(() => undefined);
-        return { status: 'ok', ...result };
+        return await deleteFromTrash(usable.root, () => true);
+      } finally {
+        lock.end();
+      }
+    },
+
+    async emptyDeletedOlderThan(days, now = new Date()) {
+      const usable = await usableRoot();
+      if (!('root' in usable)) return null;
+      if (!lock.tryStart('convert')) return null;
+      try {
+        const limit = now.getTime() - days * 24 * 60 * 60 * 1000;
+        return await deleteFromTrash(usable.root, (parked) => parked <= limit);
       } finally {
         lock.end();
       }

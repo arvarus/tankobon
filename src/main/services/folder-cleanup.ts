@@ -18,7 +18,7 @@ import {
 } from '../../shared/library';
 import type { SettingsRepository } from '../db/settings-repository';
 import type { LibraryRunLock } from './library-organization';
-import { firstFreeName, organizedFolderProblem } from './organized-folder';
+import { firstFreeName, markParked, organizedFolderProblem } from './organized-folder';
 
 /** Extensions of the files an orphan folder may still hold: sidecars (`.nfo`) and cover images. */
 const SIDECAR_EXTENSIONS = new Set(['.nfo', '.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.avif']);
@@ -111,7 +111,9 @@ export function createFolderCleaner(settings: SettingsRepository, lock: LibraryR
           onProgress({ phase: 'importing', processed: index, total: orphans.length, currentFile: folder });
           try {
             await mkdir(trash, { recursive: true });
-            await moveFolder(folder, await firstFreeName(trash, path.basename(folder)));
+            const parked = await firstFreeName(trash, path.basename(folder));
+            await moveFolder(folder, parked);
+            await markParked(parked);
             result.moved++;
           } catch {
             result.failed++;

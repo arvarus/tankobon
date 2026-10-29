@@ -174,6 +174,7 @@ app.whenReady().then(() => {
     organizer,
     activeUser,
   );
+  const cbrConverter = createCbrConverter(libraryRepo, settingsRepo, decoder, broadcastDataChange, organizer.lock);
   registerLibraryIpc({
     repo: libraryRepo,
     folders: folderRepo,
@@ -184,7 +185,7 @@ app.whenReady().then(() => {
     imageScanner,
     organizer,
     cleaner: createLibraryCleaner(libraryRepo, decoder, broadcastDataChange, organizer.lock),
-    converter: createCbrConverter(libraryRepo, settingsRepo, decoder, broadcastDataChange, organizer.lock),
+    converter: cbrConverter,
     folderCleaner: createFolderCleaner(settingsRepo, organizer.lock),
     activeUser,
   });
@@ -238,6 +239,16 @@ app.whenReady().then(() => {
   const backupTimer = setInterval(backupIfDue, 60 * 60 * 1000);
   backupTimer.unref();
   app.on('will-quit', () => clearInterval(backupTimer));
+
+  // The automatic emptying of `.deletedByTankobon` (the active user's setting), at start-up then every hour.
+  const emptyTrashIfDue = () => {
+    const { trashAutoEmpty, trashRetentionDays } = settingsRepo.getAll();
+    if (trashAutoEmpty) void cbrConverter.emptyDeletedOlderThan(trashRetentionDays).catch(() => undefined);
+  };
+  emptyTrashIfDue();
+  const trashTimer = setInterval(emptyTrashIfDue, 60 * 60 * 1000);
+  trashTimer.unref();
+  app.on('will-quit', () => clearInterval(trashTimer));
 
   // In the background: the library is usable meanwhile, and its views update as the walk goes.
   if (settingsRepo.getAll().resyncOnStartup) {
