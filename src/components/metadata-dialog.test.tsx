@@ -69,6 +69,25 @@ describe('MetadataDialog', () => {
     expect(onApplied).toHaveBeenCalledTimes(1);
   });
 
+  it('puts the focus in the search field on opening, so Enter searches instead of closing', async () => {
+    const search = vi.fn(async () => ({ status: 'ok' as const, candidates: [], errors: [] }));
+    const { onClose } = open({ search });
+    fireEvent.click(screen.getByLabelText(/Bédéthèque/));
+    const field = screen.getByLabelText(/Titre ou série/i, { selector: 'input' });
+    await waitFor(() => expect(document.activeElement).toBe(field));
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('saves the review on Enter', async () => {
+    const apply = vi.fn(async () => libraryEntry('a', { series: 'Blacksad' }));
+    const { onClose } = open({ fromPage: vi.fn(async () => ({ status: 'ok' as const, candidate })), apply });
+    readPage();
+    await screen.findByRole('button', { name: 'Appliquer' });
+    fireEvent.keyDown(document.body, { key: 'Enter' });
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    expect(apply).toHaveBeenCalledTimes(1);
+  });
+
   it('stays open on a click outside, and closes on Escape', async () => {
     const { onClose } = open({});
     // Radix listens for outside clicks from the next tick on.
