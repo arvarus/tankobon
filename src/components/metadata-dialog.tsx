@@ -209,6 +209,8 @@ export function MetadataDialog({
       title={position ? t('seriesTitle', position) : t('title')}
       description={entry.path}
       className="max-w-3xl"
+      // A series of lookups would be lost by an awkward click outside.
+      closeOnOutsideClick={false}
     >
       {/* Everything but the footer scrolls together: the options can fill a short window, and the results below must stay reachable. */}
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">

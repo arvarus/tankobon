@@ -69,6 +69,17 @@ describe('MetadataDialog', () => {
     expect(onApplied).toHaveBeenCalledTimes(1);
   });
 
+  it('stays open on a click outside, and closes on Escape', async () => {
+    const { onClose } = open({});
+    // Radix listens for outside clicks from the next tick on.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    fireEvent.pointerDown(document.body);
+    fireEvent.click(document.body);
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   // Same here: the button stayed disabled for good and the rejection went unhandled.
   it('keeps the review open, enabled, and says so when saving fails', async () => {
     const { onClose, onApplied } = open({
