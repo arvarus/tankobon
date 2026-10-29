@@ -399,7 +399,10 @@ export function MetadataDialog({
         <div>
           {step.kind === 'searching' && (
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" />
+              {/* Clipped: a rotating icon's bounding box grows past its own, which made the scroll area's scrollbar appear and disappear. */}
+              <span className="inline-flex size-4 shrink-0 overflow-hidden">
+                <Loader2 className="size-4 animate-spin" />
+              </span>
               {mode === 'site' ? t('readingPage') : t('searching')}
             </p>
           )}
