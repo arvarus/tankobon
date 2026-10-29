@@ -91,6 +91,8 @@ export default {
   ratingFilter: 'Rating',
   atLeast_one: 'At least {{count}} star',
   atLeast_other: 'At least {{count}} stars',
+  languageFilter: 'Language',
+  allLanguages: 'All languages',
   withoutFiche: 'Only books without a fiche (no series, volume, date, language or credits)',
   viewMode: 'Display mode',
   viewFull: 'Full: all the information',

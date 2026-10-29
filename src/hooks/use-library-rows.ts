@@ -4,7 +4,7 @@
  */
 import { useMemo, useState } from 'react';
 
-import { availableTags, filterEntries, type LibraryFilters } from '@/lib/library-filter';
+import { availableLanguages, availableTags, filterEntries, type LibraryFilters } from '@/lib/library-filter';
 import { collapseEditions, editionGroups } from '@/lib/library-editions';
 import { groupBySeries, ungroupedRows, type LibraryRow } from '@/lib/library-groups';
 import { sortEntries } from '@/lib/library-sort';
@@ -20,6 +20,8 @@ export interface LibraryRows {
   visible: LibraryEntry[];
   /** The tags the filter can offer, the quick tags first. */
   tags: string[];
+  /** The languages the filter can offer (codes), by name. */
+  languages: string[];
   /** The rows in the order they are drawn: series headings and books, or books only. */
   rows: LibraryRow[];
   /** The books of `rows`, in the same order (folded series left out). */
@@ -43,6 +45,7 @@ export function useLibraryRows(
   const editions = useMemo(() => editionGroups(entries), [entries]);
   const visible = useMemo(() => collapseEditions(filterEntries(entries, filters), editions), [entries, filters, editions]);
   const tags = useMemo(() => availableTags(entries, QUICK_TAGS), [entries]);
+  const languages = useMemo(() => availableLanguages(entries), [entries]);
   const [collapsedSeries, setCollapsedSeries] = useState<ReadonlySet<string>>(() => new Set());
   const rows = useMemo(
     () => (grouped ? groupBySeries(visible, collapsedSeries) : ungroupedRows(sortEntries(visible, sort))),
@@ -56,5 +59,5 @@ export function useLibraryRows(
     });
   // The order of a Shift-click range, of "select all" and of the books sent to a reading list.
   const shown = useMemo(() => rows.flatMap((row) => (row.kind === 'entry' ? [row.entry] : [])), [rows]);
-  return { editions, visible, tags, rows, shown, toggleSeries };
+  return { editions, visible, tags, languages, rows, shown, toggleSeries };
 }

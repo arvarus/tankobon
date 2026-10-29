@@ -305,7 +305,8 @@ The whole library is in the [data store](#renderer-data-store) and is filtered c
 
 - search matches the title, the file path (so a series folder name finds its albums), the series and the credited people's names, normalized with `NFD` + diacritic stripping ("pokemon" matches "Pokémon"). Each entry's normalized text is cached in a `WeakMap` keyed by the entry object (entries are replaced, never mutated, so it can't go stale), and the search text is normalized once per filtering, not once per entry;
 - read/unread is a **tag** filter: `Lu`/`À lire` are the library page's `QUICK_TAGS`. `availableTags()` keeps them pinned in front even before anything carries them; selecting several tags requires *all* of them;
-- the rating filter is a *minimum* (3 stars keeps 3–5).
+- the rating filter is a *minimum* (3 stars keeps 3–5);
+- the language filter keeps the entries whose `language` code equals the chosen one (`availableLanguages()` lists the codes in use, by name, for the toolbar's `<select>`).
 
 `AppSettings.libraryView` (a `LibraryView`: `full`/`medium`/`compact`, or `grid`, persisted like any setting) picks how much each row shows, or the grid of covers (a reading list's `readingListView` stays a `BookRowView`, its picker not offering the grid); the toolbar's `ViewModePicker` writes it through `useSettings()`, and the virtualizer's estimated row height depends on it (rows are measured anyway). The parts of a row that depend on it live in `src/components/book-row.tsx`, shared with a reading list's page: `ViewModePicker`, `BookDetails` (cover, title, details and status line), `BookRating` and `BookTags` (which write the rating and tags themselves, optimistically through `appData.patchEntry()`; `toggleTag()` and `QUICK_TAGS` are in `src/lib/reading-list.ts`). Each page keeps its own row layout and actions around them. The tooltip of a title (`BookDetails`, `BookCard`, the reader headers) comes from the pure `bookTooltip()` (`src/lib/book-tooltip.ts`): series and title, else the file name without its folders, never the full path.
 
@@ -317,7 +318,7 @@ The whole library is in the [data store](#renderer-data-store) and is filtered c
 
 In the grid, `gridLines()` (`src/lib/library-groups.ts`, pure and tested) cuts the same rows into `CardsRow`s of as many books as fit the width (`useGridColumns()`, from a `ResizeObserver` on the scroll area, cards at least 150 px wide), a series heading keeping its own line, so the virtualizer still sees one list of lines of varying height; `BookCard` (`src/components/library/book-card.tsx`) draws a book.
 
-The search, tag and rating filters are page state seeded from `rememberedFilters()` (`src/lib/library-filters-memory.ts`, a module variable, so they survive leaving and returning to the page but not a restart, and are dropped when another user is active).
+The search, tag, rating, language and without-fiche filters are page state seeded from `rememberedFilters()` (`src/lib/library-filters-memory.ts`, a module variable, so they survive leaving and returning to the page but not a restart, and are dropped when another user is active).
 
 The route (`src/routes/library.tsx`) keeps the page state and the virtualized rows; what it draws comes from two hooks (`src/hooks/`, tested under jsdom): `useLibraryRows()` filters, collapses the editions, sorts or groups by series (with the folded series) and gives the `rows` and the books `shown` in drawing order, and `useLibrarySelection()` holds the ticked ids and the Shift-click anchor over those `shown` books (`tick()`, `tickAllShown()`, `clear()`); the toolbar and its parts (`LibraryToolbar`, `SortPicker`, `RatingFilterPicker`), the `SelectionBar`, the `ScanProgressBar` and the `SeriesHeader` are components of `src/components/library/`.
 
